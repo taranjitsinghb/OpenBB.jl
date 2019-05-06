@@ -2,7 +2,7 @@
 An open and modular Branch and Bound framework written in Julia
 
 ## The Idea
-Those are the diving ideas behind this project:
+Those are the driving ideas behind this project:
 * It should be very easy to define and tackle different problem classes. Possibly, via the addition of new subsolvers.
 * It must be possible to interrupt the Branch and Bound execution at any moment and restart it later.
 * The state of the Branch & Bound should be transparent to the user and easy to manipulate.
@@ -14,7 +14,7 @@ Those are the diving ideas behind this project:
 * OSQP interface (https://osqp.org/).
 * Gurobi (QP only) interface (http://www.gurobi.com/) based on Gurobi.jl (https://github.com/JuliaOpt/Gurobi.jl)
 
-The code allows you to easily define your custom priority rules for the selection of the next subproblem to solve and the next variable to branch on. Moreover, it is very easy to define custom stopping criteria for Branch & Bound. Moreover, the whole code is subsolver-invariant and a new subsolver can be added by simply overloading the interface functions that the user can find in the "subsolvers_interfaces" folder. Finally, OpenBB provides a number of fuctions that allow safe constraints addition, problem expansion, bounds restrictions, etc..
+The code allows you to easily define your custom priority rules for the selection of the next subproblem to solve and the next variable to branch on. Moreover, it is very easy to define custom stopping criteria for Branch & Bound. Moreover, the whole code is subsolver-invariant and a new subsolver can be added by simply overloading the interface functions that the user can find in the "subsolvers_interfaces" folder. Finally, OpenBB provides a number of functions that allow safe constraints addition, problem expansion, bounds restrictions, etc..
 
 
 
