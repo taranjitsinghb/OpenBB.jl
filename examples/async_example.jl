@@ -3,12 +3,11 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: async_example.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-04-03T22:46:18+02:00
+# @Last modified time: 2019-05-06T18:49:13+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 # this would show how to make OpenBB run asynchronously
-using Revise
 using OpenBB
 using SparseArrays
 using LinearAlgebra

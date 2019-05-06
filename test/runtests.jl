@@ -4,11 +4,10 @@
 # @Project: OpenBB
 # @Filename: runtests.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-06T18:16:59+02:00
+# @Last modified time: 2019-05-06T18:49:40+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
-using Revise
 using OpenBB
 using LinearAlgebra
 using SparseArrays
