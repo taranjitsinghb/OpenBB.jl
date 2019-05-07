@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve_singlecore!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-03T14:50:03+02:00
+# @Last modified time: 2019-05-07T15:18:10+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -172,10 +172,10 @@ function run!(workspace::BBworkspace)::Nothing
                     break
                 elseif workspace.activeQueue[i].objVal < newObjLoB
                     newObjLoB =  workspace.activeQueue[i].objVal
-                    if workspace.status.objLoB > newObjLoB + workspace.settings.primalTolerance
-                        @error "branch and bound: the objective lower bound has decreased... something is wrong"
-                    end
                 end
+            end
+            if workspace.status.objLoB > newObjLoB + workspace.settings.primalTolerance
+                @error "branch and bound: the objective lower bound has decreased from "*string(workspace.status.objLoB)*" to "*string(newObjLoB)*"... something is wrong"
             end
             workspace.status.objLoB = newObjLoB
         end

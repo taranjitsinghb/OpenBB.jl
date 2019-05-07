@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve_and_branch.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-03T13:49:11+02:00
+# @Last modified time: 2019-05-07T15:16:51+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -33,15 +33,6 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
         end
     end
 
-    for i in 1:length(workspace.dscIndices)
-        if varLoBs[workspace.dscIndices[i]] != varUpBs[workspace.dscIndices[i]] && subproblem.pseudoCosts[i] == 0.
-            println(subproblem.branchLoBs)
-            println(subproblem.branchUpBs)
-            println(subproblem.pseudoCosts)
-            cacca
-        end
-    end
-
 
     # solve the subproblem
     # subproblem status guide:
@@ -56,7 +47,6 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
 
     # count how many subproblems we have solved
     workspace.status.numRelaxationsSolved = workspace.status.numRelaxationsSolved + 1
-
     # check feasibility of the subproblem solution
     if out.status == 1
         return ("infeasible",Array{BBsubproblem,1}())
@@ -71,7 +61,7 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
     # check the problem for suboptimality, giving some slack to badly solved problems
     if out.objVal + (1 - 101*(out.status==2))*get_primalTolerance(workspace.subsolverWS) > min(workspace.status.objUpB,workspace.settings.objectiveCutoff)
 
-        return ("suboptimal",[BBsubproblem(copy(subproblem.branchUpBs),
+        return ("suboptimal",[BBsubproblem(copy(subproblem.branchLoBs),
                                            copy(subproblem.branchUpBs),
                                            copy(subproblem.pseudoCosts),
                                            copy(out.primal),
@@ -172,7 +162,7 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
             childrenAvgFrac = repeat([2*(sum(fractionality)-fractionality[tmpIndex])/length(workspace.dscIndices)],2)
 
         else # case to consider due to possible infinite pseudo costs
-        
+
             # number of children to create (depends on the value of the selected variable)
             numChildren = 1
 
