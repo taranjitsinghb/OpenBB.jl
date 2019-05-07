@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve_singlecore!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-07T15:18:10+02:00
+# @Last modified time: 2019-05-07T17:42:16+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -175,7 +175,7 @@ function run!(workspace::BBworkspace)::Nothing
                 end
             end
             if workspace.status.objLoB > newObjLoB + workspace.settings.primalTolerance
-                @error "branch and bound: the objective lower bound has decreased from "*string(workspace.status.objLoB)*" to "*string(newObjLoB)*"... something is wrong"
+                @warn "branch and bound: the objective lower bound has decreased from "*string(workspace.status.objLoB)*" to "*string(newObjLoB)*"..."
             end
             workspace.status.objLoB = newObjLoB
         end
@@ -190,30 +190,38 @@ function run!(workspace::BBworkspace)::Nothing
 
     end
 
-    if length(workspace.activeQueue) == 0 || workspace.status.absoluteGap < workspace.settings.primalTolerance || workspace.status.relativeGap == 0.0
+    # termination
+    if workspace.status.absoluteGap < workspace.settings.absoluteGapTolerance ||
+       workspace.status.relativeGap < workspace.settings.relativeGapTolerance
 
-        if length(workspace.solutionPool) > 0
-            solution_found = false
-            for k in length(workspace.solutionPool):-1:1
-                if workspace.solutionPool[k].reliable
-                    solution_found = true
-                    break
-                end
-            end
-
-            if solution_found
-                workspace.status.description = "best_subproblem_found"
-            else
-                workspace.status.description = "no_reliable_solution_found"
-            end
-        else
-            workspace.status.description = "no_solution_found"
+        workspace.status.description = "optimalSolutionFound"
+        if workspace.settings.verbose
+            print_status(workspace)
+            println(" Exit: Optimal Solution Found")
         end
+
+    elseif length(workspace.activeQueue) == 0 && length(workspace.solutionPool) == 0
+
+        workspace.status.description = "infeasible"
+        if workspace.settings.verbose
+            print_status(workspace)
+            println(" Exit: infeasibilty detected")
+        end
+    elseif length(workspace.activeQueue) == 0 && length(workspace.solutionPool) > 0
+
+        workspace.status.description = "noReliableSolutionFound"
+        if workspace.settings.verbose
+            print_status(workspace)
+            println(" Exit: no reliable solution found")
+        end
+
     else
         workspace.status.description = "interrupted"
+        if workspace.settings.verbose
+            print_status(workspace)
+            println(" Exit: interrupted")
+        end
     end
-
-    if workspace.settings.verbose print_status(workspace) end
 
     return
 end
