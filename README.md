@@ -1,6 +1,6 @@
 # OpenBB
-An open and modular Branch and Bound framework written in Julia
-version 0.1.0
+An open and modular Branch and Bound framework written in Julia.
+* version 0.1.0
 
 ## The Idea
 Those are the driving ideas behind this project:
