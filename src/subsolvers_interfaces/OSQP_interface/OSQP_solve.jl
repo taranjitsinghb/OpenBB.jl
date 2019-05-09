@@ -42,7 +42,7 @@ function solve!(workspace::OSQPworkspace;
     elseif sol.info.status_val in [2,3,4,-6,-2]
         status = 2 # "unreliable"
         sol.x = @. min(max(sol.x,varLoBs),varUpBs)
-        @warn "Inaccuracy in subproblem sol, message: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
+        @warn "Inaccuracy in node sol, message: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
     elseif sol.info.status_val in [-7,-10]
         status = 3 # "error"
         @error "Subsover error, status: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"

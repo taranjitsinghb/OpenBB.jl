@@ -64,7 +64,7 @@ function solve!(workspace::GUROBIworkspace;
         info_bndDual = zeros(nVars)
         info_cnsDual = zeros(nCnss)
         info_obj = (transpose(info_primal)*workspace.Q*info_primal)/2. + transpose(workspace.L)*info_primal
-        @warn "Inaccuracy in subproblem sol, status: "*string(sol.info.status)*" (code: "*string(info_status)*")"
+        @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(info_status)*")"
 
     elseif info_status in [5,12]
         status = 3 # "error"

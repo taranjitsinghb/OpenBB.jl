@@ -22,12 +22,12 @@ end
 ###### getters and setters
 
 
-# finds the best subproblem in the array
-function best_subproblem(subproblem_pool::Array{BBsubproblem,1})::Union{BBsubproblem,Nothing}
-    if length(subproblem_pool) != 0
-        for i in length(subproblem_pool):-1:1
-            if subproblem_pool[i].reliable
-                return subproblem_pool[i]
+# finds the best node in the array
+function best_node(node_pool::Array{BBnode,1})::Union{BBnode,Nothing}
+    if length(node_pool) != 0
+        for i in length(node_pool):-1:1
+            if node_pool[i].reliable
+                return node_pool[i]
             end
         end
     end
@@ -35,33 +35,33 @@ function best_subproblem(subproblem_pool::Array{BBsubproblem,1})::Union{BBsubpro
 end
 
 # returns the best solution
-function get_best_solution(workspace::BBworkspace)::Union{BBsubproblem,Nothing}
+function get_best_solution(workspace::BBworkspace)::Union{BBnode,Nothing}
 
-    subproblem = nothing
+    node = nothing
     if length(workspace.solutionPool) != 0
-        subproblem = best_subproblem(workspace.solutionPool)
+        node = best_node(workspace.solutionPool)
     end
 
-    return subproblem
+    return node
 end
 
-# returns the best subproblem
-function get_best_subproblem(workspace::BBworkspace)::Union{BBsubproblem,Nothing}
+# returns the best node
+function get_best_node(workspace::BBworkspace)::Union{BBnode,Nothing}
 
-    subproblem = nothing
+    node = nothing
     if length(workspace.solutionPool) != 0
-        subproblem = best_subproblem(workspace.solutionPool)
+        node = best_node(workspace.solutionPool)
     end
 
-    if best_subproblem == nothing
-        subproblem = best_subproblem(workspace.activeQueue)
+    if best_node == nothing
+        node = best_node(workspace.activeQueue)
     end
 
-    if best_subproblem == nothing
-        subproblem = best_subproblem(workspace.unactivePool)
+    if best_node == nothing
+        node = best_node(workspace.unactivePool)
     end
 
-    return subproblem
+    return node
 end
 
 

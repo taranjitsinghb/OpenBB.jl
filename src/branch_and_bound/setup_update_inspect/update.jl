@@ -14,7 +14,7 @@ function reset!(workspace::BBworkspace)::Nothing
     deleteat!(workspace.activeQueue,1:length(workspace.activeQueue))
     deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
     deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
-    push!(workspace.activeQueue,BBsubproblem(Dict{Int,Float64}(),Dict{Int,Float64}(),
+    push!(workspace.activeQueue,BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),
                                              zeros(get_numVariables(workspace)),
                                              zeros(get_numVariables(workspace)),
                                              zeros(get_numConstraints(workspace)),
@@ -36,14 +36,14 @@ function update!(workspace::BBworkspace)::Nothing
     update!(workspace.subsolverWS)
 
     # reset the explored sub-problems
-    reset_explored_subproblems!(workspace)
+    reset_explored_nodes!(workspace)
 
     return
 end
 
 
 #
-function reset_explored_subproblems!(workspace::BBworkspace)::Nothing
+function reset_explored_nodes!(workspace::BBworkspace)::Nothing
 
 
     # adapt the workspace to the changes
@@ -99,7 +99,7 @@ function insert_constraints!(workspace::BBworkspace,
         @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
     end
 
-    # propagate the changes to the subproblems solver
+    # propagate the changes to the nodes solver
     insert_constraints!(workspace.subsolverWS,A,cnsLoBs,cnsUpBs,index,suppressUpdate=true)
 
 
@@ -141,12 +141,12 @@ function remove_constraints!(workspace::BBworkspace,indices::Array{Int,1};
         @warn "Removing constraints will invalidate the results found in the last solution process"
     end
 
-    # propagate the changes to the subproblems solver
+    # propagate the changes to the nodes solver
     remove_constraints!(workspace.subsolverWS,indices,suppressUpdate=suppressUpdate)
 
 
     # adapt the workspace to the changes
-    reset_explored_subproblems!(workspace)
+    reset_explored_nodes!(workspace)
 
     # update all the problems in the activeQueue
     for i in 1:length(workspace.activeQueue)
@@ -238,12 +238,12 @@ function update_bounds!(workspace::BBworkspace;
         cnsUpBs = copy(workspace.subsolverWS.cnsUpBs)
     end
 
-    # propagate the changes to the subproblems solver
+    # propagate the changes to the nodes solver
     update_bounds!(workspace.subsolverWS,cnsLoBs,cnsUpBs,varLoBs,varUpBs,suppressUpdate=suppressUpdate)
 
     # adapt the workspace to the changes
     if !suppressUpdate
-        reset_explored_subproblems!(workspace)
+        reset_explored_nodes!(workspace)
     end
 
     return
@@ -265,7 +265,7 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
     nCnss1 = length(workspace.subsolverWS.cnsLoBs)
     nCnss2 = length(problem.cnsSet.loBs)
 
-    # propagate the changes to the subproblems solver
+    # propagate the changes to the nodes solver
     reliableObjLoBs = append_problem!(workspace.subsolverWS,problem,suppressUpdate=suppressUpdate)
 
 
@@ -316,7 +316,7 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
 
     # adapt the workspace to the chanes
     if !suppressUpdate
-        reset_explored_subproblems!(workspace)
+        reset_explored_nodes!(workspace)
     end
 
     return
@@ -354,7 +354,7 @@ function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,
     tmpPerm = sortperm!(workspace.dscIndices)
     permute!(workspace.sos1Groups,tmpPerm)
 
-    # update the subproblems pseudoCosts
+    # update the nodes pseudoCosts
     for i in 1:length(workspace.activeQueue)
         append!(workspace.activeQueue[i].pseudoCosts,newPseudoCosts)
         permute!(workspace.activeQueue[i].pseudoCosts,tmpPerm)
@@ -372,7 +372,7 @@ function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,
 
     # adapt the workspace to the changes
     if !suppressUpdate
-        reset_explored_subproblems!(workspace)
+        reset_explored_nodes!(workspace)
     end
 
     return

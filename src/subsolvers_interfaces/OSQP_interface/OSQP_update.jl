@@ -162,7 +162,7 @@ function append_problem!(workspace::OSQPworkspace,
     end
 
 
-    # update the subproblem data
+    # update the node data
     workspace.Q = vcat(hcat( workspace.Q,                                         zeros(size(workspace.Q,1),size(problem.objFun.Q,2))    ),
                        hcat( zeros(size(problem.objFun.Q,1),size(workspace.Q,2)), problem.objFun.Q                                       ))
 

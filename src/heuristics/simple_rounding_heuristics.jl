@@ -8,21 +8,21 @@
 # @Copyright: {{copyright}}
 
 
-function simple_rounding_heuristics(subproblem::BBsubproblem, workspace::BBworkspace)::BBsubproblem
+function simple_rounding_heuristics(node::BBnode, workspace::BBworkspace)::BBnode
 
     # round the primal info and fix the discrete variables
-    primal = copy(subproblem.primal)
-    newBranchLoBs = copy(subproblem.branchLoBs)
-    newBranchUpBs = copy(subproblem.branchUpBs)
+    primal = copy(node.primal)
+    newBranchLoBs = copy(node.branchLoBs)
+    newBranchUpBs = copy(node.branchUpBs)
 
     for ind in workspace.dscIndices
-        newBranchLoBs[ind] = newBranchUpBs[ind] = primal[ind] = Int(round(subproblem.primal[ind]))
+        newBranchLoBs[ind] = newBranchUpBs[ind] = primal[ind] = Int(round(node.primal[ind]))
 
     end
 
-    # return the resulting subproblem
-    BBsubproblem(newBranchLoBs,newBranchUpBs,copy(subproblem.pseudoCosts),
-                 primal,copy(subproblem.bndDual),copy(subproblem.cnsDual),
-                 0,subproblem.objVal,true)
+    # return the resulting node
+    BBnode(newBranchLoBs,newBranchUpBs,copy(node.pseudoCosts),
+                 primal,copy(node.bndDual),copy(node.cnsDual),
+                 0,node.objVal,true)
 
 end

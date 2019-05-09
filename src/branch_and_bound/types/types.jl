@@ -15,8 +15,8 @@ abstract type AbstractSettings  end; struct NullSettings  <: AbstractSettings  e
 abstract type AbstractWorkspace end; struct NullWorkspace <: AbstractWorkspace end
 
 
-# this is the set of data that distinguishes a subproblem from another
-mutable struct BBsubproblem
+# this is the set of data that distinguishes a node from another
+mutable struct BBnode
     branchLoBs::Dict{Int,Float64}
     branchUpBs::Dict{Int,Float64}
     pseudoCosts::Array{Float64,1}
@@ -56,16 +56,16 @@ mutable struct BBsettings <: AbstractSettings
     verbose::Bool                           # print info during execution
     iterationInfoFreq::Int                  # frequency of iteration info print
     maxProcesses::Int                       # max number of process to launch
-    dynamicMode::Bool                       # store in memory suboptimal solutions and subproblems to allow later updates
+    dynamicMode::Bool                       # store in memory suboptimal solutions and nodes to allow later updates
     useSosConstraints::Bool                 # consider the sos constraints
     # problem bounds
     integerTolerance::Float64               # integer tolerance
     primalTolerance::Float64                # constraint violation tolerance
     objectiveCutoff::Float64                # look only for solutions that are better than the provided upper bound
     # priority rules
-    expansion_priority_rule::Function       # ordering of the subproblems in the activeQueue
+    expansion_priority_rule::Function       # ordering of the nodes in the activeQueue
     branching_priority_rule::Function       # ordering of the discrete variables for branching
-    unreliable_subps_priority::Int          # activeQueue insertion priority for unreliable subproblems (-1->low, 0->normal, 1->high)
+    unreliable_subps_priority::Int          # activeQueue insertion priority for unreliable nodes (-1->low, 0->normal, 1->high)
     # stopping criteria
     custom_stopping_rule::Function          # user-defined stopping criterion
     timeLimit::Float64                      # max running time
@@ -114,9 +114,9 @@ struct BBworkspace{T<:AbstractWorkspace} <: AbstractWorkspace
     sos1Groups::Array{Int64,1}
     sosConstraints::LinearCns
     # branch and bound status
-    activeQueue::Array{BBsubproblem,1}
-    solutionPool::Array{BBsubproblem,1}
-    unactivePool::Array{BBsubproblem,1}
+    activeQueue::Array{BBnode,1}
+    solutionPool::Array{BBnode,1}
+    unactivePool::Array{BBnode,1}
     status::BBstatus
     # user settings
     settings::BBsettings

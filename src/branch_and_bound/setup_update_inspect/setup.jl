@@ -50,9 +50,9 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
                         problem.varSet.dscIndices,
                         problem.varSet.sos1Groups,
                         sosConstraints,
-                        [BBsubproblem(Dict{Int,Float64}(),Dict{Int,Float64}(),problem.varSet.pseudoCosts,problem.varSet.val,zeros(nVars),zeros(Ncnss),1.,NaN,false)],
-                        Array{BBsubproblem,1}(),
-                        Array{BBsubproblem,1}(),
+                        [BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),problem.varSet.pseudoCosts,problem.varSet.val,zeros(nVars),zeros(Ncnss),1.,NaN,false)],
+                        Array{BBnode,1}(),
+                        Array{BBnode,1}(),
                         BBstatus(),
                         bb_settings)
 

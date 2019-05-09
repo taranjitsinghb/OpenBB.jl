@@ -9,50 +9,50 @@
 # @Copyright: {{copyright}}
 
 
-# this function is called everytime a subproblem is picked from the activeQueue
-function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tuple{String,Array{BBsubproblem,1}}
+# this function is called everytime a node is picked from the activeQueue
+function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,Array{BBnode,1}}
 
-    # set the subproblem bounds (considering that the general bounds might have changed)
+    # set the node bounds (considering that the general bounds might have changed)
     globalLoBs, globalUpBs = get_variableBounds(workspace)
     varLoBs = copy(globalLoBs)
     varUpBs = copy(globalUpBs)
-    for k in keys(subproblem.branchLoBs)
-        if varUpBs[k] < subproblem.branchLoBs[k]
+    for k in keys(node.branchLoBs)
+        if varUpBs[k] < node.branchLoBs[k]
             # declare the problem infeasible
-            return ("infeasible",Array{BBsubproblem,1}())
+            return ("infeasible",Array{BBnode,1}())
         else
-            varLoBs[k] = max(varLoBs[k],subproblem.branchLoBs[k])
+            varLoBs[k] = max(varLoBs[k],node.branchLoBs[k])
         end
     end
-    for k in keys(subproblem.branchUpBs)
-        if varLoBs[k] > subproblem.branchUpBs[k]
+    for k in keys(node.branchUpBs)
+        if varLoBs[k] > node.branchUpBs[k]
             # declare the problem infeasible
-            return ("infeasible",Array{BBsubproblem,1}())
+            return ("infeasible",Array{BBnode,1}())
         else
-            varUpBs[k] = min(varUpBs[k],subproblem.branchUpBs[k])
+            varUpBs[k] = min(varUpBs[k],node.branchUpBs[k])
         end
     end
 
 
-    # solve the subproblem
-    # subproblem status guide:
+    # solve the node
+    # node status guide:
     # 0 -> solved
     # 1 -> infeasible
     # 2 -> unreliable
     # 3 -> error
     out = solve!(workspace.subsolverWS;
                     varLoBs=varLoBs,varUpBs=varUpBs,
-                    primal=subproblem.primal,
-                    bndDual=subproblem.bndDual,cnsDual=subproblem.cnsDual)
+                    primal=node.primal,
+                    bndDual=node.bndDual,cnsDual=node.cnsDual)
 
-    # count how many subproblems we have solved
+    # count how many nodes we have solved
     workspace.status.numRelaxationsSolved = workspace.status.numRelaxationsSolved + 1
-    # check feasibility of the subproblem solution
+    # check feasibility of the node solution
     if out.status == 1
-        return ("infeasible",Array{BBsubproblem,1}())
+        return ("infeasible",Array{BBnode,1}())
     end
 
-    # compute subproblem fractionality
+    # compute node fractionality
     dscv_vars_val = out.primal[workspace.dscIndices]
     fractionality = Array{Float64,1}(undef,length(workspace.dscIndices))
     @. fractionality =  abs(dscv_vars_val - round(dscv_vars_val))
@@ -61,9 +61,9 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
     # check the problem for suboptimality, giving some slack to badly solved problems
     if out.objVal + (1 - 101*(out.status==2))*get_primalTolerance(workspace.subsolverWS) > min(workspace.status.objUpB,workspace.settings.objectiveCutoff)
 
-        return ("suboptimal",[BBsubproblem(copy(subproblem.branchLoBs),
-                                           copy(subproblem.branchUpBs),
-                                           copy(subproblem.pseudoCosts),
+        return ("suboptimal",[BBnode(copy(node.branchLoBs),
+                                           copy(node.branchUpBs),
+                                           copy(node.pseudoCosts),
                                            copy(out.primal),
                                            copy(out.bndDual),
                                            copy(out.cnsDual),
@@ -76,9 +76,9 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
         @. out.primal[workspace.dscIndices] = round(out.primal[workspace.dscIndices])
 
         # new solution found!
-        return ("solution",[BBsubproblem(copy(subproblem.branchLoBs),
-                                         copy(subproblem.branchUpBs),
-                                         copy(subproblem.pseudoCosts),
+        return ("solution",[BBnode(copy(node.branchLoBs),
+                                         copy(node.branchUpBs),
+                                         copy(node.pseudoCosts),
                                          copy(out.primal),
                                          copy(out.bndDual),
                                          copy(out.cnsDual),
@@ -88,7 +88,7 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
     else
 
         # select a branching index
-        tmpIndex = workspace.settings.branching_priority_rule(fractionality,subproblem.pseudoCosts)
+        tmpIndex = workspace.settings.branching_priority_rule(fractionality,node.pseudoCosts)
         branchIndex = workspace.dscIndices[tmpIndex]
 
 
@@ -114,17 +114,17 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
             # order the variables in the sos1 group by their fractionality
             permute!(sos1Group,sortperm(fractionality[sos1Group]))
 
-            # create the new bounds for the children subproblems
+            # create the new bounds for the children nodes
             newLoBs = newUpBs = [Dict{Int,Float64}([workspace.dscIndices[sos1Group[i]] => 0. for i in 1:2:length(sos1Group)]),
                                  Dict{Int,Float64}([workspace.dscIndices[sos1Group[i]] => 0. for i in 2:2:length(sos1Group)])]
 
             # compute children pseudoCosts (incomplete)
-            tmpPseudoCosts = copy(subproblem.pseudoCosts)
+            tmpPseudoCosts = copy(node.pseudoCosts)
             for i in 1:2:length(sos1Group)
                 tmpPseudoCosts[sos1Group[i]] = 0.
             end
             childrenPseudoCosts = [tmpPseudoCosts]
-            tmpPseudoCosts = copy(subproblem.pseudoCosts)
+            tmpPseudoCosts = copy(node.pseudoCosts)
             for i in 2:2:length(sos1Group)
                 tmpPseudoCosts[sos1Group[i]] = 0.
             end
@@ -139,7 +139,7 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
             # number of children to create
             numChildren = 2
 
-            # create the new bounds for the children subproblems
+            # create the new bounds for the children nodes
             newLoBs = [Dict{Int,Float64}(branchIndex=>ceil(out.primal[branchIndex]-get_primalTolerance(workspace.subsolverWS))),
                        Dict{Int,Float64}()]
             newUpBs = [Dict{Int,Float64}(),
@@ -147,12 +147,12 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
 
 
             # compute children pseudoCosts (incomplete)
-            tmpPseudoCosts = copy(subproblem.pseudoCosts)
+            tmpPseudoCosts = copy(node.pseudoCosts)
             if varUpBs[branchIndex] == newLoBs[1][branchIndex]
                 tmpPseudoCosts[tmpIndex] = 0.
             end
             childrenPseudoCosts = [tmpPseudoCosts]
-            tmpPseudoCosts = copy(subproblem.pseudoCosts)
+            tmpPseudoCosts = copy(node.pseudoCosts)
             if varLoBs[branchIndex] == newUpBs[2][branchIndex]
                 tmpPseudoCosts[tmpIndex] = 0.
             end
@@ -168,7 +168,7 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
 
             # first child: fix the value of the branching variable
             newLoBs = newUpBs = [Dict{Int,Float64}(branchIndex=>round(out.primal[branchIndex]))]
-            tmpPseudoCosts = copy(subproblem.pseudoCosts)
+            tmpPseudoCosts = copy(node.pseudoCosts)
             tmpPseudoCosts[tmpIndex] = 0.
             childrenPseudoCosts = [tmpPseudoCosts]
 
@@ -180,7 +180,7 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
                 newLoBs = vcat(newLoBs,[Dict{Int,Float64}()])
                 newUpBs = vcat(newUpBs,[Dict{Int,Float64}(branchIndex=>roundedVal)])
 
-                tmpPseudoCosts = copy(subproblem.pseudoCosts)
+                tmpPseudoCosts = copy(node.pseudoCosts)
                 if roundedVal == varLoBs[branchIndex]
                     tmpPseudoCosts[tmpIndex] = 0.
                 end
@@ -194,7 +194,7 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
                 newLoBs = vcat(newLoBs,[Dict{Int,Float64}(branchIndex=>roundedVal)])
                 newUpBs = vcat(newUpBs,[Dict{Int,Float64}()])
 
-                tmpPseudoCosts = copy(subproblem.pseudoCosts)
+                tmpPseudoCosts = copy(node.pseudoCosts)
                 if roundedVal == varUpBs[branchIndex]
                     tmpPseudoCosts[tmpIndex] = 0.
                 end
@@ -205,20 +205,20 @@ function solve_and_branch!(subproblem::BBsubproblem, workspace::BBworkspace)::Tu
         end
 
         # println(newLoBs," - ",newUpBs)
-        # println(subproblem.pseudoCosts)
+        # println(node.pseudoCosts)
         # println(out.primal[workspace.dscIndices])
 
         # create the list of children
-        children = Array{BBsubproblem}(undef,numChildren)
+        children = Array{BBnode}(undef,numChildren)
         for k in 1:numChildren
-            # println(subproblem.branchLoBs,newLoBs[k])
-            # println(subproblem.branchUpBs,newUpBs[k])
+            # println(node.branchLoBs,newLoBs[k])
+            # println(node.branchUpBs,newUpBs[k])
             # println(childrenPseudoCosts[k])
 
             # perform bound propagation (TO DO)
 
-            children[k] = BBsubproblem(merge(subproblem.branchLoBs,newLoBs[k]),
-                                       merge(subproblem.branchUpBs,newUpBs[k]),
+            children[k] = BBnode(merge(node.branchLoBs,newLoBs[k]),
+                                       merge(node.branchUpBs,newUpBs[k]),
                                        childrenPseudoCosts[k],
                                        copy(out.primal),
                                        copy(out.bndDual),
