@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: types.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-14T15:30:25+02:00
+# @Last modified time: 2019-05-14T16:26:57+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -27,6 +27,9 @@ mutable struct BBnode <: AbstractBBnode
     objVal::Float64
     reliable::Bool
 end
+
+# this node is used to arrest the branch and bound process
+struct KillerNode <:AbstractBBnode end
 
 
 mutable struct BBstatus
@@ -121,8 +124,8 @@ struct BBworkspace{T<:AbstractWorkspace} <: AbstractWorkspace
     unactivePool::Array{BBnode,1}
     status::BBstatus
     # multiprocessing communication
-    inputChannel::RemoteChannel{Channel{BBnode}} # receive BBnodes from other workers
-    outputChannel::RemoteChannel{Channel{BBnode}} # send BBnodes to other workers
+    inputChannel::RemoteChannel{Channel{AbstractBBnode}} # receive BBnodes from other workers
+    outputChannel::RemoteChannel{Channel{AbstractBBnode}} # send BBnodes to other workers
     globalInfo::SharedArray{Float64,1} # info on the global status of the process
     # user settings
     settings::BBsettings

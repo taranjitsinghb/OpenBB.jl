@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-14T16:05:53+02:00
+# @Last modified time: 2019-05-14T16:26:24+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -69,7 +69,7 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 		# construct the communication channels
 		communicationChannels = Array{RemoteChannel,1}(undef,bb_settings.numProcesses+1)
 		for k in 1:bb_settings.numProcesses+1
-			communicationChannels[k] = RemoteChannel(()->Channel{BBnode}(5))
+			communicationChannels[k] = RemoteChannel(()->Channel{AbstractBBnode}(5))
 		end
 
 		# create the remote workspaces
