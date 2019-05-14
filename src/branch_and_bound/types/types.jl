@@ -4,19 +4,19 @@
 # @Project: OpenBB
 # @Filename: types.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-03T13:51:49+02:00
+# @Last modified time: 2019-05-14T15:30:25+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 ######### types definition ##########
 # define abstract and null types
-abstract type AbstractSettings  end; struct NullSettings  <: AbstractSettings  end
+abstract type AbstractSettings end; struct NullSettings  <: AbstractSettings  end
 abstract type AbstractWorkspace end; struct NullWorkspace <: AbstractWorkspace end
-
+abstract type AbstractBBnode end; struct NullBBnode <: AbstractBBnode end
 
 # this is the set of data that distinguishes a node from another
-mutable struct BBnode
+mutable struct BBnode <: AbstractBBnode
     branchLoBs::Dict{Int,Float64}
     branchUpBs::Dict{Int,Float64}
     pseudoCosts::Array{Float64,1}
@@ -55,7 +55,8 @@ mutable struct BBsettings <: AbstractSettings
     # execution modifiers
     verbose::Bool                           # print info during execution
     iterationInfoFreq::Int                  # frequency of iteration info print
-    maxProcesses::Int                       # max number of process to launch
+    numProcesses::Int                       # max number of process to launch
+    stopAfterSolution::Bool                 # stop workers after the solution for the current problem has been found
     dynamicMode::Bool                       # store in memory suboptimal solutions and nodes to allow later updates
     useSosConstraints::Bool                 # consider the sos constraints
     # problem bounds
@@ -80,7 +81,8 @@ end
 
 function BBsettings(;verbose::Bool=false,
                      iterationInfoFreq::Int = 10,
-                     maxProcesses::Int=1,
+                     numProcesses::Int=0,
+                     stopAfterSolution::Bool = true,
                      dynamicMode::Bool=false,
                      useSosConstraints::Bool=true,
                      integerTolerance::Float64=1e-4,
@@ -98,8 +100,8 @@ function BBsettings(;verbose::Bool=false,
                      )::BBsettings
 
 
-    return BBsettings(verbose,iterationInfoFreq,maxProcesses,dynamicMode,useSosConstraints,
-                      integerTolerance,primalTolerance,objectiveCutoff,
+    return BBsettings(verbose,iterationInfoFreq,numProcesses,stopAfterSolution,dynamicMode,
+                      useSosConstraints,integerTolerance,primalTolerance,objectiveCutoff,
                       expansion_priority_rule,branching_priority_rule,unreliable_subps_priority,
                       custom_stopping_rule,timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,roundingHeuristicsThreshold)
 end
@@ -118,6 +120,10 @@ struct BBworkspace{T<:AbstractWorkspace} <: AbstractWorkspace
     solutionPool::Array{BBnode,1}
     unactivePool::Array{BBnode,1}
     status::BBstatus
+    # multiprocessing communication
+    inputChannel::RemoteChannel{Channel{BBnode}} # receive BBnodes from other workers
+    outputChannel::RemoteChannel{Channel{BBnode}} # send BBnodes to other workers
+    globalInfo::SharedArray{Float64,1} # info on the global status of the process
     # user settings
     settings::BBsettings
 end

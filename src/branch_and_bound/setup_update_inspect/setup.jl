@@ -4,15 +4,13 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-04-30T17:10:07+02:00
+# @Last modified time: 2019-05-14T16:05:53+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settings::AbstractSettings=NullSettings())::BBworkspace
 
-    # check correctness of the inputs
-    @assert bb_settings.maxProcesses>0
 
     # load default settings
     if ss_settings isa NullSettings
@@ -24,9 +22,6 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
             @error "Type of the problem not understood"
         end
     end
-
-    # create the continuous relaxation for the problem
-    subsolverWS = setup(problem,ss_settings,bb_primalTolerance=bb_settings.primalTolerance,bb_timeLimit=bb_settings.timeLimit)    # check if at least one process is allowed_settings)
 
     # collect some data for the BBworkspace
     nVars = length(problem.varSet.loBs)
@@ -44,17 +39,76 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
     end
 
 
+    # check correctness of the inputs
+    @assert bb_settings.numProcesses>=0
 
-    # construct the BBworkspace
-    return BBworkspace( subsolverWS,
-                        problem.varSet.dscIndices,
-                        problem.varSet.sos1Groups,
-                        sosConstraints,
-                        [BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),problem.varSet.pseudoCosts,problem.varSet.val,zeros(nVars),zeros(Ncnss),1.,NaN,false)],
-                        Array{BBnode,1}(),
-                        Array{BBnode,1}(),
-                        BBstatus(),
-                        bb_settings)
+	if bb_settings.numProcesses == 0
+	# set the processes to use to the number of cpus in the machine
+    	bb_settings.numProcesses = length(Sys.cpu_info())
+	else
+		bb_settings.numProcesses = min(length(Sys.cpu_info()),bb_settings.numProcesses)
+	end
+
+	if nprocs() < bb_settings.numProcesses
+	# add new processes if there aren't enough
+		addprocs(bb_settings.numProcesses - nprocs())
+	end
+
+
+
+	if bb_settings.numProcesses > 1
+
+		# send load OpenBB in the workers global scope
+		workersList = workers()
+		@sync for k in 1:length(workersList)
+			# load OpenBB in the workers
+			@async remotecall_fetch(Main.eval,workersList[k],:(using OpenBB))
+		end
+
+
+		# construct the communication channels
+		communicationChannels = Array{RemoteChannel,1}(undef,bb_settings.numProcesses+1)
+		for k in 1:bb_settings.numProcesses+1
+			communicationChannels[k] = RemoteChannel(()->Channel{BBnode}(5))
+		end
+
+		# create the remote workspaces
+		expressions = Array{Expr,1}(undef,length(workersList))
+		globalInfo = SharedArray{Float64,1}(3)
+		for k in 1:length(workersList)
+			# create an empty workspace in each of the workers global scope
+			expressions[k]  = :(workspace = OpenBB.BBworkspace(OpenBB.setup($problem,$ss_settings,
+																		bb_primalTolerance=$(bb_settings.primalTolerance),
+																		bb_timeLimit=$(bb_settings.timeLimit)
+																		),
+		                        						   $(problem.varSet.dscIndices),$(problem.varSet.sos1Groups),$sosConstraints,
+														    Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),OpenBB.BBstatus(),
+															$(communicationChannels[k]),
+								 							$(communicationChannels[k+1]),
+								 							$globalInfo,$bb_settings);
+							nothing)
+		end
+		@sync for k in 1:length(workersList)
+			@async remotecall_fetch(Main.eval,workersList[k],expressions[k])
+		end
+	end
+
+
+	# construct the master BBworkspace
+	workspace = BBworkspace(setup(problem,ss_settings,
+								  bb_primalTolerance=bb_settings.primalTolerance,
+								  bb_timeLimit=bb_settings.timeLimit),
+							problem.varSet.dscIndices,problem.varSet.sos1Groups,sosConstraints,
+							[BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),
+								   problem.varSet.pseudoCosts,problem.varSet.val,
+								   zeros(nVars),zeros(Ncnss),1.,NaN,false)],
+							Array{BBnode,1}(),Array{BBnode,1}(),BBstatus(),
+							communicationChannels[end],
+							communicationChannels[1],
+							globalInfo,bb_settings)
+
+
+    return workspace
 
 end
 
