@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-14T16:26:24+02:00
+# @Last modified time: 2019-05-14T16:49:55+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -82,30 +82,47 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 																		bb_timeLimit=$(bb_settings.timeLimit)
 																		),
 		                        						   $(problem.varSet.dscIndices),$(problem.varSet.sos1Groups),$sosConstraints,
-														    Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),OpenBB.BBstatus(),
-															$(communicationChannels[k]),
-								 							$(communicationChannels[k+1]),
-								 							$globalInfo,$bb_settings);
+														   Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),OpenBB.BBstatus(),
+														   $(communicationChannels[k]),$(communicationChannels[k+1]),$globalInfo,
+														   $bb_settings);
 							nothing)
 		end
 		@sync for k in 1:length(workersList)
 			@async remotecall_fetch(Main.eval,workersList[k],expressions[k])
 		end
+
+
+
+		# construct the master BBworkspace
+		workspace = BBworkspace(setup(problem,ss_settings,
+									  bb_primalTolerance=bb_settings.primalTolerance,
+									  bb_timeLimit=bb_settings.timeLimit),
+								problem.varSet.dscIndices,problem.varSet.sos1Groups,sosConstraints,
+								[BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),
+									   problem.varSet.pseudoCosts,problem.varSet.val,
+									   zeros(nVars),zeros(Ncnss),1.,NaN,false)],
+								Array{BBnode,1}(),Array{BBnode,1}(),BBstatus(),
+								communicationChannels[end],communicationChannels[1],globalInfo,
+								bb_settings)
+
+	else
+	# only one process: no communication channels needed
+
+		# construct the master BBworkspace
+		workspace = BBworkspace(setup(problem,ss_settings,
+									  bb_primalTolerance=bb_settings.primalTolerance,
+									  bb_timeLimit=bb_settings.timeLimit),
+								problem.varSet.dscIndices,problem.varSet.sos1Groups,sosConstraints,
+								[BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),
+									   problem.varSet.pseudoCosts,problem.varSet.val,
+									   zeros(nVars),zeros(Ncnss),1.,NaN,false)],
+								Array{BBnode,1}(),Array{BBnode,1}(),BBstatus(),
+								nothing,nothing,nothing,bb_settings)
+
 	end
 
 
-	# construct the master BBworkspace
-	workspace = BBworkspace(setup(problem,ss_settings,
-								  bb_primalTolerance=bb_settings.primalTolerance,
-								  bb_timeLimit=bb_settings.timeLimit),
-							problem.varSet.dscIndices,problem.varSet.sos1Groups,sosConstraints,
-							[BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),
-								   problem.varSet.pseudoCosts,problem.varSet.val,
-								   zeros(nVars),zeros(Ncnss),1.,NaN,false)],
-							Array{BBnode,1}(),Array{BBnode,1}(),BBstatus(),
-							communicationChannels[end],
-							communicationChannels[1],
-							globalInfo,bb_settings)
+
 
 
     return workspace

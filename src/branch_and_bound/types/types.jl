@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: types.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-14T16:26:57+02:00
+# @Last modified time: 2019-05-14T16:49:23+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -124,9 +124,9 @@ struct BBworkspace{T<:AbstractWorkspace} <: AbstractWorkspace
     unactivePool::Array{BBnode,1}
     status::BBstatus
     # multiprocessing communication
-    inputChannel::RemoteChannel{Channel{AbstractBBnode}} # receive BBnodes from other workers
-    outputChannel::RemoteChannel{Channel{AbstractBBnode}} # send BBnodes to other workers
-    globalInfo::SharedArray{Float64,1} # info on the global status of the process
+    inputChannel::Union{RemoteChannel{Channel{AbstractBBnode}},Nothing} # receive BBnodes from other workers
+    outputChannel::Union{RemoteChannel{Channel{AbstractBBnode}},Nothing} # send BBnodes to other workers
+    globalInfo::Union{SharedArray{Float64,1},Nothing} # info on the global status of the process
     # user settings
     settings::BBsettings
 end
