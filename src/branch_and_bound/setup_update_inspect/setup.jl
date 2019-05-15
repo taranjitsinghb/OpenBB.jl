@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-14T16:49:55+02:00
+# @Last modified time: 2019-05-15T10:04:16+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -74,7 +74,7 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 
 		# create the remote workspaces
 		expressions = Array{Expr,1}(undef,length(workersList))
-		globalInfo = SharedArray{Float64,1}(3)
+		globalInfo = SharedArray{Float64,1}([Inf,0.,0.])
 		for k in 1:length(workersList)
 			# create an empty workspace in each of the workers global scope
 			expressions[k]  = :(workspace = OpenBB.BBworkspace(OpenBB.setup($problem,$ss_settings,
