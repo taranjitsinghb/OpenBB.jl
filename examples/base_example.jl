@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename:
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-06T18:49:20+02:00
+# @Last modified time: 2019-05-15T17:33:14+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -29,5 +29,5 @@ problem = OpenBB.Problem(objFun=OpenBB.QuadraticObj(Q=Matrix(2.0I,4,4,),L=[-.5,0
                          varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],val=zeros(4),dscIndices=[1]))
 
 
-workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,dynamicMode=true),subsolverSettings)
+workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,dynamicMode=true,numProcesses=2),subsolverSettings)
 result = OpenBB.solve!(workspace)

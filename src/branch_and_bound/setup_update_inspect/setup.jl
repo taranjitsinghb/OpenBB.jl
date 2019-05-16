@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-15T10:04:16+02:00
+# @Last modified time: 2019-05-16T19:09:26+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -59,34 +59,29 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 	if bb_settings.numProcesses > 1
 
 		# send load OpenBB in the workers global scope
+		@everywhere Main.eval(:(using OpenBB))
 		workersList = workers()
-		@sync for k in 1:length(workersList)
-			# load OpenBB in the workers
-			@async remotecall_fetch(Main.eval,workersList[k],:(using OpenBB))
-		end
 
 
 		# construct the communication channels
-		communicationChannels = Array{RemoteChannel,1}(undef,bb_settings.numProcesses+1)
-		for k in 1:bb_settings.numProcesses+1
-			communicationChannels[k] = RemoteChannel(()->Channel{AbstractBBnode}(5))
+		communicationChannels = Array{RemoteChannel,1}(undef,bb_settings.numProcesses)
+		@sync for k in 1:bb_settings.numProcesses
+			@async communicationChannels[k] = RemoteChannel(()->Channel{AbstractBBnode}(10),k)
 		end
 
 		# create the remote workspaces
 		expressions = Array{Expr,1}(undef,length(workersList))
 		globalInfo = SharedArray{Float64,1}([Inf,0.,0.])
 		for k in 1:length(workersList)
-			# create an empty workspace in each of the workers global scope
-			expressions[k]  = :(workspace = OpenBB.BBworkspace(OpenBB.setup($problem,$ss_settings,
+			expressions[k] = :(workspace = OpenBB.BBworkspace(OpenBB.setup($problem,$ss_settings,
 																		bb_primalTolerance=$(bb_settings.primalTolerance),
 																		bb_timeLimit=$(bb_settings.timeLimit)
 																		),
-		                        						   $(problem.varSet.dscIndices),$(problem.varSet.sos1Groups),$sosConstraints,
+														   $(problem.varSet.dscIndices),$(problem.varSet.sos1Groups),$sosConstraints,
 														   Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),OpenBB.BBstatus(),
-														   $(communicationChannels[k]),$(communicationChannels[k+1]),$globalInfo,
-														   $bb_settings);
-							nothing)
-		end
+														   $(communicationChannels[k+1]),$(communicationChannels[k]),$globalInfo,
+														   $bb_settings))
+	    end
 		@sync for k in 1:length(workersList)
 			@async remotecall_fetch(Main.eval,workersList[k],expressions[k])
 		end
@@ -102,8 +97,7 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 									   problem.varSet.pseudoCosts,problem.varSet.val,
 									   zeros(nVars),zeros(Ncnss),1.,NaN,false)],
 								Array{BBnode,1}(),Array{BBnode,1}(),BBstatus(),
-								communicationChannels[end],communicationChannels[1],globalInfo,
-								bb_settings)
+								communicationChannels[1],communicationChannels[end],globalInfo,bb_settings)
 
 	else
 	# only one process: no communication channels needed
@@ -117,7 +111,7 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 									   problem.varSet.pseudoCosts,problem.varSet.val,
 									   zeros(nVars),zeros(Ncnss),1.,NaN,false)],
 								Array{BBnode,1}(),Array{BBnode,1}(),BBstatus(),
-								nothing,nothing,nothing,bb_settings)
+								nothing,nothing,bb_settings)
 
 	end
 
