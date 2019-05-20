@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-04-30T19:28:00+02:00
+# @Last modified time: 2019-05-20T18:31:52+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -23,7 +23,7 @@ end
 
 
 # finds the best node in the array
-function best_node(node_pool::Array{BBnode,1})::Union{BBnode,Nothing}
+function find_best_node(node_pool::Array{BBnode,1})::Union{BBnode,Nothing}
     if length(node_pool) != 0
         for i in length(node_pool):-1:1
             if node_pool[i].reliable
@@ -35,33 +35,74 @@ function best_node(node_pool::Array{BBnode,1})::Union{BBnode,Nothing}
 end
 
 # returns the best solution
-function get_best_solution(workspace::BBworkspace)::Union{BBnode,Nothing}
+function get_best_solution(workspace::BBworkspace;localOnly::Bool=false)::Union{BBnode,Nothing}
 
-    node = nothing
     if length(workspace.solutionPool) != 0
-        node = best_node(workspace.solutionPool)
+        solution = workspace.solutionPool[end]
+    else
+        solution = nothing
     end
 
-    return node
+    if localOnly ||  workspace.globalInfo == nothing ||
+       (solution != nothing && solution.objVal == workspace.status.objLoB)
+        return solution
+    else
+        for p in 2:workspace.settings.numProcesses
+            node = remotecall_fetch(Main.eval,p,:(OpenBB.get_best_solution(workspace,localOnly=true)))
+            if node != nothing && node.objVal == workspace.status.objUpB
+                solution = node
+            end
+        end
+    end
+    return deepcopy(solution)
 end
 
 # returns the best node
-function get_best_node(workspace::BBworkspace)::Union{BBnode,Nothing}
+function get_best_node(workspace::BBworkspace;localOnly::Bool=false)::Union{BBnode,Nothing}
 
-    node = nothing
-    if length(workspace.solutionPool) != 0
-        node = best_node(workspace.solutionPool)
+    # define dummy best node
+    bestNode = nothing
+
+    @sync if !localOnly && workspace.globalInfo != nothing
+
+        nodes = Array{BBnode,1}(undef,workspace.settings.numProcesses)
+        # call the local version of the function on the remote workers
+        for p in 2:workspace.settings.numProces
+            @async nodes[p] = remotecall_fetch(Main.eval,p,:(OpenBB.get_best_node(workspace,localOnly=true)))
+        end
+
+        # call the local version of the function on the current process
+        nodes[1] = get_best_node(workspace,localOnly=true)
+
+        # choose the best of the returned nodes
+        for node in nodes
+            if bestNode == nothing ||
+               (node.avgFrac==0 && node.avgFrac >0) ||
+               workspace.settings.expansion_priority_rule(node,bestNode,workspace.status)
+               bestNode = node
+           end
+       end
+   else
+        # take the last solution generated
+        if length(workspace.solutionPool) > 0
+            bestNode = workspace.solutionPool[end]
+        end
+        # take the first problem in the active queue
+        if bestNode == nothing && length(activeQueue) > 0
+            bestNode = activeQueue[end]
+        end
+        # check the unactivePool for better nodes
+        if bestNode == nothing
+            for node in workspace.unactivePool
+                if bestNode == nothing || workspace.settings.expansion_priority_rule(bestNode,node,workspace.status)
+                    bestNode = node
+                end
+            end
+        end
     end
 
-    if best_node == nothing
-        node = best_node(workspace.activeQueue)
-    end
+    return deepcopy(bestNode)
 
-    if best_node == nothing
-        node = best_node(workspace.unactivePool)
-    end
-
-    return node
 end
 
 

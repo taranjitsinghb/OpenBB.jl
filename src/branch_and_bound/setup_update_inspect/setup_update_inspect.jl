@@ -9,4 +9,6 @@
 
 include("./setup.jl")
 include("./inspect.jl")
-include("./update.jl")
+include("./update_nodes.jl")
+include("./update_problem.jl")
+include("./update_settings.jl")

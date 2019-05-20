@@ -4,35 +4,41 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-16T22:42:02+02:00
+# @Last modified time: 2019-05-20T15:47:05+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 # insert a list of equivalent nodes into a queue
-function insert_node!(queue::Array{BBnode,1},nodes::Array{BBnode,1},priorityRule::Function,status::BBstatus)::Nothing
-    tmpIndex = 0
-    for i in length(queue):-1:1
-        if priorityRule(nodes[1],queue[i],status)
-            tmpIndex = i
-            break
+function insert_nodes!(queue::Array{BBnode,1},nodes::Array{BBnode,1},
+                       priorityRule::Function,status::BBstatus;
+                       unreliablePriority::Int=0)::Nothing
+
+    if nodes[1].reliable || unreliablePriority == 0
+    # normal queue insertion
+        tmpIndex = 0
+        for i in length(queue):-1:1
+            if priorityRule(nodes[1],queue[i],status)
+                tmpIndex = i
+                break
+            end
         end
+        splice!(queue,tmpIndex+1:tmpIndex,nodes)
+
+    elseif unreliablePriority == -1
+        # put the new unreliable nodes at the bottom of the activeQueue to deal with them later
+        splice!(workspace.activeQueue,1:0,out[2])
+
+    elseif unreliablePriority == 1
+        # put the new unreliable nodes at the top of the activeQueue to try to fastly get rid of them
+        append!(workspace.activeQueue,out[2])
+    else
+        @error "wrong priority setting for unreliable nodes"
     end
-    splice!(queue,tmpIndex+1:tmpIndex,nodes)
+
     return
 end
-# insert one node into the queue
-function insert_node!(queue::Array{BBnode,1},node::BBnode,priorityRule::Function,status::BBstatus)::Nothing
-    tmpIndex = 0
-    for i in length(queue):-1:1
-        if priorityRule(node,queue[i],status)
-            tmpIndex = i
-            break
-        end
-    end
-    splice!(queue,tmpIndex+1:tmpIndex,[node])
-    return
-end
+
 
 
 
@@ -75,7 +81,7 @@ function run!(workspace::BBworkspace)::Nothing
            workspace.status.relativeGap <= workspace.settings.relativeGapTolerance || # reached required relative gap
            (workspace.settings.numSolutionsLimit > 0 && workspace.status.numSolutions >= workspace.settings.numSolutionsLimit) # the required number of solutions has been found
 
-           if workspace.inputChannel == nothing
+           if workspace.globalInfo == nothing
                # stop
                break
            else # idle behaviour
@@ -102,9 +108,10 @@ function run!(workspace::BBworkspace)::Nothing
                     # communicate the active state
                     workspace.globalInfo[2] -= 1.
                     # insert the new node in the queue
-                    insert_node!(workspace.activeQueue,newNode,workspace.settings.expansion_priority_rule,workspace.status)
+                    insert_nodes!(workspace.activeQueue,[newNode],workspace.settings.expansion_priority_rule,
+                                  workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
                     # update the objective lower bound
-                    if newNode.objVal < workspace.status.objLoB
+                    if newNode.reliable && newNode.objVal < workspace.status.objLoB
                         workspace.status.objLoB = newNode.objVal
                     end
                 end
@@ -123,7 +130,7 @@ function run!(workspace::BBworkspace)::Nothing
            end
 
            # receive new modes from the other processes
-           if workspace.inputChannel != nothing
+           if workspace.globalInfo != nothing
                # must the process be stopped?
                mustStop = false
                # check if a new node is available
@@ -136,7 +143,8 @@ function run!(workspace::BBworkspace)::Nothing
                        break
                    else # a normal node: insert it in the queue
                        # insert the new node in the queue
-                       insert_node!(workspace.activeQueue,newNode,workspace.settings.expansion_priority_rule,workspace.status)
+                       insert_nodes!(workspace.activeQueue,[newNode],workspace.settings.expansion_priority_rule,
+                                     workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
                        # update the objective lower bound
                        if newNode.objVal < workspace.status.objLoB
                            workspace.status.objLoB = newNode.objVal
@@ -154,7 +162,7 @@ function run!(workspace::BBworkspace)::Nothing
 
            # pick a node to send to the neighbouring process from the activeQueue
            nodeToSend = NullBBnode()
-           if workspace.inputChannel != nothing && # multiprocessing?
+           if workspace.globalInfo != nothing && # multiprocessing?
               !isready(workspace.outputChannel) && # send only one node per time
               length(workspace.activeQueue) > 0 && # there is a node to send
               workspace.activeQueue[end].objVal < workspace.status.objUpB
@@ -192,76 +200,37 @@ function run!(workspace::BBworkspace)::Nothing
 
 
             if out[1] == "solution" && out[2][1].reliable # a reliable solution has been found
+                # insert new solution into the solutionPool
+                push!(workspace.solutionPool,out[2][1])
 
                 # update the number of solutions found
                 workspace.status.numSolutions = workspace.status.numSolutions + 1
 
                 # update the objective upper bound
-                if out[2][1].objVal < workspace.settings.objectiveCutoff
-                    workspace.status.objUpB = out[2][1].objVal
-                    # update the global objective upper bound
-                    if workspace.inputChannel != nothing && out[2][1].objVal < workspace.globalInfo[1]
-                        workspace.globalInfo[1] = out[2][1].objVal
-                    end
+                workspace.status.objUpB = out[2][1].objVal
+
+                # update the global objective upper bound
+                if workspace.globalInfo != nothing && out[2][1].objVal < workspace.globalInfo[1]
+                    workspace.globalInfo[1] = out[2][1].objVal
                 end
-
-                # insert new solution into the solutionPool
-                tmpIndex = 0
-                for i in length(workspace.solutionPool):-1:1
-                    if workspace.settings.expansion_priority_rule(out[2][1],workspace.solutionPool[i],workspace.status)
-                        tmpIndex = i
-                        break
-                    end
-                end
-                splice!(workspace.solutionPool,tmpIndex+1:tmpIndex,out[2])
-
-
 
             elseif out[1] == "solution"  # a not reliable solution has been found
                 # store the obtained (not reliable) solution
                 push!(workspace.unactivePool,out[2][1])
 
-
             elseif out[1] == "suboptimal" && workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes cannot be completely eliminated
                 # store the suboptimal node
                 push!(workspace.unactivePool,out[2][1])
 
-
-            elseif out[1] == "children" && out[2][1].reliable # no solution found. two children nodes have been created
-
+            elseif out[1] == "children"  # no solution found. two children nodes have been created
                 # insert new problems into the activeQueue
-                insert_node!(workspace.activeQueue,out[2],workspace.settings.expansion_priority_rule,workspace.status)
+                insert_nodes!(workspace.activeQueue,out[2],workspace.settings.expansion_priority_rule,
+                              workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
 
                 # apply rounding heuristics
                 if node.avgFrac <= workspace.settings.roundingHeuristicsThreshold
                     heuristicnode = simple_rounding_heuristics(node,workspace)
                     push!(workspace.activeQueue,heuristicnode)
-                end
-
-            elseif out[1] == "children" # no solution found. two not reliable children nodes have been created
-
-                # deal with the unreliability
-                if workspace.settings.unreliable_subps_priority == -1
-                    # put the new unreliable nodes at the bottom of the activeQueue to deal with them later
-                    splice!(workspace.activeQueue,1:0,out[2])
-
-                elseif workspace.settings.unreliable_subps_priority == 0
-                    # insert the new unreliable nodes in the activeQueue normally
-                    tmpIndex = 0
-                    for i in length(workspace.activeQueue):-1:1
-                        if workspace.settings.expansion_priority_rule(out[2][1],workspace.activeQueue[i],workspace.status)
-                            tmpIndex = i
-                            break
-                        end
-                    end
-                    splice!(workspace.activeQueue,tmpIndex+1:tmpIndex,out[2])
-
-                elseif workspace.settings.unreliable_subps_priority == 1
-                    # put the new unreliable nodes at the top of the activeQueue to try to fastly get rid of them
-                    append!(workspace.activeQueue,out[2])
-
-                else
-                    @error "OpenBB, wrong value for \"unreliable_subps_priority\" setting (allowed: {-1,0,1})"
                 end
             end
 

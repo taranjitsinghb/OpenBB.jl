@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: multiprocessing.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-13T18:53:02+02:00
+# @Last modified time: 2019-05-20T13:30:00+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -37,6 +37,7 @@ problem = OpenBB.Problem(objFun=OpenBB.QuadraticObj(Q=Matrix(2.0I,4,4,),L=[-.5,0
 
 
 workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,dynamicMode=true),subsolverSettings)
+OpenBB.solve!(workspace)
 
 #
 # for p in workers()

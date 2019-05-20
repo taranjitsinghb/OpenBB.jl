@@ -1,0 +1,98 @@
+# @Author: Massimo De Mauri <massimo>
+# @Date:   2019-05-20T10:04:17+02:00
+# @Email:  massimo.demauri@gmail.com
+# @Filename: update_nodes.jl
+# @Last modified by:   massimo
+# @Last modified time: 2019-05-20T15:52:17+02:00
+# @License: apache 2.0
+# @Copyright: {{copyright}}
+
+
+# eliminates all the generated nodes from the workspace
+function clear!(workspace;localOnly::Bool=localOnly)::Nothing
+
+    @sync if !localOnly && workspace.globalInfo != nothing
+        # call function on the remote workers
+        for p in 2:workspace.settings.numProcesses
+            @async remotecall_fetch(Main.eval,p,:(OpenBB.clear!(workspace,localOnly=true)))
+        end
+        # call function on the main process
+        clear!(workspace,localOnly=true)
+    else
+        deleteat!(workspace.activeQueue, 1:length(workspace.activeQueue))
+        deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
+        deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
+        # reset the status
+        defaultStatus = BBstatus()
+        for field in fieldnames(BBstatus)
+            setfield!(workspace.status,field,getfield(defaultStatus,field))
+        end
+    end
+
+    return
+end
+
+# return the workspace to the initial state
+function reset!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
+
+    @sync if !localOnly && workspace.globalInfo != nothing
+        # remove all nodes in the remote workers
+        for p in 2:workspace.settings.numProcesses
+            @async remotecall_fetch(Main.eval,p,:(OpenBB.clear!(workspace,localOnly=true)))
+        end
+        # call the local version of the function on the main process
+        reset!(workspace,localOnly=true)
+    else
+        # eliminate all the generated nodes and reinsert the root of the BB tree
+        clear!(workspace,localOnly=true)
+        push!(workspace.activeQueue,BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),
+                                             zeros(get_numVariables(workspace)),
+                                             zeros(get_numVariables(workspace)),
+                                             zeros(get_numConstraints(workspace)),
+                                             1.0,-Inf,false))
+    end
+
+    return
+end
+
+# function reset!(;localOnly::Bool=false)::Nothing
+#     return reset!(workspace,localOnly=localOnly)
+# end
+
+
+#
+function reset_explored_nodes!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
+
+    @sync if !localOnly && workspace.globalInfo != nothing
+        # call the local version of the function on the remote workers
+        for p in 2:workspace.settings.numProcesses
+            @async remotecall_fetch(Main.eval,p,:(OpenBB.reset_explored_nodes!(workspace,localOnly=true)))
+        end
+        # call the local version of the function on the main process
+        reset_explored_nodes!(workspace,localOnly=true)
+    else
+
+        # adapt the workspace to the changes
+        append!(workspace.activeQueue,
+                sort(workspace.solutionPool,
+                     lt=(l,r)->workspace.settings.expansion_priority_rule(l,r,workspace.status),
+                     rev=true))
+
+        append!(workspace.activeQueue,
+                sort(workspace.unactivePool,
+                     lt=(l,r)->workspace.settings.expansion_priority_rule(l,r,workspace.status),
+                     rev=true))
+
+        deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
+        deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
+
+        workspace.status.objUpB = Inf
+        workspace.status.absoluteGap = Inf
+        workspace.status.relativeGap = Inf
+        workspace.status.description = "interrupted"
+
+        sort!(workspace.activeQueue,lt=(l,r)->workspace.settings.expansion_priority_rule(l,r,workspace.status),rev=true,alg=MergeSort)
+    end
+
+    return
+end

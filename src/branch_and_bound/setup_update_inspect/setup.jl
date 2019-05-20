@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-16T19:09:26+02:00
+# @Last modified time: 2019-05-20T16:03:04+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -60,13 +60,13 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 
 		# send load OpenBB in the workers global scope
 		@everywhere Main.eval(:(using OpenBB))
-		workersList = workers()
+		workersList = workers()[1:bb_settings.numProcesses-1]
 
 
 		# construct the communication channels
 		communicationChannels = Array{RemoteChannel,1}(undef,bb_settings.numProcesses)
 		@sync for k in 1:bb_settings.numProcesses
-			@async communicationChannels[k] = RemoteChannel(()->Channel{AbstractBBnode}(10),k)
+			@async communicationChannels[k] = RemoteChannel(()->Channel{AbstractBBnode}(2),k)
 		end
 
 		# create the remote workspaces
@@ -78,7 +78,7 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 																		bb_timeLimit=$(bb_settings.timeLimit)
 																		),
 														   $(problem.varSet.dscIndices),$(problem.varSet.sos1Groups),$sosConstraints,
-														   Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),OpenBB.BBstatus(),
+														   Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),OpenBB.BBstatus(objLoB=Inf,description="empty"),
 														   $(communicationChannels[k+1]),$(communicationChannels[k]),$globalInfo,
 														   $bb_settings))
 	    end
@@ -111,12 +111,9 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 									   problem.varSet.pseudoCosts,problem.varSet.val,
 									   zeros(nVars),zeros(Ncnss),1.,NaN,false)],
 								Array{BBnode,1}(),Array{BBnode,1}(),BBstatus(),
-								nothing,nothing,bb_settings)
+								nothing,nothing,nothing,bb_settings)
 
 	end
-
-
-
 
 
     return workspace
