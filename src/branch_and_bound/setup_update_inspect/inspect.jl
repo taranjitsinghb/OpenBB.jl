@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-20T18:31:52+02:00
+# @Last modified time: 2019-05-21T16:33:25+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -43,18 +43,19 @@ function get_best_solution(workspace::BBworkspace;localOnly::Bool=false)::Union{
         solution = nothing
     end
 
-    if localOnly ||  workspace.globalInfo == nothing ||
-       (solution != nothing && solution.objVal == workspace.status.objLoB)
+    if localOnly || workspace.globalInfo == nothing
+        return solution
+    elseif solution != nothing && solution.objVal == workspace.status.objLoB
         return solution
     else
         for p in 2:workspace.settings.numProcesses
             node = remotecall_fetch(Main.eval,p,:(OpenBB.get_best_solution(workspace,localOnly=true)))
-            if node != nothing && node.objVal == workspace.status.objUpB
+            if node != nothing && node.objVal == workspace.globalInfo[1]
                 solution = node
             end
         end
     end
-    return deepcopy(solution)
+    return solution
 end
 
 # returns the best node

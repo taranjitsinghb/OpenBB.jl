@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-20T15:47:05+02:00
+# @Last modified time: 2019-05-21T16:58:39+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -43,7 +43,7 @@ end
 
 
 
-# branch and bound algorithm in single core mode
+# branch and bound algorithm
 function run!(workspace::BBworkspace)::Nothing
 
     # timing
@@ -69,8 +69,8 @@ function run!(workspace::BBworkspace)::Nothing
 
         # update the number of solutions found and the upper bound
         if workspace.globalInfo != nothing
-            workspace.status.objUpB = copy(workspace.globalInfo[1])
-            workspace.status.numSolutions = copy(workspace.globalInfo[3])
+            workspace.status.objUpB = workspace.globalInfo[1]
+            workspace.status.numSolutions = workspace.globalInfo[3]
         end
 
         # stopping conditions
@@ -85,14 +85,14 @@ function run!(workspace::BBworkspace)::Nothing
                # stop
                break
            else # idle behaviour
-
-
-
                workspace.globalInfo[2] += 1 # communicate the idle state
 
-                if workspace.globalInfo[2] == workspace.settings.numProcesses # all the workers are idle. Start arrest procedure
+                if !isready(workspace.inputChannel) && # there is nothing left in the imput channel
+                   workspace.globalInfo[2] == workspace.settings.numProcesses # all the workers are idle. Start arrest procedure
+
                     # send a killer node to the neighbouring process and stop
                     @async put!(workspace.outputChannel,KillerNode())
+                    take!(workspace.inputChannel)
                     break
                 end
 
@@ -114,11 +114,12 @@ function run!(workspace::BBworkspace)::Nothing
                     if newNode.reliable && newNode.objVal < workspace.status.objLoB
                         workspace.status.objLoB = newNode.objVal
                     end
+                    # resume timing
+                    last_time = time()
                 end
             end
 
        else # continue with branch and bound
-
 
            # update algorithm status and print it
            workspace.status.totalTime += time() - last_time; last_time = time()
@@ -204,14 +205,14 @@ function run!(workspace::BBworkspace)::Nothing
                 push!(workspace.solutionPool,out[2][1])
 
                 # update the number of solutions found
-                workspace.status.numSolutions = workspace.status.numSolutions + 1
-
+                workspace.status.numSolutions += 1
                 # update the objective upper bound
                 workspace.status.objUpB = out[2][1].objVal
 
-                # update the global objective upper bound
+                # update the global objective upper bound and the number of solutions found
                 if workspace.globalInfo != nothing && out[2][1].objVal < workspace.globalInfo[1]
                     workspace.globalInfo[1] = out[2][1].objVal
+                    workspace.globalInfo[3] +=1
                 end
 
             elseif out[1] == "solution"  # a not reliable solution has been found
@@ -268,30 +269,30 @@ function run!(workspace::BBworkspace)::Nothing
         end
     end
 
-    # termination
+    ############################## termination ##############################
     if workspace.status.absoluteGap < workspace.settings.absoluteGapTolerance ||
        workspace.status.relativeGap < workspace.settings.relativeGapTolerance
 
         workspace.status.description = "optimalSolutionFound"
-        if workspace.settings.verbose && myid() == 1
+        if workspace.settings.verbose
             print_status(workspace)
             println(" Exit: Optimal Solution Found")
         end
 
-    elseif length(workspace.activeQueue) == 0 && length(workspace.solutionPool) == 0
+    elseif length(workspace.activeQueue) == 0 && workspace.status.objUpB == Inf
 
         workspace.status.description = "infeasible"
         if workspace.settings.verbose
             print_status(workspace)
             println(" Exit: infeasibilty detected")
         end
-    elseif length(workspace.activeQueue) == 0 && length(workspace.solutionPool) > 0
-
-        workspace.status.description = "noReliableSolutionFound"
-        if workspace.settings.verbose
-            print_status(workspace)
-            println(" Exit: no reliable solution found")
-        end
+    # elseif length(workspace.activeQueue) == 0 && length(workspace.solutionPool) > 0
+    #
+    #     workspace.status.description = "noReliableSolutionFound"
+    #     if workspace.settings.verbose
+    #         print_status(workspace)
+    #         println(" Exit: no reliable solution found")
+    #     end
 
     else
         workspace.status.description = "interrupted"

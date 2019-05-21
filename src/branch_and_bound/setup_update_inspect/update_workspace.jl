@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-21T13:13:43+02:00
+# @Last modified time: 2019-05-21T14:15:28+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -22,8 +22,16 @@ function update!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
     else
         # update the subsolver workspace
         update!(workspace.subsolverWS)
+
         # reset the explored sub-problems
         reset_explored_nodes!(workspace,localOnly=true)
+
+        # reset the global info
+        if workspace.globalInfo != nothing
+            workspace.globalInfo[1] = Inf
+            workspace.globalInfo[2] = 0.
+            workspace.globalInfo[3] = 0.
+        end
     end
 
     return
@@ -38,8 +46,16 @@ function clear!(workspace;localOnly::Bool=localOnly)::Nothing
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.clear!(workspace,localOnly=true)))
         end
+
         # call function on the main process
         clear!(workspace,localOnly=true)
+
+        # reset the global info
+        if workspace.globalInfo != nothing
+            workspace.globalInfo[1] = Inf
+            workspace.globalInfo[2] = 0.
+            workspace.globalInfo[3] = 0.
+        end
     else
         deleteat!(workspace.activeQueue, 1:length(workspace.activeQueue))
         deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
@@ -62,8 +78,16 @@ function reset!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.clear!(workspace,localOnly=true)))
         end
+
         # call the local version of the function on the main process
         reset!(workspace,localOnly=true)
+
+        # reset the global info
+        if workspace.globalInfo != nothing
+            workspace.globalInfo[1] = Inf
+            workspace.globalInfo[2] = 0.
+            workspace.globalInfo[3] = 0.
+        end
     else
         # eliminate all the generated nodes and reinsert the root of the BB tree
         clear!(workspace,localOnly=true)
@@ -92,6 +116,14 @@ function reset_explored_nodes!(workspace::BBworkspace;localOnly::Bool=false)::No
         end
         # call the local version of the function on the main process
         reset_explored_nodes!(workspace,localOnly=true)
+
+        # reset the global info
+        if workspace.globalInfo != nothing
+            workspace.globalInfo[1] = Inf
+            workspace.globalInfo[2] = 0.
+            workspace.globalInfo[3] = 0.
+        end
+
     else
 
         # adapt the workspace to the changes
