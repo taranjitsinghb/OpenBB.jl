@@ -3,34 +3,9 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-20T15:56:25+02:00
+# @Last modified time: 2019-05-21T13:13:27+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
-
-
-
-function update!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
-
-    @sync if !localOnly && workspace.globalInfo != nothing
-        # call the local version of the function on the remote workers
-        for p in 2:workspace.settings.numProcesses
-            @async remotecall_fetch(Main.eval,p,:(OpenBB.update!(workspace,localOnly=true)))
-        end
-
-        # call the local version of the function on the current process
-        update!(workspace,localOnly=true)
-
-    else
-        # update the subsolver workspace
-        update!(workspace.subsolverWS)
-        # reset the explored sub-problems
-        reset_explored_nodes!(workspace,localOnly=true)
-    end
-
-    return
-end
-
-
 
 #
 function append_constraints!(workspace::BBworkspace,
