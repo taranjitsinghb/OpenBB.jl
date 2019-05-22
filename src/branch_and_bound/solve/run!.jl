@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-21T16:58:39+02:00
+# @Last modified time: 2019-05-22T10:39:24+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -47,7 +47,7 @@ end
 function run!(workspace::BBworkspace)::Nothing
 
     # timing
-    last_time = time()
+    lastTimeCheckpoint = time()
 
     # update algorithm status
     workspace.status.description = "running"
@@ -55,23 +55,11 @@ function run!(workspace::BBworkspace)::Nothing
     # set the algorithm in "active state"
     idle = false
 
-    if false # debug only
-        for p in workspace.activeQueue
-            println(p.branchLoBs,p.branchUpBs)
-        end
-    end
-
     # main loop
-    while true
+    while !idle
 
         # update total time
-        workspace.status.totalTime += time() - last_time
-
-        # update the number of solutions found and the upper bound
-        if workspace.globalInfo != nothing
-            workspace.status.objUpB = workspace.globalInfo[1]
-            workspace.status.numSolutions = workspace.globalInfo[3]
-        end
+        workspace.status.totalTime += time() - lastTimeCheckpoint; lastTimeCheckpoint = time()
 
         # stopping conditions
         if length(workspace.activeQueue) == 0 || # no more nodes in the queue
@@ -81,82 +69,18 @@ function run!(workspace::BBworkspace)::Nothing
            workspace.status.relativeGap <= workspace.settings.relativeGapTolerance || # reached required relative gap
            (workspace.settings.numSolutionsLimit > 0 && workspace.status.numSolutions >= workspace.settings.numSolutionsLimit) # the required number of solutions has been found
 
-           if workspace.globalInfo == nothing
-               # stop
-               break
-           else # idle behaviour
-               workspace.globalInfo[2] += 1 # communicate the idle state
-
-                if !isready(workspace.inputChannel) && # there is nothing left in the imput channel
-                   workspace.globalInfo[2] == workspace.settings.numProcesses # all the workers are idle. Start arrest procedure
-
-                    # send a killer node to the neighbouring process and stop
-                    @async put!(workspace.outputChannel,KillerNode())
-                    take!(workspace.inputChannel)
-                    break
-                end
-
-
-                # wait for a node to arrive in the inputChannel
-                newNode = take!(workspace.inputChannel)
-
-                if newNode isa KillerNode # oh no! a killer node! we have to stop!
-                    # propagate the killerNode and stop
-                    @async put!(workspace.outputChannel,KillerNode())
-                    break
-                else # a normal node: insert it in the queue
-                    # communicate the active state
-                    workspace.globalInfo[2] -= 1.
-                    # insert the new node in the queue
-                    insert_nodes!(workspace.activeQueue,[newNode],workspace.settings.expansion_priority_rule,
-                                  workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
-                    # update the objective lower bound
-                    if newNode.reliable && newNode.objVal < workspace.status.objLoB
-                        workspace.status.objLoB = newNode.objVal
-                    end
-                    # resume timing
-                    last_time = time()
-                end
-            end
+           # set the algorithm in idle state
+           idle = true
 
        else # continue with branch and bound
 
            # update algorithm status and print it
-           workspace.status.totalTime += time() - last_time; last_time = time()
-           workspace.status.totalIterations += 1
            if workspace.settings.verbose
-               if workspace.settings.iterationInfoFreq == 1 || mod(workspace.status.totalIterations,workspace.settings.iterationInfoFreq) == 1
-                  print_status(workspace)
+               if workspace.settings.iterationInfoFreq == 1 ||
+                  mod(workspace.status.numRelaxationsSolved,workspace.settings.iterationInfoFreq) == 1
+                   print_status(workspace)
               end
            end
-
-           # receive new modes from the other processes
-           if workspace.globalInfo != nothing
-               # must the process be stopped?
-               mustStop = false
-               # check if a new node is available
-               while isready(workspace.inputChannel)
-                   newNode = take!(workspace.inputChannel)
-                   if newNode isa KillerNode # oh no! a killer node! we have to stop!
-                       # propagate the killerNode and stop
-                       @async put!(workspace.outputChannel,newNode)
-                       mustStop = true
-                       break
-                   else # a normal node: insert it in the queue
-                       # insert the new node in the queue
-                       insert_nodes!(workspace.activeQueue,[newNode],workspace.settings.expansion_priority_rule,
-                                     workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
-                       # update the objective lower bound
-                       if newNode.objVal < workspace.status.objLoB
-                           workspace.status.objLoB = newNode.objVal
-                       end
-                   end
-               end
-               if mustStop
-                   break
-               end
-           end
-
 
            # pick a node to process from the activeQueue
            node = pop!(workspace.activeQueue)
@@ -224,9 +148,25 @@ function run!(workspace::BBworkspace)::Nothing
                 push!(workspace.unactivePool,out[2][1])
 
             elseif out[1] == "children"  # no solution found. two children nodes have been created
-                # insert new problems into the activeQueue
-                insert_nodes!(workspace.activeQueue,out[2],workspace.settings.expansion_priority_rule,
+
+                # send one of the children to the neighbouring node
+                if false && workspace.globalInfo != nothing && # multiprocessing?
+                   !isready(workspace.outputChannel) && # send only one node per time
+                   length(workspace.activeQueue) > 0 && # there is a node to send
+                   workspace.activeQueue[end].objVal < workspace.status.objUpB
+
+                     # send one of the children to the neighbouring node
+                     put!(workspace.outputChannel,out[2][end])
+
+                     # insert the other children in the activeQueue
+                     insert_nodes!(workspace.activeQueue,out[2][1:end-1],workspace.settings.expansion_priority_rule,
                               workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+
+                else
+                    # insert the new nodes into the activeQueue
+                    insert_nodes!(workspace.activeQueue,out[2],workspace.settings.expansion_priority_rule,
+                                  workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+                end
 
                 # apply rounding heuristics
                 if node.avgFrac <= workspace.settings.roundingHeuristicsThreshold
@@ -254,10 +194,86 @@ function run!(workspace::BBworkspace)::Nothing
                     end
                 end
                 if workspace.status.objLoB > newObjLoB + workspace.settings.primalTolerance
-                    @warn "branch and bound: the objective lower bound has decreased from "*string(workspace.status.objLoB)*" to "*string(newObjLoB)*"..."
+                    println("branch and bound: the objective lower bound has decreased from "*string(workspace.status.objLoB)*" to "*string(newObjLoB)*"...")
+                    println(workspace.status.objUpB)
+                    println(length(workspace.activeQueue))
                 end
                 workspace.status.objLoB = newObjLoB
             end
+        end
+
+        # communicate with the other processes
+        if workspace.globalInfo != nothing
+
+            # check arrest conditions
+            if idle && # nothing to do locally
+               !isready(workspace.inputChannel) && # no nodes to pick
+               workspace.globalInfo[2] == workspace.settings.numProcesses-1 # all the other workers are waiting. Start arrest procedure
+
+                 # send a killer node to the neighbouring process
+                 @async put!(workspace.outputChannel,KillerNode())
+
+                 # go in waiting mode
+                 workspace.globalInfo[2] += 1.
+
+                 # wait for the arrival of a KillerNode
+                 @assert take!(workspace.inputChannel) isa KillerNode
+
+                 # exit waiting mode
+                 workspace.globalInfo[2] -= 1.
+
+            else
+
+                # check if a new node is available
+                while idle || isready(workspace.inputChannel)
+
+                    if idle
+                        # communicate the waiting state
+                        workspace.globalInfo[2] += 1.
+                    end
+
+                    # take a new node from the input channel
+                    newNode = take!(workspace.inputChannel)
+
+                    if idle
+                        # exit waiting state
+                        workspace.globalInfo[2] -= 1.
+                    end
+
+
+
+                    if newNode isa KillerNode # oh no! a killer node! we have to stop!
+
+                        # propagate the killerNode
+                        @async put!(workspace.outputChannel,newNode)
+
+                        # go idle
+                        idle = true
+
+                        # exit the inner loop
+                        break
+
+                    else # a normal node: insert it in the queue
+
+                        # go active
+                        idle = false
+
+                        # insert the new node in the queue
+                        insert_nodes!(workspace.activeQueue,[newNode],workspace.settings.expansion_priority_rule,
+                                      workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+
+                        # update the objective lower bound
+                        if newNode.objVal < workspace.status.objLoB
+                            workspace.status.objLoB = newNode.objVal
+                        end
+                    end
+                end
+            end
+
+            # update the number of solutions found and the upper bound
+            workspace.status.objUpB = workspace.globalInfo[1]
+            workspace.status.objLoB = min(workspace.status.objLoB,workspace.status.objUpB)
+            workspace.status.numSolutions = workspace.globalInfo[3]
         end
 
         # recompute optimality gaps

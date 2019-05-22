@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: types.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-14T16:49:23+02:00
+# @Last modified time: 2019-05-22T10:40:11+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -39,17 +39,15 @@ mutable struct BBstatus
     absoluteGap::Float64
     relativeGap::Float64
     totalTime::Float64
-    totalIterations::Int
     numRelaxationsSolved::Int64
     description::String
 end
 
 function BBstatus(; objLoB::Float64=-Inf,objUpB::Float64=Inf,
                     absoluteGap::Float64= Inf,relativeGap::Float64=Inf,
-                    totalTime::Float64=0.0,totalIterations::Int = 0,
-                    numRelaxationsSolved::Int=0,numSolutions::Int=0,
+                    totalTime::Float64=0.0,numRelaxationsSolved::Int=0,numSolutions::Int=0,
                     description::String="new")::BBstatus
-    return BBstatus(numSolutions,objLoB,objUpB,absoluteGap,relativeGap,totalTime,totalIterations,numRelaxationsSolved,description)
+    return BBstatus(numSolutions,objLoB,objUpB,absoluteGap,relativeGap,totalTime,numRelaxationsSolved,description)
 end
 
 

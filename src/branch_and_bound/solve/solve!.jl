@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-16T19:48:26+02:00
+# @Last modified time: 2019-05-21T19:37:59+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -27,6 +27,6 @@ function solve!(workspace::BBworkspace)::Nothing
 	# start the local BB process
 	run!(workspace)
 
-	return
+	@sync return
 
 end
