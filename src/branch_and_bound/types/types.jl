@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: types.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-22T10:40:11+02:00
+# @Last modified time: 2019-05-22T10:41:10+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -29,7 +29,9 @@ mutable struct BBnode <: AbstractBBnode
 end
 
 # this node is used to arrest the branch and bound process
-struct KillerNode <:AbstractBBnode end
+struct KillerNode <:AbstractBBnode
+    count::Int
+end
 
 
 mutable struct BBstatus
