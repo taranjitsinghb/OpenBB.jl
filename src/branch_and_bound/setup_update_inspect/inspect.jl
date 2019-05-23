@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-21T16:33:25+02:00
+# @Last modified time: 2019-05-22T16:59:02+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -68,7 +68,7 @@ function get_best_node(workspace::BBworkspace;localOnly::Bool=false)::Union{BBno
 
         nodes = Array{BBnode,1}(undef,workspace.settings.numProcesses)
         # call the local version of the function on the remote workers
-        for p in 2:workspace.settings.numProces
+        for p in 2:workspace.settings.numProcesses
             @async nodes[p] = remotecall_fetch(Main.eval,p,:(OpenBB.get_best_node(workspace,localOnly=true)))
         end
 
