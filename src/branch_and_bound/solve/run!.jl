@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-25T18:03:38+02:00
+# @Last modified time: 2019-05-25T18:40:35+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -207,6 +207,9 @@ function run!(workspace::BBworkspace)::Nothing
 
                     if (idle && newNode.count < workspace.settings.numProcesses-1) ||
                        newNode.count < 2*(workspace.settings.numProcesses-1)
+                       while isready(workspace.sharedMemory.inputChannel)
+                           sleep(0.001)
+                       end
                         # propagate the killerNode
                         @async put!(workspace.sharedMemory.outputChannel,KillerNode(newNode.count+1))
                     end
