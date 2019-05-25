@@ -24,8 +24,8 @@ end
 
 
 # Basic usage of OpenBB for mixed-integer quadratic problems
-problem = OpenBB.Problem(objFun=OpenBB.QuadraticObj(Q=Matrix(2.0I,4,4,),L=[-.5,0.,0.,0.]),
-                         cnsSet=OpenBB.LinearCns(A=ones(1,4),loBs=[1.],upBs=[1.]),
+problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(2.0I,4,4,),L=[-.5,0.,0.,0.]),
+                         cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.]),
                          varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],val=zeros(4),dscIndices=[1]))
 
 

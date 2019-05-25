@@ -18,8 +18,8 @@ function test_QP_subsolver(subsolver)
     print(" - ")
     print("1...")
     # create first problem
-    problem = OpenBB.Problem(objFun=OpenBB.QuadraticObj(Q=Matrix(1.0I,4,4,),L=[-.5,0.,0.,0.]),
-                             cnsSet=OpenBB.LinearCns(A=ones(0,4),loBs=Float64[],upBs=Float64[]),
+    problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(1.0I,4,4,),L=[-.5,0.,0.,0.]),
+                             cnsSet=OpenBB.LinearConstraintSet(A=ones(0,4),loBs=Float64[],upBs=Float64[]),
                              varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],val=zeros(4),dscIndices=[1]))
     workspace = OpenBB.setup(problem,OpenBB.BBsettings(dynamicMode=true,verbose=false,iterationInfoFreq=1),subsolverSettings)
     result0 = OpenBB.solve!(workspace)
@@ -32,8 +32,8 @@ function test_QP_subsolver(subsolver)
 
     print("3...")
     # Basic usage of OpenBB for mixed-integer quadratic problems
-    problem2 = OpenBB.Problem(objFun=OpenBB.QuadraticObj(Q=sparse([1,2,3,4],[1,2,3,4],[1.,2.,3.,4.]),L=[2.,2.,2.,2.]),
-                             cnsSet=OpenBB.LinearCns(A=ones(1,4),loBs=[1.],upBs=[1.]),
+    problem2 = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=sparse([1,2,3,4],[1,2,3,4],[1.,2.,3.,4.]),L=[2.,2.,2.,2.]),
+                             cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.]),
                              varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],val=zeros(4),dscIndices=[1]))
 
     OpenBB.append_problem!(workspace,problem2,suppressUpdate=true)

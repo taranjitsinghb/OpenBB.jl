@@ -43,14 +43,14 @@ function get_best_solution(workspace::BBworkspace;localOnly::Bool=false)::Union{
         solution = nothing
     end
 
-    if localOnly || workspace.globalInfo == nothing
+    if localOnly || workspace.sharedMemory isa NullSharedMemory
         return solution
     elseif solution != nothing && solution.objVal == workspace.status.objLoB
         return solution
     else
         for p in 2:workspace.settings.numProcesses
             node = remotecall_fetch(Main.eval,p,:(OpenBB.get_best_solution(workspace,localOnly=true)))
-            if node != nothing && node.objVal == workspace.globalInfo[1]
+            if node != nothing && node.objVal == workspace.sharedMemory.objectiveBounds[end]
                 solution = node
             end
         end
@@ -64,7 +64,7 @@ function get_best_node(workspace::BBworkspace;localOnly::Bool=false)::Union{BBno
     # define dummy best node
     bestNode = nothing
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
 
         nodes = Array{BBnode,1}(undef,workspace.settings.numProcesses)
         # call the local version of the function on the remote workers

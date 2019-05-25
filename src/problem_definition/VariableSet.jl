@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-04-30T17:12:33+02:00
+# @Last modified time: 2019-05-23T19:17:39+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -64,4 +64,14 @@ end
 
 function EmptyVarSet()::VariableSet
     return VariableSet(Float64[],Float64[],Float64[],Int[],Int[],Float64[])
+end
+
+
+
+function get_numVariables(variableSet::VariableSet)::Int
+    return length(variableSet.loBs)
+end
+
+function get_numDiscreteVariables(variableSet::VariableSet)::Int
+    return length(variableSet.dscIndices)
 end

@@ -52,7 +52,7 @@ function insert_constraints!(workspace::BBworkspace,
     end
 
     # call the same function on the other workers
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.insert_constraints!(workspace,$A,$cnsLoBs,$cnsUpBs,$index,
@@ -109,7 +109,7 @@ function remove_constraints!(workspace::BBworkspace,indices::Array{Int,1};
         @warn "Removing constraints will invalidate the results found in the last solution process"
     end
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.remove_constraints!(workspace,$indices,
@@ -143,7 +143,7 @@ function permute_constraints!(workspace::BBworkspace,permutation::Array{Int,1};
                               suppressUpdate::Bool=true,
                               localOnly::Bool=false)::Nothing
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.permute_constraints!(workspace,$permutation,
@@ -233,7 +233,7 @@ function update_bounds!(workspace::BBworkspace;
     end
 
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.update_bounds!(workspace,
@@ -275,7 +275,7 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
     end
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.append_problem!(workspace,$problem,
@@ -348,7 +348,7 @@ function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,
                                 newSos1Groups::Array{Int,1}=Int[],newPseudoCosts::Array{Float64,1}=Float64[],
                                 suppressWarnings::Bool=false,suppressUpdate::Bool=false)::Nothing
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.integralize_variables!(workspace,$newDscIndices,

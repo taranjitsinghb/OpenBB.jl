@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-22T15:35:36+02:00
+# @Last modified time: 2019-05-25T18:03:38+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -65,7 +65,7 @@ function run!(workspace::BBworkspace)::Nothing
         workspace.status.totalTime += time() - lastTimeCheckpoint; lastTimeCheckpoint = time()
 
         # stopping conditions
-        if length(workspace.activeQueue) == 0 || # no more nodes in the queue
+        @sync if length(workspace.activeQueue) == 0 || # no more nodes in the queue
            workspace.status.totalTime >= workspace.settings.timeLimit || # time is up
            workspace.settings.custom_stopping_rule(workspace) || # custom stopping rule triggered
            workspace.status.absoluteGap <= workspace.settings.absoluteGapTolerance || # reached required absolute gap
@@ -96,8 +96,8 @@ function run!(workspace::BBworkspace)::Nothing
            end
 
            # pick a node to send to the neighbouring process from the activeQueue
-           if workspace.globalInfo != nothing && # multiprocessing?
-              !isready(workspace.outputChannel) && # send only one node per time
+           if !(workspace.sharedMemory isa NullSharedMemory) && # multiprocessing?
+              !isready(workspace.sharedMemory.outputChannel) && # send only one node per time
               length(workspace.activeQueue) > 0 && # there is a node to send
               workspace.activeQueue[end].objVal < workspace.status.objUpB # do not send suboptimal nodes
 
@@ -108,7 +108,7 @@ function run!(workspace::BBworkspace)::Nothing
 
                 # send a new node to the neighbouring process
                 nodeToSend = pop!(workspace.activeQueue)
-                @async put!(workspace.outputChannel,nodeToSend)
+                @async put!(workspace.sharedMemory.outputChannel,nodeToSend)
 
            end
 
@@ -125,9 +125,9 @@ function run!(workspace::BBworkspace)::Nothing
                 workspace.status.objUpB = out[2][1].objVal
 
                 # update the global objective upper bound and the number of solutions found
-                if workspace.globalInfo != nothing && out[2][1].objVal < workspace.globalInfo[1]
-                    workspace.globalInfo[1] = out[2][1].objVal
-                    workspace.globalInfo[3] +=1
+                if !(workspace.sharedMemory isa NullSharedMemory) && out[2][1].objVal < workspace.sharedMemory.objectiveBounds[end]
+                    workspace.sharedMemory.objectiveBounds[end] = out[2][1].objVal
+                    workspace.sharedMemory.stats[1] +=1
                 end
 
             elseif out[1] == "solution"  # a not reliable solution has been found
@@ -174,31 +174,33 @@ function run!(workspace::BBworkspace)::Nothing
         end
 
         # communicate with the other processes
-        if workspace.globalInfo != nothing
+        if !(workspace.sharedMemory isa NullSharedMemory)
 
             # check arrest conditions and start arrest procedure
             if idle && # nothing to do locally
-               !isready(workspace.inputChannel) && # no nodes to pick
-               workspace.globalInfo[2] == workspace.settings.numProcesses-1 # all the other workers are waiting.
+               !isready(workspace.sharedMemory.inputChannel) && # no nodes to pick
+               workspace.sharedMemory.stats[2] == workspace.settings.numProcesses-1 # all the other workers are waiting.
 
                  # send a killer-node to the neighbouring process
-                 @async put!(workspace.outputChannel,KillerNode(1))
+                 @async put!(workspace.sharedMemory.outputChannel,KillerNode(1))
             end
 
             # check if a new node is available
-            while idle || isready(workspace.inputChannel)
+            while idle || isready(workspace.sharedMemory.inputChannel)
 
                 if idle
                     # communicate the waiting state
-                    workspace.globalInfo[2] += 1.
+                    workspace.sharedMemory.stats[2] += 1.
                 end
-
+                while !isready(workspace.sharedMemory.inputChannel)
+                    sleep(0.001)
+                end
                 # take a new node from the input channel
-                newNode = take!(workspace.inputChannel)
+                newNode = take!(workspace.sharedMemory.inputChannel)
 
                 if idle
                     # exit waiting state
-                    workspace.globalInfo[2] -= 1.
+                    workspace.sharedMemory.stats[2] -= 1.
                 end
 
                 if newNode isa KillerNode # handle killer-nodes
@@ -206,7 +208,7 @@ function run!(workspace::BBworkspace)::Nothing
                     if (idle && newNode.count < workspace.settings.numProcesses-1) ||
                        newNode.count < 2*(workspace.settings.numProcesses-1)
                         # propagate the killerNode
-                        @async put!(workspace.outputChannel,KillerNode(newNode.count+1))
+                        @async put!(workspace.sharedMemory.outputChannel,KillerNode(newNode.count+1))
                     end
 
                     if newNode.count >= workspace.settings.numProcesses-1
@@ -228,9 +230,9 @@ function run!(workspace::BBworkspace)::Nothing
             end
 
             # update the number of solutions found and the upper bound
-            workspace.status.objUpB = workspace.globalInfo[1]
+            workspace.status.objUpB = workspace.sharedMemory.objectiveBounds[end]
             workspace.status.objLoB = min(workspace.status.objLoB,workspace.status.objUpB)
-            workspace.status.numSolutions = workspace.globalInfo[3]
+            workspace.status.numSolutions = workspace.sharedMemory.stats[1]
         end
 
         # recompute optimality gaps
@@ -244,10 +246,10 @@ function run!(workspace::BBworkspace)::Nothing
 
     ############################## termination ##############################
 
-    if workspace.globalInfo != nothing
+    if !(workspace.sharedMemory isa NullSharedMemory)
         # empty the communicationChannels
-        while isready(workspace.inputChannel)
-            @assert take!(workspace.inputChannel) isa KillerNode
+        while isready(workspace.sharedMemory.inputChannel)
+            @assert take!(workspace.sharedMemory.inputChannel) isa KillerNode
         end
     end
 

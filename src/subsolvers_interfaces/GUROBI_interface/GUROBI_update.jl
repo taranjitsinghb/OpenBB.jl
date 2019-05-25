@@ -102,7 +102,7 @@ end
 
 #
 function append_problem!(workspace::GUROBIworkspace,
-                         problem::Problem{LinearObj,LinearCns{T}};
+                         problem::Problem{LinearObjective,LinearConstraintSet{T}};
                          suppressUpdate::Bool=false)::Bool where T
 
 
@@ -137,7 +137,7 @@ end
 
 #
 function append_problem!(workspace::GUROBIworkspace,
-                         problem::Problem{QuadraticObj{T1},LinearCns{T2}};
+                         problem::Problem{QuadraticObjective{T1},LinearConstraintSet{T2}};
                          suppressUpdate::Bool=false)::Bool where T1 where T2
 
 

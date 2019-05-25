@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: multiprocessing.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-20T13:30:00+02:00
+# @Last modified time: 2019-05-23T19:17:13+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -31,13 +31,13 @@ end
 
 
 # Basic usage of OpenBB for mixed-integer quadratic problems
-problem = OpenBB.Problem(objFun=OpenBB.QuadraticObj(Q=Matrix(2.0I,4,4,),L=[-.5,0.,0.,0.]),
-                         cnsSet=OpenBB.LinearCns(A=ones(1,4),loBs=[1.],upBs=[1.]),
+problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(2.0I,4,4,),L=[-.5,0.,0.,0.]),
+                         cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.]),
                          varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],val=zeros(4),dscIndices=[1]))
 
 
 workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,dynamicMode=true),subsolverSettings)
-OpenBB.solve!(workspace)
+# OpenBB.solve!(workspace)
 
 #
 # for p in workers()

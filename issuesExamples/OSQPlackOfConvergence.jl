@@ -68,7 +68,7 @@ L = L_[1:numStates]
 for s in 1:horizonLen
     append!(L, L_[numStates+1:end])
 end
-objf = OpenBB.LinearObj(L=L)
+objf = OpenBB.LinearObjective(L=L)
 
 # constraints
 cnsLoBs = repeat(cnsLoBs_,horizonLen)
@@ -78,7 +78,7 @@ for s in 2:horizonLen
     global A = vcat(hcat(A,spzeros(numConstraints*(s-1), numControls + numStates)),
                     hcat(spzeros(numConstraints,(s-1) * (numControls + numStates)), A_))
 end
-cnss = OpenBB.LinearCns(A=A,loBs=cnsLoBs,upBs=cnsUpBs)
+cnss = OpenBB.LinearConstraintSet(A=A,loBs=cnsLoBs,upBs=cnsUpBs)
 
 problem = OpenBB.Problem(objFun=objf,cnsSet=cnss,varSet=vars)
 

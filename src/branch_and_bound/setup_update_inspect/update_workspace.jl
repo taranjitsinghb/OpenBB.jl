@@ -10,7 +10,7 @@
 
 function update!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.update!(workspace,localOnly=true)))
@@ -27,8 +27,8 @@ function update!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
         reset_explored_nodes!(workspace,localOnly=true)
 
         # reset the global info
-        if workspace.globalInfo != nothing
-            workspace.globalInfo[1] = Inf
+        if !(workspace.sharedMemory isa NullSharedMemory)
+            workspace.sharedMemory.objectiveBounds[end] = Inf
             workspace.globalInfo[2] = 0.
             workspace.globalInfo[3] = 0.
         end
@@ -41,7 +41,7 @@ end
 # eliminates all the generated nodes from the workspace
 function clear!(workspace;localOnly::Bool=localOnly)::Nothing
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.clear!(workspace,localOnly=true)))
@@ -51,8 +51,8 @@ function clear!(workspace;localOnly::Bool=localOnly)::Nothing
         clear!(workspace,localOnly=true)
 
         # reset the global info
-        if workspace.globalInfo != nothing
-            workspace.globalInfo[1] = Inf
+        if !(workspace.sharedMemory isa NullSharedMemory)
+            workspace.sharedMemory.objectiveBounds[end] = Inf
             workspace.globalInfo[2] = 0.
             workspace.globalInfo[3] = 0.
         end
@@ -73,7 +73,7 @@ end
 # return the workspace to the initial state
 function reset!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # remove all nodes in the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.clear!(workspace,localOnly=true)))
@@ -83,8 +83,8 @@ function reset!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
         reset!(workspace,localOnly=true)
 
         # reset the global info
-        if workspace.globalInfo != nothing
-            workspace.globalInfo[1] = Inf
+        if !(workspace.sharedMemory isa NullSharedMemory)
+            workspace.sharedMemory.objectiveBounds[end] = Inf
             workspace.globalInfo[2] = 0.
             workspace.globalInfo[3] = 0.
         end
@@ -109,7 +109,7 @@ end
 #
 function reset_explored_nodes!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
 
-    @sync if !localOnly && workspace.globalInfo != nothing
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.reset_explored_nodes!(workspace,localOnly=true)))
@@ -118,8 +118,8 @@ function reset_explored_nodes!(workspace::BBworkspace;localOnly::Bool=false)::No
         reset_explored_nodes!(workspace,localOnly=true)
 
         # reset the global info
-        if workspace.globalInfo != nothing
-            workspace.globalInfo[1] = Inf
+        if !(workspace.sharedMemory isa NullSharedMemory)
+            workspace.sharedMemory.objectiveBounds[end] = Inf
             workspace.globalInfo[2] = 0.
             workspace.globalInfo[3] = 0.
         end
