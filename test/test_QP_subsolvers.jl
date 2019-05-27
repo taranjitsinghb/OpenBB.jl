@@ -13,7 +13,9 @@ function test_QP_subsolver(subsolver)
     if subsolver == "osqp"
         subsolverSettings = OpenBB.OSQPsettings()
     elseif subsolver == "gurobi"
-         subsolverSettings = OpenBB.GUROBIsettings()
+        subsolverSettings = OpenBB.GUROBIsettings()
+    elseif subsolver == "qpalm"
+        subsolverSettings = OpenBB.QPALMsettings()
     end
     print(" - ")
     print("1...")
@@ -57,4 +59,7 @@ if OpenBB.withOSQP()
 end
 if OpenBB.withGUROBI()
     test_QP_subsolver("gurobi")
+end
+if OpenBB.withQPALM()
+    test_QP_subsolver("qpalm")
 end

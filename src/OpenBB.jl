@@ -24,6 +24,9 @@ end
 function withGUROBI()::Bool
     return true
 end
+function withQPALM()::Bool
+    return true
+end
 
 
 # language interfaces
@@ -41,6 +44,9 @@ if withOSQP()
 end
 if withGUROBI()
     include("./subsolvers_interfaces/GUROBI_interface/GUROBI_interface.jl")
+end
+if withQPALM()
+    include("./subsolvers_interfaces/QPALM_interface/QPALM_interface.jl")
 end
 
 # include heuristics
