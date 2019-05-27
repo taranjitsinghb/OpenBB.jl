@@ -46,7 +46,7 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
                     bndDual=node.bndDual,cnsDual=node.cnsDual)
 
     # count how many nodes we have solved
-    workspace.status.numRelaxationsSolved = workspace.status.numRelaxationsSolved + 1
+    workspace.status.numExploredNodes = workspace.status.numExploredNodes + 1
     # check feasibility of the node solution
     if out.status == 1
         return ("infeasible",Array{BBnode,1}())

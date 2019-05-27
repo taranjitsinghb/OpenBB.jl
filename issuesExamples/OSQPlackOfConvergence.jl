@@ -86,7 +86,7 @@ problem = OpenBB.Problem(objFun=objf,cnsSet=cnss,varSet=vars)
 if OpenBB.withGUROBI()
     println("solving with gurobi-QP")
     workspace1 = OpenBB.setup(problem,
-                              OpenBB.BBsettings(verbose=false,dynamicMode=true,iterationInfoFreq=1),
+                              OpenBB.BBsettings(verbose=false,dynamicMode=true,statusInfoPeriod=1),
                               OpenBB.GUROBIsettings())
 
     OpenBB.solve!(workspace1)
@@ -95,7 +95,7 @@ end
 
 println("solving with OSQP")
 workspace2 = OpenBB.setup(problem,
-                         OpenBB.BBsettings(verbose=false,dynamicMode=true,iterationInfoFreq=1),
+                         OpenBB.BBsettings(verbose=false,dynamicMode=true,statusInfoPeriod=1),
                          OpenBB.OSQPsettings())
 
 OpenBB.solve!(workspace2)

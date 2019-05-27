@@ -3,9 +3,13 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_QP.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-07T15:22:03+02:00
+# @Last modified time: 2019-05-27T18:05:47+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
+
+using OpenBB
+using SparseArrays
+using LinearAlgebra
 
 clearconsole()
 function test_QP_subsolver(subsolver)
@@ -21,7 +25,7 @@ function test_QP_subsolver(subsolver)
     problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(1.0I,4,4,),L=[-.5,0.,0.,0.]),
                              cnsSet=OpenBB.LinearConstraintSet(A=ones(0,4),loBs=Float64[],upBs=Float64[]),
                              varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],val=zeros(4),dscIndices=[1]))
-    workspace = OpenBB.setup(problem,OpenBB.BBsettings(dynamicMode=true,verbose=false,iterationInfoFreq=1),subsolverSettings)
+    workspace = OpenBB.setup(problem,OpenBB.BBsettings(dynamicMode=true,verbose=false,statusInfoPeriod=0.01),subsolverSettings)
     result0 = OpenBB.solve!(workspace)
 
 

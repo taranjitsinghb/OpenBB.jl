@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-23T11:30:00+02:00
+# @Last modified time: 2019-05-27T16:10:44+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -15,7 +15,7 @@ abstract type AbstractSettings end; struct NullSettings  <: AbstractSettings  en
 mutable struct BBsettings <: AbstractSettings
     # execution modifiers
     verbose::Bool                           # print info during execution
-    iterationInfoFreq::Int                  # frequency of iteration info print
+    statusInfoPeriod::Float64                 # frequency of status info print
     numProcesses::Int                       # max number of process to launch
     stopAfterSolution::Bool                 # stop workers after the solution for the current problem has been found
     dynamicMode::Bool                       # store in memory suboptimal solutions and nodes to allow later updates
@@ -41,7 +41,7 @@ end
 
 
 function BBsettings(;verbose::Bool=false,
-                     iterationInfoFreq::Int = 10,
+                     statusInfoPeriod::Float64 = 1.,
                      numProcesses::Int=0,
                      stopAfterSolution::Bool = true,
                      dynamicMode::Bool=false,
@@ -61,7 +61,7 @@ function BBsettings(;verbose::Bool=false,
                      )::BBsettings
 
 
-    return BBsettings(verbose,iterationInfoFreq,numProcesses,stopAfterSolution,dynamicMode,
+    return BBsettings(verbose,statusInfoPeriod,numProcesses,stopAfterSolution,dynamicMode,
                       useSosConstraints,integerTolerance,primalTolerance,objectiveCutoff,
                       expansion_priority_rule,branching_priority_rule,unreliable_subps_priority,
                       custom_stopping_rule,timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,roundingHeuristicsThreshold)

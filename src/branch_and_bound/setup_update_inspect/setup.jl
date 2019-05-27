@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-25T18:01:57+02:00
+# @Last modified time: 2019-05-27T18:03:52+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -64,24 +64,40 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 
 
 		# construct the communication channels
-		# communicationChannels = Array{RemoteChannel,1}(undef,bb_settings.numProcesses)
-		# @sync for k in 1:bb_settings.numProcesses
-		# 	@async communicationChannels[k] = RemoteChannel(()->Channel{AbstractBBnode}(2),k)
-		# end
 		communicationChannels = Array{BBnodeChannel,1}(undef,bb_settings.numProcesses)
 		for k in 1:bb_settings.numProcesses
 			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numDscVars,numCnss))
 		end
+		# communicationChannels = Array{RemoteChannel,1}(undef,bb_settings.numProcesses)
+		# @sync for k in 1:bb_settings.numProcesses
+		# 	@async communicationChannels[k] = RemoteChannel(()->Channel{AbstractBBnode}(2),k)
+		# end
 
 		# construct shared Memory
 		objectiveBounds = SharedArray{Float64,1}(repeat([Inf],bb_settings.numProcesses+1))
 		stats = SharedArray{Int,1}([0,0,0])
 
-		# create the remote workspaces
+		# construct the master BBworkspace
+		workspace = BBworkspace(setup(problem,ss_settings,
+									  bb_primalTolerance=bb_settings.primalTolerance,
+									  bb_timeLimit=bb_settings.timeLimit),
+								problem.varSet.dscIndices,problem.varSet.sos1Groups,sosConstraints,
+								[BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),
+									   problem.varSet.pseudoCosts,problem.varSet.val,
+									   zeros(numVars),zeros(numCnss),1.,NaN,false)],
+								Array{BBnode,1}(),Array{BBnode,1}(),
+								BBstatus(),BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats),bb_settings)
+
+
+		# construct the remote workspaces
 		expressions = Array{Expr,1}(undef,length(workersList))
-		for k in 1:length(workersList)
-			sharedMemory = BBsharedMemory(communicationChannels[k+1],communicationChannels[k],objectiveBounds,stats)
-			expressions[k] = :(workspace = OpenBB.BBworkspace(OpenBB.setup($problem,$ss_settings,
+		for k in 2:workspace.settings.numProcesses
+			if k < workspace.settings.numProcesses
+				sharedMemory = BBsharedMemory(communicationChannels[k],communicationChannels[k+1],objectiveBounds,stats)
+			else
+				sharedMemory = BBsharedMemory(communicationChannels[k],communicationChannels[1],objectiveBounds,stats)
+			end
+			expressions[k-1] = :(workspace = OpenBB.BBworkspace(OpenBB.setup($problem,$ss_settings,
 																		bb_primalTolerance=$(bb_settings.primalTolerance),
 																		bb_timeLimit=$(bb_settings.timeLimit)
 																		),
@@ -93,21 +109,7 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 			@async remotecall_fetch(Main.eval,workersList[k],expressions[k])
 		end
 
-
-
-		# construct the master BBworkspace
-		workspace = BBworkspace(setup(problem,ss_settings,
-									  bb_primalTolerance=bb_settings.primalTolerance,
-									  bb_timeLimit=bb_settings.timeLimit),
-								problem.varSet.dscIndices,problem.varSet.sos1Groups,sosConstraints,
-								[BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),
-									   problem.varSet.pseudoCosts,problem.varSet.val,
-									   zeros(numVars),zeros(numCnss),1.,NaN,false)],
-								Array{BBnode,1}(),Array{BBnode,1}(),
-								BBstatus(),BBsharedMemory(communicationChannels[1],communicationChannels[end],objectiveBounds,stats),bb_settings)
-
-	else
-	# only one process: no communication channels needed
+	else # only one process: no communication channels needed
 
 		# construct the master BBworkspace
 		workspace = BBworkspace(setup(problem,ss_settings,
@@ -121,7 +123,6 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 								BBstatus(),NullSharedMemory(),bb_settings)
 
 	end
-
 
     return workspace
 

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-25T18:40:35+02:00
+# @Last modified time: 2019-05-27T16:15:40+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -58,11 +58,20 @@ function run!(workspace::BBworkspace)::Nothing
     # it is necessary to update the objective lowerbound
     objLoBMayHaveChanged = false
 
+    # id of the process the workspace is being manipulated from
+    processId = myid()
+
+    # print the initial algorithm status
+    printCountdown = 0.0
+
     # main loop
     while !idle
 
         # update total time
-        workspace.status.totalTime += time() - lastTimeCheckpoint; lastTimeCheckpoint = time()
+        elapsedTime = time() - lastTimeCheckpoint
+        workspace.status.totalTime += elapsedTime
+        printCountdown -= elapsedTime
+        lastTimeCheckpoint = time()
 
         # stopping conditions
         @sync if length(workspace.activeQueue) == 0 || # no more nodes in the queue
@@ -77,11 +86,11 @@ function run!(workspace::BBworkspace)::Nothing
 
        else # continue with branch and bound
 
-           # update algorithm status and print it
-           if workspace.settings.verbose
-               if workspace.settings.iterationInfoFreq == 1 ||
-                  mod(workspace.status.numRelaxationsSolved,workspace.settings.iterationInfoFreq) == 1
+           # update print algorithm status
+           if workspace.settings.verbose && processId == 1
+               if printCountdown <= 0
                    print_status(workspace)
+                   printCountdown = workspace.settings.statusInfoPeriod
               end
            end
 
@@ -169,7 +178,13 @@ function run!(workspace::BBworkspace)::Nothing
                 if workspace.status.objLoB > newObjLoB + workspace.settings.primalTolerance
                     println("branch and bound: the objective lower bound has decreased from "*string(workspace.status.objLoB)*" to "*string(newObjLoB)*"...")
                 end
+
                 workspace.status.objLoB = newObjLoB
+
+                # communicate the new lower bound
+                if !(workspace.sharedMemory isa NullSharedMemory)
+                    workspace.sharedMemory.objectiveBounds[processId] = newObjLoB
+                end
             end
         end
 
@@ -262,7 +277,7 @@ function run!(workspace::BBworkspace)::Nothing
        workspace.status.relativeGap < workspace.settings.relativeGapTolerance
 
         workspace.status.description = "optimalSolutionFound"
-        if workspace.settings.verbose
+        if workspace.settings.verbose && processId == 1
             print_status(workspace)
             println(" Exit: Optimal Solution Found")
         end
@@ -270,21 +285,21 @@ function run!(workspace::BBworkspace)::Nothing
     elseif length(workspace.activeQueue) == 0 && workspace.status.objUpB == Inf
 
         workspace.status.description = "infeasible"
-        if workspace.settings.verbose
+        if workspace.settings.verbose && processId == 1
             print_status(workspace)
             println(" Exit: infeasibilty detected")
         end
     # elseif length(workspace.activeQueue) == 0 && length(workspace.solutionPool) > 0
     #
     #     workspace.status.description = "noReliableSolutionFound"
-    #     if workspace.settings.verbose
+    #     if workspace.settings.verbose && processId == 1
     #         print_status(workspace)
     #         println(" Exit: no reliable solution found")
     #     end
 
     else
         workspace.status.description = "interrupted"
-        if workspace.settings.verbose
+        if workspace.settings.verbose && processId == 1
             print_status(workspace)
             println(" Exit: interrupted")
         end

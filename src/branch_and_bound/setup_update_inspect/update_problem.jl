@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-21T13:13:27+02:00
+# @Last modified time: 2019-05-27T17:31:33+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -22,19 +22,6 @@ function append_constraints!(workspace::BBworkspace,
                                suppressUpdate=suppressUpdate,
                                localOnly=localOnly)
 end
-# version for global workspace
-# function append_constraints!(A::Union{Array{Float64,2},SparseMatrixCSC{Float64}},
-#                              cnsLoBs::Array{Float64,1},
-#                              cnsUpBs::Array{Float64,1};
-#                              suppressWarnings::Bool=false,
-#                              suppressUpdate::Bool=false,
-#                              localOnly::Bool=false)::Nothing
-#     return append_constraints!(workspace,A,cnsLoBs,cnsUpBs;
-#                                suppressWarnings=suppressWarnings,
-#                                suppressUpdate=suppressUpdate,
-#                                localOnly=localOnly)
-# end
-
 
 #
 function insert_constraints!(workspace::BBworkspace,
@@ -60,6 +47,7 @@ function insert_constraints!(workspace::BBworkspace,
                                                                              suppressUpdate=$suppressUpdate,
                                                                              localOnly=true)))
         end
+
         # call the local version of the function on the current process
         insert_constraints!(workspace,A,cnsLoBs,cnsUpBs,index,
                             suppressWarnings=suppressWarnings,
@@ -73,7 +61,7 @@ function insert_constraints!(workspace::BBworkspace,
 
         # update all the problems in the activeQueue
         if length(workspace.activeQueue)>0
-            for i in  1:length(workspace.activeQueue)
+            for i in 1:length(workspace.activeQueue)
                 splice!(workspace.activeQueue[i].cnsDual,index:index-1,zeros(size(A,1)))
             end
         end
@@ -124,12 +112,24 @@ function remove_constraints!(workspace::BBworkspace,indices::Array{Int,1};
                             localOnly=true)
     else
         # propagate the changes to the nodes solver
-        remove_constraints!(workspace.subsolverWS,indices,suppressUpdate=suppressUpdate)
-        # adapt the workspace to the changes
-        reset_explored_nodes!(workspace,localOnly=true)
+        remove_constraints!(workspace.subsolverWS,indices,suppressUpdate=true)
+
         # update all the problems in the activeQueue
         for i in 1:length(workspace.activeQueue)
             deleteat!(workspace.activeQueue[i].cnsDual,indices)
+        end
+        # update all the problems in the solutionPool
+        for i in 1:length(workspace.solutionPool)
+            deleteat!(workspace.solutionPool[i].cnsDual,indices)
+        end
+        # update all the problems in the activeQueue
+        for i in 1:length(workspace.unactivePool)
+            deleteat!(workspace.unactivePool[i].cnsDual,indices)
+        end
+
+        # adapt the workspace to the changes
+        if !suppressUpdate
+            update!(workspace,localOnly=true)
         end
     end
 
@@ -160,7 +160,7 @@ function permute_constraints!(workspace::BBworkspace,permutation::Array{Int,1};
     else
 
         # propagate the change to the subsolver
-        permute_constraints!(workspace.subsolverWS,permutation,suppressUpdate=suppressUpdate)
+        permute_constraints!(workspace.subsolverWS,permutation,suppressUpdate=true)
         # permute the optimality results
         if length(workspace.activeQueue)>0
             for i in 1:length(workspace.activeQueue)
@@ -253,11 +253,11 @@ function update_bounds!(workspace::BBworkspace;
     else
 
         # propagate the changes to the nodes solver
-        update_bounds!(workspace.subsolverWS,cnsLoBs,cnsUpBs,varLoBs,varUpBs,suppressUpdate=suppressUpdate)
+        update_bounds!(workspace.subsolverWS,cnsLoBs,cnsUpBs,varLoBs,varUpBs,suppressUpdate=true)
 
         # adapt the workspace to the changes
         if !suppressUpdate
-            reset_explored_nodes!(workspace,localOnly=true)
+            update!(workspace,localOnly=true)
         end
     end
 
@@ -295,7 +295,7 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         nCnss1 = length(workspace.subsolverWS.cnsLoBs)
         nCnss2 = length(problem.cnsSet.loBs)
         # propagate the changes to the nodes solver
-        reliableObjLoBs = append_problem!(workspace.subsolverWS,problem,suppressUpdate=suppressUpdate)
+        reliableObjLoBs = append_problem!(workspace.subsolverWS,problem,suppressUpdate=true)
         # update all the sub-problems
         newPrimal = problem.varSet.val
         newPseudoCosts = problem.varSet.pseudoCosts
@@ -335,7 +335,7 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         append!(workspace.sos1Groups,@. problem.varSet.sos1Groups + maximum(workspace.sos1Groups) + 1)
         # adapt the workspace to the changes
         if !suppressUpdate
-            reset_explored_nodes!(workspace,localOnly=true)
+            update!(workspace,localOnly=true)
         end
     end
 
@@ -401,7 +401,7 @@ function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,
         end
         # adapt the workspace to the changes
         if !suppressUpdate
-            reset_explored_nodes!(workspace,localOnly=true)
+            update!(workspace,localOnly=true)
         end
     end
 
