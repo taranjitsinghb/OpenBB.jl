@@ -32,7 +32,7 @@ mutable struct QPALMsettings <: AbstractSettings
 end
 
 
-function QPALMsettings(; max_iter::Int=1e5,
+function QPALMsettings(; max_iter::Int=10000,
                          eps_abs::Float64=1e-4,
                          eps_rel::Float64=1e-4,
                          eps_abs_in::Float64=1.0,
@@ -54,8 +54,7 @@ function QPALMsettings(; max_iter::Int=1e5,
 
 
 
-    return QPALMsettings(
-                        max_iter,eps_abs,eps_rel,eps_abs_in,eps_rel_in,rho,eps_prim_inf,
+    return QPALMsettings(max_iter,eps_abs,eps_rel,eps_abs_in,eps_rel_in,rho,eps_prim_inf,
                         eps_dual_inf,theta,delta,tau_init,proximal,gamma_init,
                         gamma_upd,gamma_max,scaling,nonconvex,verbose,warm_start)
 end

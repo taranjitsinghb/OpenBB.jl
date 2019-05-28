@@ -24,8 +24,8 @@ function solve!(workspace::QPALMworkspace;
     end
 
     # update the osqp model
-    QPALM.update!(workspace.model;l=vcat(varLoBs,workspace.cnsLoBs),
-                                 u=vcat(varUpBs,workspace.cnsUpBs))
+    QPALM.update!(workspace.model;bmin=vcat(varLoBs,workspace.cnsLoBs),
+                                 bmax=vcat(varUpBs,workspace.cnsUpBs))
     # set hotstart info
     if length(primal) > 0 && length(bndDual) > 0 && length(cnsDual) > 0
         QPALM.warm_start!(workspace.model; x_warm_start=primal, y_warm_start=vcat(bndDual,cnsDual))
@@ -33,6 +33,12 @@ function solve!(workspace::QPALMworkspace;
 
     # solve problem
     sol = QPALM.solve!(workspace.model)
+
+    if sol.info.status_val in [1,2,3,4,-6,-2]
+        obj_val = 1/2 * transpose(sol.x) * workspace.Q * sol.x + transpose(workspace.L) * sol.x
+    else
+        obj_val = NaN
+    end
 
     # output sol info
     if  sol.info.status_val == 1
@@ -42,6 +48,7 @@ function solve!(workspace::QPALMworkspace;
     elseif sol.info.status_val in [2,3,4,-6,-2]
         status = 2 # "unreliable"
         sol.x = @. min(max(sol.x,varLoBs),varUpBs)
+        obj_val = 0 # TODO
         @warn "Inaccuracy in node sol, message: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
     elseif sol.info.status_val in [-7,-10]
         status = 3 # "error"
@@ -52,5 +59,5 @@ function solve!(workspace::QPALMworkspace;
 
     #return solution
     nVars = size(workspace.A,2 )
-    return SubSolution(sol.x, sol.y[1:nVars],sol.y[nVars+1:end], sol.info.obj_val, status, sol.info.run_time)
+    return SubSolution(sol.x, sol.y[1:nVars],sol.y[nVars+1:end], obj_val, status, sol.info.run_time)
 end

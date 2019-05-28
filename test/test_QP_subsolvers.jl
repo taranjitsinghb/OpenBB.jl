@@ -7,7 +7,6 @@
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
-clearconsole()
 function test_QP_subsolver(subsolver)
 
     if subsolver == "osqp"
