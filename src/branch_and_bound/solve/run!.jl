@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-27T16:15:40+02:00
+# @Last modified time: 2019-05-28T12:22:25+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -155,14 +155,11 @@ function run!(workspace::BBworkspace)::Nothing
 
                 # apply rounding heuristics
                 if node.avgFrac <= workspace.settings.roundingHeuristicsThreshold
-                    heuristicnode = simple_rounding_heuristics(node,workspace)
-                    push!(workspace.activeQueue,heuristicnode)
+                    push!(workspace.activeQueue,simple_rounding_heuristics(node,workspace))
                 end
             end
 
-            # recompute the lower bound if:
-            # 1 - there is no lower bound
-            # 2 - the node providing the lower bound has been removed from the activeQueue
+            # recompute the objective lower bound
             if workspace.status.objLoB == -Inf || objLoBMayHaveChanged
 
                 newObjLoB = workspace.status.objUpB
@@ -180,11 +177,6 @@ function run!(workspace::BBworkspace)::Nothing
                 end
 
                 workspace.status.objLoB = newObjLoB
-
-                # communicate the new lower bound
-                if !(workspace.sharedMemory isa NullSharedMemory)
-                    workspace.sharedMemory.objectiveBounds[processId] = newObjLoB
-                end
             end
         end
 
@@ -194,10 +186,12 @@ function run!(workspace::BBworkspace)::Nothing
             # check arrest conditions and start arrest procedure
             if idle && # nothing to do locally
                !isready(workspace.sharedMemory.inputChannel) && # no nodes to pick
+               !isready(workspace.sharedMemory.outputChannel) && # no nodes sent
                workspace.sharedMemory.stats[2] == workspace.settings.numProcesses-1 # all the other workers are waiting.
 
                  # send a killer-node to the neighbouring process
                  @async put!(workspace.sharedMemory.outputChannel,KillerNode(1))
+
             end
 
             # check if a new node is available
@@ -249,8 +243,10 @@ function run!(workspace::BBworkspace)::Nothing
 
             # update the number of solutions found and the upper bound
             workspace.status.objUpB = workspace.sharedMemory.objectiveBounds[end]
-            workspace.status.objLoB = min(workspace.status.objLoB,workspace.status.objUpB)
             workspace.status.numSolutions = workspace.sharedMemory.stats[1]
+
+            # comunicate the current lowerbound
+            workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB
         end
 
         # recompute optimality gaps

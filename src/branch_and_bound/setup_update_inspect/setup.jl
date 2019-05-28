@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-27T18:03:52+02:00
+# @Last modified time: 2019-05-28T20:25:51+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -74,7 +74,7 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 		# end
 
 		# construct shared Memory
-		objectiveBounds = SharedArray{Float64,1}(repeat([Inf],bb_settings.numProcesses+1))
+		objectiveBounds = SharedArray{Float64,1}(vcat([-Inf],repeat([Inf],bb_settings.numProcesses)))
 		stats = SharedArray{Int,1}([0,0,0])
 
 		# construct the master BBworkspace

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-27T17:31:33+02:00
+# @Last modified time: 2019-05-28T18:00:17+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -44,15 +44,13 @@ function insert_constraints!(workspace::BBworkspace,
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.insert_constraints!(workspace,$A,$cnsLoBs,$cnsUpBs,$index,
                                                                              suppressWarnings=$suppressWarnings,
-                                                                             suppressUpdate=$suppressUpdate,
-                                                                             localOnly=true)))
+                                                                             suppressUpdate=true,localOnly=true)))
         end
 
         # call the local version of the function on the current process
         insert_constraints!(workspace,A,cnsLoBs,cnsUpBs,index,
                             suppressWarnings=suppressWarnings,
-                            suppressUpdate=suppressUpdate,
-                            localOnly=true)
+                            suppressUpdate=true,localOnly=true)
 
     else
 
@@ -102,14 +100,12 @@ function remove_constraints!(workspace::BBworkspace,indices::Array{Int,1};
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.remove_constraints!(workspace,$indices,
                                                                              suppressWarnings=$suppressWarnings,
-                                                                             suppressUpdate=$suppressUpdate,
-                                                                             localOnly=true)))
+                                                                             suppressUpdate=true,localOnly=true)))
         end
         # call the local version of the function on the main process
         remove_constraints!(workspace,indices,
                             suppressWarnings=suppressWarnings,
-                            suppressUpdate=suppressUpdate,
-                            localOnly=true)
+                            suppressUpdate=true,localOnly=true)
     else
         # propagate the changes to the nodes solver
         remove_constraints!(workspace.subsolverWS,indices,suppressUpdate=true)
@@ -126,11 +122,11 @@ function remove_constraints!(workspace::BBworkspace,indices::Array{Int,1};
         for i in 1:length(workspace.unactivePool)
             deleteat!(workspace.unactivePool[i].cnsDual,indices)
         end
+    end
 
-        # adapt the workspace to the changes
-        if !suppressUpdate
-            update!(workspace,localOnly=true)
-        end
+    # update the workspace
+    if !suppressUpdate
+        update!(workspace,localOnly=localOnly)
     end
 
     return
@@ -148,19 +144,18 @@ function permute_constraints!(workspace::BBworkspace,permutation::Array{Int,1};
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.permute_constraints!(workspace,$permutation,
                                                                               suppressWarnings=$suppressWarnings,
-                                                                              suppressUpdate=$suppressUpdate,
-                                                                              localOnly=true)))
+                                                                              suppressUpdate=true,localOnly=true)))
         end
         # call the local version of the function on the main process
         permute_constraints!(workspace,permutation,
                              suppressWarnings=suppressWarnings,
-                             suppressUpdate=suppressUpdate,
-                             localOnly=true)
+                             suppressUpdate=true,localOnly=true)
 
     else
 
         # propagate the change to the subsolver
         permute_constraints!(workspace.subsolverWS,permutation,suppressUpdate=true)
+
         # permute the optimality results
         if length(workspace.activeQueue)>0
             for i in 1:length(workspace.activeQueue)
@@ -177,9 +172,10 @@ function permute_constraints!(workspace::BBworkspace,permutation::Array{Int,1};
                 permute!(workspace.solutionPool[i].cnsDual,permutation)
             end
         end
-        # update the workspace
+
+        # update the subsolver workspace only
         if !suppressUpdate
-            update!(workspace.subsolverWS,localOnly=true)
+            update!(workspace.subsolverWS)
         end
     end
 
@@ -240,25 +236,24 @@ function update_bounds!(workspace::BBworkspace;
                                                                         cnsLoBs=$cnsLoBs,cnsUpBs=$cnsUpBs,
                                                                         varLoBs=$varLoBs,varUpBs=$varUpBs,
                                                                         suppressWarnings=$suppressWarnings,
-                                                                        suppressUpdate=$suppressUpdate,
-                                                                        localOnly=true)))
+                                                                        suppressUpdate=true,localOnly=true)))
         end
         # call the local version of the function on the main process
         update_bounds!(workspace,
                        cnsLoBs=cnsLoBs,cnsUpBs=cnsUpBs,
                        varLoBs=varLoBs,varUpBs=varUpBs,
                        suppressWarnings=suppressWarnings,
-                       suppressUpdate=suppressUpdate,
-                       localOnly=true)
+                       suppressUpdate=true,localOnly=true)
     else
 
         # propagate the changes to the nodes solver
         update_bounds!(workspace.subsolverWS,cnsLoBs,cnsUpBs,varLoBs,varUpBs,suppressUpdate=true)
 
-        # adapt the workspace to the changes
-        if !suppressUpdate
-            update!(workspace,localOnly=true)
-        end
+    end
+
+    # adapt the workspace to the changes
+    if !suppressUpdate
+        update!(workspace,localOnly=localOnly)
     end
 
     return
@@ -280,14 +275,12 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.append_problem!(workspace,$problem,
                                                                          suppressWarnings=$suppressWarnings,
-                                                                         suppressUpdate=$suppressUpdate,
-                                                                         localOnly=true)))
+                                                                         suppressUpdate=true,localOnly=true)))
         end
         # call the local version of the function on the main process
         append_problem!(workspace,problem,
                         suppressWarnings=suppressWarnings,
-                        suppressUpdate=suppressUpdate,
-                        localOnly=true)
+                        suppressUpdate=true,localOnly=true)
     else
         # collect info on the problem
         nVars1 = length(workspace.subsolverWS.varLoBs)
@@ -310,7 +303,6 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         end
         for i in  1:length(workspace.solutionPool)
             # mark all the problems as unreliable if necessary
-            # mark all the problems as unreliable if necessary
             workspace.solutionPool[i].reliable = reliableObjLoBs && workspace.solutionPool[i].reliable
             # extend primal and dual optimization results
             append!(workspace.solutionPool[i].primal,copy(newPrimal))
@@ -319,6 +311,7 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
             append!(workspace.solutionPool[i].cnsDual,zeros(nCnss2))
         end
         for i in  1:length(workspace.unactivePool)
+            # mark all the problems as unreliable if necessary
             workspace.unactivePool[i].reliable = reliableObjLoBs && workspace.unactivePool[i].reliable
             # extend primal and dual optimization results
             append!(workspace.unactivePool[i].primal,copy(newPrimal))
@@ -333,10 +326,11 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         # update discrete variables
         append!(workspace.dscIndices,@. problem.varSet.dscIndices + nVars1)
         append!(workspace.sos1Groups,@. problem.varSet.sos1Groups + maximum(workspace.sos1Groups) + 1)
-        # adapt the workspace to the changes
-        if !suppressUpdate
-            update!(workspace,localOnly=true)
-        end
+    end
+
+    # adapt the workspace to the changes
+    if !suppressUpdate
+        update!(workspace,localOnly=localOnly)
     end
 
     return
@@ -355,16 +349,14 @@ function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,
                                                                                 newSos1Groups=$newSos1Groups,
                                                                                 newPseudoCosts=$newPseudoCosts,
                                                                                 suppressWarnings=$suppressUpdate,
-                                                                                suppressUpdate=$suppressWarnings,
-                                                                                localOnly=true)))
+                                                                                suppressUpdate=true,localOnly=true)))
         end
         # call the local version of the function on the main process
         integralize_variables!(workspace,newDscIndices,
                                newSos1Groups=newSos1Groups,
                                newPseudoCosts=newPseudoCosts,
                                suppressWarnings=suppressUpdate,
-                               suppressUpdate=suppressWarnings,
-                               localOnly=true)
+                               suppressUpdate=true,localOnly=true)
     else
         # check if it is possible to make changes
         if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode
@@ -399,10 +391,11 @@ function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,
             append!(workspace.unactivePool[i].pseudoCosts,newPseudoCosts)
             permute!(workspace.unactivePool[i].pseudoCosts,tmpPerm)
         end
-        # adapt the workspace to the changes
-        if !suppressUpdate
-            update!(workspace,localOnly=true)
-        end
+    end
+
+    # adapt the workspace to the changes
+    if !suppressUpdate
+        update!(workspace,localOnly=localOnly)
     end
 
     return

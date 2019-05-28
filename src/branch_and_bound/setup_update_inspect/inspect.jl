@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-27T17:57:02+02:00
+# @Last modified time: 2019-05-28T19:41:28+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -12,15 +12,15 @@
 function print_status(workspace::BBworkspace)::Nothing
 
     if workspace.sharedMemory isa NullSharedMemory
-        println("time: ",round(workspace.status.totalTime,digits = 2),
-                " | best obj.: ", workspace.status.objUpB,
-                " | best possible: ", workspace.status.objLoB,
-                " | abs. gap.: ",workspace.status.absoluteGap,
-                " | rel. gap.: ",round(workspace.status.relativeGap, digits = 2))
+
+        globalObjectiveUpB = workspace.status.objUpB
+        globalObjectiveLoB = workspace.status.objLoB
+        globalAbsGap = workspace.status.absoluteGap
+        globalRelGap = workspace.status.relativeGap
+
     else
         globalObjectiveUpB = workspace.sharedMemory.objectiveBounds[end]
         globalObjectiveLoB = minimum(workspace.sharedMemory.objectiveBounds[1:end-1])
-
 
         # recompute optimality gaps
         if globalObjectiveUpB == Inf || globalObjectiveLoB == -Inf
@@ -30,31 +30,17 @@ function print_status(workspace::BBworkspace)::Nothing
             globalRelGap = workspace.status.absoluteGap/abs(1e-10 + globalObjectiveUpB)
         end
 
-        println("time: ",round(workspace.status.totalTime,digits = 2),
-                " | best obj.: ", workspace.status.objUpB,
-                " | best possible: ", globalObjectiveLoB,
-                " | abs. gap.: ", globalAbsGap,
-                " | rel. gap.: ",round(globalRelGap, digits = 2))
     end
+
+    println("time: ",round(workspace.status.totalTime,digits = 2),
+            " | best obj.: ", workspace.status.objUpB,
+            " | best possible: ", globalObjectiveLoB,
+            " | abs. gap.: ", globalAbsGap,
+            " | rel. gap.: ",round(globalRelGap, digits = 2))
 
     return
 end
 
-
-###### getters and setters
-
-
-# finds the best node in the array
-function find_best_node(node_pool::Array{BBnode,1})::AbstractBBnode
-    if length(node_pool) != 0
-        for i in length(node_pool):-1:1
-            if node_pool[i].reliable
-                return node_pool[i]
-            end
-        end
-    end
-    return
-end
 
 # returns the best solution
 function get_best_solution(workspace::BBworkspace;localOnly::Bool=false)::AbstractBBnode
@@ -100,7 +86,7 @@ function get_best_node(workspace::BBworkspace;localOnly::Bool=false)::AbstractBB
         # choose the best of the returned nodes
         for node in nodes
             if bestNode isa NullBBnode || # there is no best node yet
-               (node.avgFrac==0 && bestNode.avgFrac >0) || # the new node is a solution while the best so far isn't
+               (node.avgFrac==0 && bestNode.avgFrac > 0) || # the new node is a solution while the best so far isn't
                workspace.settings.expansion_priority_rule(node,bestNode,workspace.status) # the new node is better than the best so far
                 # set the new node as the best one
                 bestNode = node
