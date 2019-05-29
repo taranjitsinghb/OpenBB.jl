@@ -1,11 +1,11 @@
-# @Author: Massimo De Mauri <massimodemauri>
-# @Date:   2019-02-06T15:13:09+01:00
-# @Email:  massimo.demauri@kuleuven.be
-# @Project: OpenBB
+# @Author: Massimo De Mauri <massimo>
+# @Date:   2019-05-09T12:51:45+02:00
+# @Email:  massimo.demauri@gmail.com
 # @Filename: Project.toml
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-03T19:18:56+01:00
+# @Last modified time: 2019-05-14T16:17:11+02:00
 # @License: apache 2.0
+
 
 
 name = "OpenBB"
@@ -14,9 +14,11 @@ authors = ["massimo.demauri@kuleuven.be <massimo.demauri@kuleuven.be>"]
 version = "0.1.0"
 
 [deps]
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Gurobi = "2e9cd046-0924-5485-92f1-d5272153d98b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OSQP = "ab2f91bb-94b4-55e3-9ba0-7f65df51de79"
+SharedArrays = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 QPALM = "6c3e646c-629b-11e9-19d9-033f6272e8d4"

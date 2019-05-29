@@ -3,18 +3,21 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_problem_definitions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-05T18:44:17+01:00
+# @Last modified time: 2019-05-27T18:06:30+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
-obj = Array{OpenBB.AbstractObjectiveFun,1}(undef,3)
-obj[1] = OpenBB.QuadraticObj(Q=Matrix(1.0I,4,4,),L=ones(4))
-obj[2] = OpenBB.LinearObj(L=ones(4))
-obj[3] = OpenBB.NullObjectiveFun()
+using OpenBB
+using LinearAlgebra
+
+obj = Array{OpenBB.AbstractObjectiveFunction,1}(undef,3)
+obj[1] = OpenBB.QuadraticObjective(Q=Matrix(1.0I,4,4,),L=ones(4))
+obj[2] = OpenBB.LinearObjective(L=ones(4))
+obj[3] = OpenBB.NullObjectiveFunction()
 
 
 cns = Array{OpenBB.AbstractConstraintSet,1}(undef,2)
-cns[1] = OpenBB.LinearCns(A=ones(1,4),loBs=[1.],upBs=[1.],sosIndices=[1])
+cns[1] = OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.],sosIndices=[1])
 cns[2] = OpenBB.NullConstraintSet()
 
 var = Array{OpenBB.VariableSet,1}(undef,2)

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-01T00:44:09+02:00
+# @Last modified time: 2019-05-12T21:28:20+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -14,8 +14,10 @@ module OpenBB
 info() = print("Hey you, there are no info yet...")
 
 # include external packages
+using Distributed
 using SparseArrays
 using LinearAlgebra
+using SharedArrays
 
 # select the subsolvers to use
 function withOSQP()::Bool
@@ -36,7 +38,7 @@ include("./problem_definition/problem_definition.jl")
 include("./branch_and_bound/BB.jl")
 
 # some utilities
-include("./utilities/numerical_utilities.jl")
+include("./utilities/utilities.jl")
 
 # subsolvers interfaces
 if withOSQP()

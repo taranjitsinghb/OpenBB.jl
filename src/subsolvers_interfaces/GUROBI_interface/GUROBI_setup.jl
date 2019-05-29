@@ -32,14 +32,14 @@ function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Flo
 
 
     # check the objective function
-    if problem.objFun isa NullObjectiveFun
+    if problem.objFun isa NullObjectiveFunction
         Q = spzeros(nVars,nVars)
         L = zeros(nVars)
 
-    elseif problem.objFun isa LinearObj
+    elseif problem.objFun isa LinearObjective
         Q = spzeros(nVars,nVars)
         L = problem.objFun.L
-    elseif problem.objFun isa QuadraticObj
+    elseif problem.objFun isa QuadraticObjective
         Q = sparse(problem.objFun.Q)
         L = problem.objFun.L
     else
@@ -53,7 +53,7 @@ function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Flo
         cnsLoBs = Float64[]
         cnsUpBs = Float64[]
 
-    elseif problem.cnsSet isa LinearCns
+    elseif problem.cnsSet isa LinearConstraintSet
         # adapt the constraint set to accomodate for variables bounds
         A = sparse(problem.cnsSet.A)
         cnsLoBs = copy(problem.cnsSet.loBs)
