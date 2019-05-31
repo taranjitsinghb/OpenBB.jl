@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-27T16:10:44+02:00
+# @Last modified time: 2019-05-31T18:17:43+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -50,7 +50,7 @@ function BBsettings(;verbose::Bool=false,
                      primalTolerance::Float64=1e-4,
                      objectiveCutoff::Float64=Inf,
                      expansion_priority_rule::Function=lower_mixed,
-                     branching_priority_rule::Function=pseudo_cost,
+                     branching_priority_rule::Function=most_fractional,
                      unreliable_subps_priority::Int=0,
                      custom_stopping_rule::Function=x->false,
                      timeLimit::Float64=Inf,

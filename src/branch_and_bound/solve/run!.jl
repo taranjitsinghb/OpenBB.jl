@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-31T13:46:31+02:00
+# @Last modified time: 2019-05-31T18:21:13+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -97,13 +97,6 @@ function run!(workspace::BBworkspace)::Nothing
            # pick a node to process from the activeQueue
            node = pop!(workspace.activeQueue)
 
-           # check if it is necessary to update the lowerbound
-           if node.objVal == workspace.status.objLoB
-               objLoBMayHaveChanged = true
-           else
-               objLoBMayHaveChanged = false
-           end
-
             # solve the node
             out = solve_and_branch!(node,workspace)
 
@@ -164,7 +157,8 @@ function run!(workspace::BBworkspace)::Nothing
             end
 
             # recompute the objective lower bound
-            if workspace.status.objLoB == -Inf || objLoBMayHaveChanged
+            if length(workspace.activeQueue) > 0 &&
+               workspace.status.objLoB == -Inf || node.objVal == workspace.status.objLoB || length(workspace.activeQueue) == 0
 
                 newObjLoB = workspace.status.objUpB
                 for i in length(workspace.activeQueue):-1:1
@@ -187,57 +181,55 @@ function run!(workspace::BBworkspace)::Nothing
         # communicate with the other processes
         if !(workspace.sharedMemory isa NullSharedMemory)
 
-            # check arrest conditions and start arrest procedure
-            if idle && # nothing to do locally
-               !isready(workspace.sharedMemory.inputChannel) && # no nodes to pick
-               workspace.sharedMemory.stats[2] == workspace.settings.numProcesses-1 # all the other workers are waiting.
+            # if locally it looks like the work is done send a killerNode
+            if idle &&
+               !isready(workspace.sharedMemory.inputChannel) &&
+               !isready(workspace.sharedMemory.outputChannel)
 
-                 # send a killer-node to the neighbouring process
-                 put!(workspace.sharedMemory.outputChannel,KillerNode(1))
-
+                # send a killerNode
+                put!(workspace.sharedMemory.outputChannel,KillerNode(1))
             end
 
-            # check if a new node is available
             while idle || isready(workspace.sharedMemory.inputChannel)
-
-                if idle
-                    # communicate the waiting state
-                    workspace.sharedMemory.stats[2] += 1.
-                end
 
                 # take a new node from the input channel
                 newNode = take!(workspace.sharedMemory.inputChannel)
 
-                if idle
-                    # exit waiting state
-                    workspace.sharedMemory.stats[2] -= 1.
-                end
-
                 if newNode isa KillerNode # handle killer-nodes
 
-                    if (idle && newNode.count < workspace.settings.numProcesses-1) ||
-                       newNode.count < 2*(workspace.settings.numProcesses-1)
-
+                    if idle && newNode.count < 2*workspace.settings.numProcesses - 1
                         # propagate the killerNode
                         put!(workspace.sharedMemory.outputChannel,KillerNode(newNode.count+1))
                     end
 
-                    if newNode.count >= workspace.settings.numProcesses-1
-                        # go idle (to force arrest) and exit the inner loop
-                        idle = true; break
+                    if newNode.count >= workspace.settings.numProcesses
+                        # go idle and exit the local loop
+                        idle=true; break
                     end
 
                 else # a normal node: insert it in the queue
-                    # insert the new node in the queue
-                    insert_node!(workspace.activeQueue,newNode,workspace.settings.expansion_priority_rule,
-                                  workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+
+
                     # update the objective lower bound
                     if newNode.objVal < workspace.status.objLoB
                         workspace.status.objLoB = newNode.objVal
                     end
-                    # go active (to prevent arrest) and exit the inner loop
+
+                    # insert the new node in the queue
+                    insert_node!(workspace.activeQueue,newNode,workspace.settings.expansion_priority_rule,
+                                  workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+
+                    # go active and exit the local loop
                     idle = false; break
                 end
+            end
+
+            # recompute optimality gaps
+            if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+            else
+                workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
             end
 
             # update the number of solutions found and the upper bound
@@ -246,14 +238,6 @@ function run!(workspace::BBworkspace)::Nothing
 
             # comunicate the current lowerbound
             workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB
-        end
-
-        # recompute optimality gaps
-        if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
-            workspace.status.absoluteGap = workspace.status.relativeGap = Inf
-        else
-            workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-            workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
         end
     end
 
