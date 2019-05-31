@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-12T21:28:20+02:00
+# @Last modified time: 2019-05-31T10:39:41+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -27,7 +27,7 @@ function withGUROBI()::Bool
     return true
 end
 function withQPALM()::Bool
-    return true
+    return false
 end
 
 

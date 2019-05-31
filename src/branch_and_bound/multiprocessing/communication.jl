@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: communication.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-25T18:01:04+02:00
+# @Last modified time: 2019-05-31T13:31:39+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -24,13 +24,14 @@ import Base.put!
 function put!(channel::BBnodeChannel,node::T)::Nothing where T <: AbstractBBnode
 
     # wait for the channel to be unlocked and free
-    # while true
-    #     if !channel.state[1] && !isready(channel)
-    #         break
-    #     end
-    #     ccall(:usleep, Cint, (Cuint,), 1000) # sleep one microsecond
-    #     # sleep(0.001)
-    # end
+    while true
+        if !channel.state[1] && !isready(channel)
+            break
+        end
+        s = time()
+        while time() - s < 0.0001
+        end
+    end
 
     # lock the memory space
     channel.state[1] = true
@@ -51,14 +52,15 @@ end
 import Base.take!
 function take!(channel::BBnodeChannel)
 
-    # lock if the memory space for the process is free
-    # while true
-    #     if  !channel.state[1] && isready(channel)
-    #         break
-    #     end
-    #     ccall(:usleep, Cint, (Cuint,), 1000) # sleep one microsecond
-    #     # sleep(0.001)
-    # end
+    # wait if the memory space for the process is free or locked
+    while true
+        if  !channel.state[1] && isready(channel)
+            break
+        end
+        s = time()
+        while time() - s < 0.0001
+        end
+    end
 
     # lock the memory space
     channel.state[1] = true
