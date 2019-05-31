@@ -4,34 +4,34 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-28T12:22:25+02:00
+# @Last modified time: 2019-05-31T13:46:31+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 # insert a list of equivalent nodes into a queue
-function insert_nodes!(queue::Array{BBnode,1},nodes::Array{BBnode,1},
+function insert_node!(queue::Array{BBnode,1},node::BBnode,
                        priorityRule::Function,status::BBstatus;
                        unreliablePriority::Int=0)::Nothing
 
-    if nodes[1].reliable || unreliablePriority == 0
+    if node.reliable || unreliablePriority == 0
     # normal queue insertion
-        tmpIndex = 0
+        insertionPoint = 1
         for i in length(queue):-1:1
-            if priorityRule(nodes[1],queue[i],status)
-                tmpIndex = i
+            if priorityRule(node,queue[i],status)
+                insertionPoint = i+1
                 break
             end
         end
-        splice!(queue,tmpIndex+1:tmpIndex,nodes)
+        insert!(queue,insertionPoint,node)
 
     elseif unreliablePriority == -1
         # put the new unreliable nodes at the bottom of the activeQueue to deal with them later
-        splice!(workspace.activeQueue,1:0,out[2])
+        insert!(workspace.activeQueue,0,node)
 
     elseif unreliablePriority == 1
         # put the new unreliable nodes at the top of the activeQueue to try to fastly get rid of them
-        append!(workspace.activeQueue,out[2])
+        append!(workspace.activeQueue,node)
     else
         @error "wrong priority setting for unreliable nodes"
     end
@@ -74,7 +74,7 @@ function run!(workspace::BBworkspace)::Nothing
         lastTimeCheckpoint = time()
 
         # stopping conditions
-        @sync if length(workspace.activeQueue) == 0 || # no more nodes in the queue
+        if length(workspace.activeQueue) == 0 || # no more nodes in the queue
            workspace.status.totalTime >= workspace.settings.timeLimit || # time is up
            workspace.settings.custom_stopping_rule(workspace) || # custom stopping rule triggered
            workspace.status.absoluteGap <= workspace.settings.absoluteGapTolerance || # reached required absolute gap
@@ -102,23 +102,6 @@ function run!(workspace::BBworkspace)::Nothing
                objLoBMayHaveChanged = true
            else
                objLoBMayHaveChanged = false
-           end
-
-           # pick a node to send to the neighbouring process from the activeQueue
-           if !(workspace.sharedMemory isa NullSharedMemory) && # multiprocessing?
-              !isready(workspace.sharedMemory.outputChannel) && # send only one node per time
-              length(workspace.activeQueue) > 0 && # there is a node to send
-              workspace.activeQueue[end].objVal < workspace.status.objUpB # do not send suboptimal nodes
-
-                # enforce recomputation of lowerbound
-                if workspace.activeQueue[end].objVal == workspace.status.objLoB
-                    objLoBMayHaveChanged = true
-                end
-
-                # send a new node to the neighbouring process
-                nodeToSend = pop!(workspace.activeQueue)
-                @async put!(workspace.sharedMemory.outputChannel,nodeToSend)
-
            end
 
             # solve the node
@@ -149,9 +132,30 @@ function run!(workspace::BBworkspace)::Nothing
 
             elseif out[1] == "children"  # no solution found. two children nodes have been created
 
-                # insert the new nodes into the activeQueue
-                insert_nodes!(workspace.activeQueue,out[2],workspace.settings.expansion_priority_rule,
-                              workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+                #  send one of the children to the neighbouring node
+                if !(workspace.sharedMemory isa NullSharedMemory) && # multiprocessing?
+                   !isready(workspace.sharedMemory.outputChannel) && # send only one node per time
+                   length(out[2]) > 1 # there actually is a node to send
+
+                    for k in 1:length(out[2])
+
+                        if k == 2
+                           # send a new node to the neighbouring process
+                           put!(workspace.sharedMemory.outputChannel,out[2][2])
+                       else
+                           # insert the remaining children into the queue
+                           insert_node!(workspace.activeQueue,out[2][k],workspace.settings.expansion_priority_rule,
+                                        workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+                        end
+
+                    end
+               else
+                   # insert the new nodes into the activeQueue
+                   for k in 1:length(out[2])
+                       insert_node!(workspace.activeQueue,out[2][k],workspace.settings.expansion_priority_rule,
+                                    workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+                   end
+               end
 
                 # apply rounding heuristics
                 if node.avgFrac <= workspace.settings.roundingHeuristicsThreshold
@@ -186,11 +190,10 @@ function run!(workspace::BBworkspace)::Nothing
             # check arrest conditions and start arrest procedure
             if idle && # nothing to do locally
                !isready(workspace.sharedMemory.inputChannel) && # no nodes to pick
-               !isready(workspace.sharedMemory.outputChannel) && # no nodes sent
                workspace.sharedMemory.stats[2] == workspace.settings.numProcesses-1 # all the other workers are waiting.
 
                  # send a killer-node to the neighbouring process
-                 @async put!(workspace.sharedMemory.outputChannel,KillerNode(1))
+                 put!(workspace.sharedMemory.outputChannel,KillerNode(1))
 
             end
 
@@ -201,9 +204,7 @@ function run!(workspace::BBworkspace)::Nothing
                     # communicate the waiting state
                     workspace.sharedMemory.stats[2] += 1.
                 end
-                while !isready(workspace.sharedMemory.inputChannel)
-                    sleep(0.001)
-                end
+
                 # take a new node from the input channel
                 newNode = take!(workspace.sharedMemory.inputChannel)
 
@@ -216,11 +217,9 @@ function run!(workspace::BBworkspace)::Nothing
 
                     if (idle && newNode.count < workspace.settings.numProcesses-1) ||
                        newNode.count < 2*(workspace.settings.numProcesses-1)
-                       while isready(workspace.sharedMemory.inputChannel)
-                           sleep(0.001)
-                       end
+
                         # propagate the killerNode
-                        @async put!(workspace.sharedMemory.outputChannel,KillerNode(newNode.count+1))
+                        put!(workspace.sharedMemory.outputChannel,KillerNode(newNode.count+1))
                     end
 
                     if newNode.count >= workspace.settings.numProcesses-1
@@ -230,7 +229,7 @@ function run!(workspace::BBworkspace)::Nothing
 
                 else # a normal node: insert it in the queue
                     # insert the new node in the queue
-                    insert_nodes!(workspace.activeQueue,[newNode],workspace.settings.expansion_priority_rule,
+                    insert_node!(workspace.activeQueue,newNode,workspace.settings.expansion_priority_rule,
                                   workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
                     # update the objective lower bound
                     if newNode.objVal < workspace.status.objLoB
