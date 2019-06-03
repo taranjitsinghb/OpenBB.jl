@@ -3,18 +3,18 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T15:22:01+02:00
+# @Last modified time: 2019-06-03T18:07:06+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 #
-function append_constraints!(workspace::BBworkspace,
+function append_constraints!(workspace::BBworkspace{T1,T2},
                              A::Union{Array{Float64,2},SparseMatrixCSC{Float64}},
                              cnsLoBs::Array{Float64,1},
                              cnsUpBs::Array{Float64,1};
                              suppressWarnings::Bool=false,
                              suppressUpdate::Bool=false,
-                             localOnly::Bool=false)::Nothing
+                             localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     return insert_constraints!(workspace,A,cnsLoBs,cnsUpBs,
                                get_numConstraints(workspace)+1,
@@ -24,14 +24,14 @@ function append_constraints!(workspace::BBworkspace,
 end
 
 #
-function insert_constraints!(workspace::BBworkspace,
+function insert_constraints!(workspace::BBworkspace{T1,T2},
                              A::Union{Array{Float64,2},SparseMatrixCSC{Float64}},
                              cnsLoBs::Array{Float64,1},
                              cnsUpBs::Array{Float64,1},
                              index::Int;
                              suppressWarnings::Bool=false,
                              suppressUpdate::Bool=false,
-                             localOnly::Bool=false)::Nothing
+                             localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # check if it is possible to make changes
     if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode
@@ -85,10 +85,10 @@ end
 
 
 #
-function remove_constraints!(workspace::BBworkspace,indices::Array{Int,1};
+function remove_constraints!(workspace::BBworkspace{T1,T2},indices::Array{Int,1};
                              suppressWarnings::Bool=false,
                              suppressUpdate::Bool=true,
-                             localOnly::Bool=true)::Nothing
+                             localOnly::Bool=true)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     ## check if it is possible to make changes
     if !suppressWarnings && workspace.status.description != "new"
@@ -134,10 +134,10 @@ end
 
 
 #
-function permute_constraints!(workspace::BBworkspace,permutation::Array{Int,1};
+function permute_constraints!(workspace::BBworkspace{T1,T2},permutation::Array{Int,1};
                               suppressWarnings::Bool=false,
                               suppressUpdate::Bool=true,
-                              localOnly::Bool=false)::Nothing
+                              localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
@@ -184,14 +184,14 @@ end
 
 
 #
-function update_bounds!(workspace::BBworkspace;
+function update_bounds!(workspace::BBworkspace{T1,T2};
                         cnsLoBs::Array{Float64,1}=Float64[],
                         cnsUpBs::Array{Float64,1}=Float64[],
                         varLoBs::Array{Float64,1}=Float64[],
                         varUpBs::Array{Float64,1}=Float64[],
                         suppressWarnings::Bool=false,
                         suppressUpdate::Bool=false,
-                        localOnly::Bool=false)::Nothing
+                        localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # check the correctness of the input
     @assert length(cnsLoBs)==0 || length(cnsLoBs)==length(workspace.subsolverWS.cnsLoBs)
@@ -260,10 +260,10 @@ function update_bounds!(workspace::BBworkspace;
 end
 
 #
-function append_problem!(workspace::BBworkspace,problem::Problem;
+function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
                          suppressWarnings::Bool=false,
                          suppressUpdate::Bool=false,
-                         localOnly::Bool=false)::Nothing
+                         localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # check if it is possible to make changes
     if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode
@@ -343,8 +343,9 @@ end
 
 
 #
-function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,1};
-                                newSos1Groups::Array{Int,1}=Int[],suppressWarnings::Bool=false,suppressUpdate::Bool=false)::Nothing
+function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Array{Int,1};
+                                newSos1Groups::Array{Int,1}=Int[],
+                                suppressWarnings::Bool=false,suppressUpdate::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers

@@ -4,12 +4,12 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-28T19:41:28+02:00
+# @Last modified time: 2019-06-03T18:12:47+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 # function to print BB status info to screen
-function print_status(workspace::BBworkspace)::Nothing
+function print_status(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     if workspace.sharedMemory isa NullSharedMemory
 
@@ -43,7 +43,7 @@ end
 
 
 # returns the best solution
-function get_best_solution(workspace::BBworkspace;localOnly::Bool=false)::AbstractBBnode
+function get_best_solution(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::AbstractBBnode where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     solution = NullBBnode()
 
@@ -66,7 +66,7 @@ function get_best_solution(workspace::BBworkspace;localOnly::Bool=false)::Abstra
 end
 
 # returns the best node
-function get_best_node(workspace::BBworkspace;localOnly::Bool=false)::AbstractBBnode
+function get_best_node(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::AbstractBBnode  where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # define dummy best node
     bestNode = NullBBnode()
@@ -116,41 +116,41 @@ end
 
 
 # returns the number of variables
-function get_numVariables(workspace::BBworkspace)::Int
+function get_numVariables(workspace::BBworkspace{T1,T2})::Int where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_numVariables(workspace.subsolverWS)
 end
 
 # returns the number of discrete variables
-function get_numDiscreteVariables(workspace::BBworkspace)::Int
+function get_numDiscreteVariables(workspace::BBworkspace{T1,T2})::Int where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return length(workspace.dscIndices)
 end
 
 # returns the number of constraints
-function get_numConstraints(workspace::BBworkspace)::Int
+function get_numConstraints(workspace::BBworkspace{T1,T2})::Int where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_numConstraints(workspace.subsolverWS)
 end
 
 # this function returns the sparsity pattern of the constraint set
-function get_constraints_sparsity(workspace::BBworkspace)::Tuple{Array{Int,1},Array{Int,1}}
+function get_constraints_sparsity(workspace::BBworkspace{T1,T2})::Tuple{Array{Int,1},Array{Int,1}} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_constraints_sparsity(workspace.subsolverWS)
 end
 
 # this function returns the sparsity pattern a constraint in the constraint set
-function get_constraint_sparsity(workspace::BBworkspace,index::Int)::Array{Int,1}
+function get_constraint_sparsity(workspace::BBworkspace{T1,T2},index::Int)::Array{Int,1}  where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_constraint_sparsity(workspace.subsolverWS,index)
 end
 
 # this function returns the sparsity pattern of the objective function
-function get_objective_sparsity(workspace::BBworkspace)::Tuple{Array{Int,1},Array{Int,1}}
+function get_objective_sparsity(workspace::BBworkspace{T1,T2})::Tuple{Array{Int,1},Array{Int,1}}  where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_objective_sparsity(workspace.subsolverWS)
 end
 
 #
-function get_variableBounds(workspace::BBworkspace)::Tuple{Array{Float64,1},Array{Float64,1}}
+function get_variableBounds(workspace::BBworkspace{T1,T2})::Tuple{Array{Float64,1},Array{Float64,1}}  where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_variableBounds(workspace.subsolverWS)
 end
 
 #
-function get_constraintBounds(workspace::BBworkspace)::Tuple{Array{Float64,1},Array{Float64,1}}
+function get_constraintBounds(workspace::BBworkspace{T1,T2})::Tuple{Array{Float64,1},Array{Float64,1}}  where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_constraintsBounds(workspace.subsolverWS)
 end

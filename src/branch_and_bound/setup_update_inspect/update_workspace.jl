@@ -3,13 +3,13 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T16:45:55+02:00
+# @Last modified time: 2019-06-03T18:06:04+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 #
-function reset_explored_nodes!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
+function reset_explored_nodes!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
 
@@ -51,7 +51,7 @@ end
 
 
 #
-function update_sharedMemory(workspace::BBworkspace)::Nothing
+function update_sharedMemory(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
 	if workspace.sharedMemory isa BBsharedMemory{BBnodeChannel}
 		numVars = get_numVariables(workspace)
@@ -80,7 +80,7 @@ end
 
 
 #
-function update!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
+function update!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
 
@@ -138,7 +138,7 @@ end
 
 
 # return the workspace to the initial state
-function reset!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
+function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
 
@@ -171,7 +171,7 @@ end
 
 
 # eliminates all the generated nodes from the workspace
-function clear!(workspace;localOnly::Bool=false)::Nothing
+function clear!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
 
