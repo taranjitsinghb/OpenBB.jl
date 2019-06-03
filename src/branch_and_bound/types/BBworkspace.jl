@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBworkspace.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-23T21:58:35+02:00
+# @Last modified time: 2019-06-03T12:39:51+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -18,7 +18,6 @@ struct BBworkspace{T1<:AbstractWorkspace,T2<:AbstractSharedMemory} <: AbstractWo
     subsolverWS::T1
     dscIndices::Array{Int64,1}
     sos1Groups::Array{Int64,1}
-    sosConstraints::LinearConstraintSet
     # branch and bound status
     activeQueue::Array{BBnode,1}
     solutionPool::Array{BBnode,1}
