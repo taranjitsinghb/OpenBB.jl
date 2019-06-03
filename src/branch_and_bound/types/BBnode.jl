@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBnode.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T16:07:30+02:00
+# @Last modified time: 2019-06-03T19:04:26+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -26,15 +26,4 @@ end
 # this node is used to arrest the branch and bound process
 struct KillerNode <:AbstractBBnode
     count::Int
-end
-
-
-# this is the result of calling a subsolver on the node
-struct SubSolution
-    primal::Array{Float64,1}
-    bndDual::Array{Float64,1}
-    cnsDual::Array{Float64,1}
-    objVal::Float64
-    status::Int
-    time::Float64
 end

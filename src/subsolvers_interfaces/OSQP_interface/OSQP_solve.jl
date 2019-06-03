@@ -3,25 +3,17 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-11T12:25:21+01:00
+# @Last modified time: 2019-06-03T19:05:25+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
-function solve!(workspace::OSQPworkspace;
-                    varLoBs::Array{Float64,1}=Float64[],
-                    varUpBs::Array{Float64,1}=Float64[],
-                    primal::Array{Float64,1}=Float64[],
-                    bndDual::Array{Float64,1}=Float64[],
-                    cnsDual::Array{Float64,1}=Float64[])::SubSolution
-
-    # check inputs
-    if length(varLoBs) == 0
-        varLoBs = workspace.varLoBs
-    end
-    if length(varUpBs) == 0
-        varUpBs = workspace.varUpBs
-    end
+function solve!(workspace::OSQPworkspace,
+                varLoBs::Array{Float64,1},
+                varUpBs::Array{Float64,1},
+                primal::Array{Float64,1},
+                bndDual::Array{Float64,1},
+                cnsDual::Array{Float64,1})::Tuple{Float64,Int8,Float64}
 
     # update the osqp model
     OSQP.update!(workspace.model;l=vcat(varLoBs,workspace.cnsLoBs),
@@ -52,5 +44,8 @@ function solve!(workspace::OSQPworkspace;
 
     #return solution
     nVars = size(workspace.A,2 )
-    return SubSolution(sol.x, sol.y[1:nVars],sol.y[nVars+1:end], sol.info.obj_val, status, sol.info.run_time)
+    @. primal = sol.x
+    @. bndDual = sol.y[1:nVars]
+    @. cnsDual = sol.y[nVars+1:end]
+    return (sol.info.obj_val, status, sol.info.run_time)
 end
