@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T13:37:37+02:00
+# @Last modified time: 2019-06-03T16:09:08+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -77,7 +77,7 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 									  bb_primalTolerance=bb_settings.primalTolerance,
 									  bb_timeLimit=bb_settings.timeLimit),
 								problem.varSet.dscIndices,problem.varSet.sos1Groups,problem.varSet.pseudoCosts,
-								[BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),problem.varSet.val,
+								[BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
 									   zeros(numVars),zeros(numCnss),1.,NaN,false)],
 								Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats),bb_settings)
@@ -110,7 +110,7 @@ function setup(problem::Problem, bb_settings::BBsettings=BBsettings(), ss_settin
 									  bb_primalTolerance=bb_settings.primalTolerance,
 									  bb_timeLimit=bb_settings.timeLimit),
 								problem.varSet.dscIndices,problem.varSet.sos1Groups,problem.varSet.pseudoCosts,
-								[BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),problem.varSet.val,
+								[BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
 									   zeros(numVars),zeros(numCnss),1.,NaN,false)],
 								Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),NullSharedMemory(),bb_settings)

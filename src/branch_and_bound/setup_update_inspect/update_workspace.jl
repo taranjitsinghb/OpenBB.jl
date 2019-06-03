@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-28T20:20:07+02:00
+# @Last modified time: 2019-06-03T16:45:55+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -50,7 +50,36 @@ end
 
 
 
+#
+function update_sharedMemory(workspace::BBworkspace)::Nothing
 
+	if workspace.sharedMemory isa BBsharedMemory{BBnodeChannel}
+		numVars = get_numVariables(workspace)
+		numCnss = get_numConstraints(workspace)
+		numDscVars = get_numDiscreteVariables(workspace)
+
+		# construct new communication Channels
+		communicationChannels = Array{BBnodeChannel,1}(undef,workspace.settings.numProcesses)
+		for k in 1:workspace.settings.numProcesses
+			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numDscVars,numCnss))
+		end
+		@sync for k in 2:workspace.settings.numProcesses
+			@async if k < workspace.settings.numProcesses
+				remotecall_fetch(Main.eval,k,:(workspace.sharedMemory.inputChannel = $(communicationChannels[k]);
+											   workspace.sharedMemory.outputChannel = $(communicationChannels[k+1]);
+											   nothing))
+			else
+				remotecall_fetch(Main.eval,k,:(workspace.sharedMemory.inputChannel = $(communicationChannels[k]);
+											   workspace.sharedMemory.outputChannel = $(communicationChannels[1]);
+											   nothing))
+			end
+		end
+	end
+	return
+end
+
+
+#
 function update!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
@@ -62,6 +91,9 @@ function update!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
 
         # call the local version of the function on the current process
         update!(workspace,localOnly=true)
+
+		# adapt the shared memory to the new problem
+		update_sharedMemory(workspace)
 
         # reset the global info
         workspace.sharedMemory.objectiveBounds[end] = Inf

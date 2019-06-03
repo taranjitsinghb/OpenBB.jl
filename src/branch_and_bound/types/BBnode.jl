@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBnode.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T13:27:04+02:00
+# @Last modified time: 2019-06-03T16:07:30+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -13,8 +13,8 @@ abstract type AbstractBBnode end; struct NullBBnode <: AbstractBBnode end
 
 # this is the set of data that distinguishes a node from another
 mutable struct BBnode <: AbstractBBnode
-    branchLoBs::Dict{Int,Float64}
-    branchUpBs::Dict{Int,Float64}
+    branchLoBs::Array{Float64,1}
+    branchUpBs::Array{Float64,1}
     primal::Array{Float64,1}
     bndDual::Array{Float64,1}
     cnsDual::Array{Float64,1}

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: simple_rounding_heuristics.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T13:27:22+02:00
+# @Last modified time: 2019-06-03T14:36:26+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -15,10 +15,8 @@ function simple_rounding_heuristics(node::BBnode, workspace::BBworkspace)::BBnod
     newBranchLoBs = copy(node.branchLoBs)
     newBranchUpBs = copy(node.branchUpBs)
 
-    for ind in workspace.dscIndices
-        newBranchLoBs[ind] = newBranchUpBs[ind] = primal[ind] = Int(round(node.primal[ind]))
-
-    end
+    @. primal[workspace.dscIndices] = round(node.primal[workspace.dscIndices])
+    @. newBranchLoBs = newBranchUpBs = Int(primal[workspace.dscIndices])
 
     # return the resulting node
     BBnode(newBranchLoBs,newBranchUpBs,

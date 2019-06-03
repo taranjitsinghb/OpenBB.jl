@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve_and_branch.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T13:26:59+02:00
+# @Last modified time: 2019-06-03T16:36:14+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -16,23 +16,8 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
     globalLoBs, globalUpBs = get_variableBounds(workspace)
     varLoBs = copy(globalLoBs)
     varUpBs = copy(globalUpBs)
-    for k in keys(node.branchLoBs)
-        if varUpBs[k] < node.branchLoBs[k]
-            # declare the problem infeasible
-            return ("infeasible",Array{BBnode,1}())
-        else
-            varLoBs[k] = max(varLoBs[k],node.branchLoBs[k])
-        end
-    end
-    for k in keys(node.branchUpBs)
-        if varLoBs[k] > node.branchUpBs[k]
-            # declare the problem infeasible
-            return ("infeasible",Array{BBnode,1}())
-        else
-            varUpBs[k] = min(varUpBs[k],node.branchUpBs[k])
-        end
-    end
-
+    @. varLoBs[workspace.dscIndices] = max(varLoBs[workspace.dscIndices],node.branchLoBs)
+    @. varUpBs[workspace.dscIndices] = min(varUpBs[workspace.dscIndices],node.branchUpBs)
 
     # solve the node
     # node status guide:
@@ -42,8 +27,7 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
     # 3 -> error
     out = solve!(workspace.subsolverWS;
                     varLoBs=varLoBs,varUpBs=varUpBs,
-                    primal=node.primal,
-                    bndDual=node.bndDual,cnsDual=node.cnsDual)
+                    primal=node.primal,bndDual=node.bndDual,cnsDual=node.cnsDual)
 
     # count how many nodes we have solved
     workspace.status.numExploredNodes = workspace.status.numExploredNodes + 1
@@ -61,28 +45,20 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
     # check the problem for suboptimality, giving some slack to badly solved problems
     if out.objVal + (1 - 101*(out.status==2))*get_primalTolerance(workspace.subsolverWS) > min(workspace.status.objUpB,workspace.settings.objectiveCutoff)
 
-        return ("suboptimal",[BBnode(copy(node.branchLoBs),
-                                           copy(node.branchUpBs),
-                                           copy(out.primal),
-                                           copy(out.bndDual),
-                                           copy(out.cnsDual),
-                                           2*sum(fractionality)/length(workspace.dscIndices),
-                                           out.objVal,
-                                           out.status== 0)])
+        return ("suboptimal",[BBnode(copy(node.branchLoBs),copy(node.branchUpBs),
+                                     copy(out.primal),copy(out.bndDual),copy(out.cnsDual),
+                                     2*sum(fractionality)/length(workspace.dscIndices),
+                                     out.objVal,out.status==0)])
 
     elseif maximum(fractionality) <= workspace.settings.integerTolerance
         # round the integer variables
         @. out.primal[workspace.dscIndices] = round(out.primal[workspace.dscIndices])
 
         # new solution found!
-        return ("solution",[BBnode(copy(node.branchLoBs),
-                                         copy(node.branchUpBs),
-                                         copy(out.primal),
-                                         copy(out.bndDual),
-                                         copy(out.cnsDual),
-                                         2*sum(fractionality)/length(workspace.dscIndices),
-                                         out.objVal,
-                                         out.status== 0)])
+        return ("solution",[BBnode(copy(node.branchLoBs),copy(node.branchUpBs),
+                                   copy(out.primal),copy(out.bndDual),copy(out.cnsDual),
+                                   2*sum(fractionality)/length(workspace.dscIndices),
+                                   out.objVal,out.status==0)])
     else
 
         # select a branching index
@@ -113,8 +89,10 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
             permute!(sos1Group,sortperm(fractionality[sos1Group]))
 
             # create the new bounds for the children nodes
-            newLoBs = newUpBs = [Dict{Int,Float64}([workspace.dscIndices[sos1Group[i]] => 0. for i in 1:2:length(sos1Group)]),
-                                 Dict{Int,Float64}([workspace.dscIndices[sos1Group[i]] => 0. for i in 2:2:length(sos1Group)])]
+            newLoBs = [copy(node.branchLoBs),copy(node.branchLoBs)]
+            newUpBs = [copy(node.branchUpBs),copy(node.branchUpBs)]
+            @. newLoBs[1][sos1Group[1:2:end]] = newUpBs[1][sos1Group[1:2:end]] = 0.
+            @. newLoBs[2][sos1Group[2:2:end]] = newUpBs[2][sos1Group[2:2:end]] = 0.
 
             # compute average fractionality of the children
             childrenAvgFrac = [2*(sum(fractionality)-sum(fractionality[sos1Group[1:2:end]]))/length(workspace.dscIndices),
@@ -126,10 +104,10 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
             numChildren = 2
 
             # create the new bounds for the children nodes
-            newLoBs = [Dict{Int,Float64}(branchIndex=>ceil(out.primal[branchIndex]-get_primalTolerance(workspace.subsolverWS))),
-                       Dict{Int,Float64}()]
-            newUpBs = [Dict{Int,Float64}(),
-                       Dict{Int,Float64}(branchIndex=>floor(out.primal[branchIndex]+get_primalTolerance(workspace.subsolverWS)))]
+            newLoBs = [copy(node.branchLoBs),copy(node.branchLoBs)]
+            newLoBs[1][tmpIndex] = ceil(out.primal[branchIndex]-get_primalTolerance(workspace.subsolverWS))
+            newUpBs = [copy(node.branchUpBs),copy(node.branchUpBs)]
+            newUpBs[2][tmpIndex] = floor(out.primal[branchIndex]+get_primalTolerance(workspace.subsolverWS))
 
             # compute average fractionality of the children
             childrenAvgFrac = repeat([2*(sum(fractionality)-fractionality[tmpIndex])/length(workspace.dscIndices)],2)
@@ -142,14 +120,9 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
 
             # perform bound propagation (TO DO)
 
-            children[k] = BBnode(merge(node.branchLoBs,newLoBs[k]),
-                                       merge(node.branchUpBs,newUpBs[k]),
-                                       copy(out.primal),
-                                       copy(out.bndDual),
-                                       copy(out.cnsDual),
-                                       childrenAvgFrac[k],
-                                       out.objVal,
-                                       out.status== 0)
+            children[k] = BBnode(newLoBs[k],newUpBs[k],copy(out.primal),
+                                 copy(out.bndDual),copy(out.cnsDual),
+                                 childrenAvgFrac[k],out.objVal,out.status==0)
         end
 
 

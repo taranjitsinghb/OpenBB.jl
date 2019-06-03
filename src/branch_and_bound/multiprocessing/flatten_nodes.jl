@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T13:17:06+02:00
+# @Last modified time: 2019-06-03T14:14:55+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -12,7 +12,7 @@
 # this function returns the size of a flat representation of a node
 function flat_size(numVars::Int,numDscVars::Int,numCnss::Int)::Int
     return 4 + 3 +        # header + average fractionality + objective value + reliable
-           4*numDscVars + # branching bounds
+           2*numDscVars + # branching bounds
            2*numVars +    # primal + bound_dual
            numCnss        # cns_dual
 end
@@ -59,22 +59,10 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     offset += 3
 
     # bounds
-    for (k,pair) in enumerate(node.branchLoBs)
-        destinationArray[offset+k] = pair[1]
-        destinationArray[offset+numDscVars+k] = pair[2]
-    end
-    if length(node.branchLoBs) < numDscVars # put a zero to mark the end of the info
-        destinationArray[offset+length(node.branchLoBs)+1] = 0.
-    end
-    offset+=2*numDscVars
-    for (k,pair) in enumerate(node.branchUpBs)
-        destinationArray[offset+k] = pair[1]
-        destinationArray[offset+numDscVars+k] = pair[2]
-    end
-    if length(node.branchUpBs) < numDscVars # put a zero to mark the end of the info
-        destinationArray[offset+length(node.branchUpBs)+1] = 0.
-    end
-    offset+=2*numDscVars
+    @. destinationArray[offset+1:offset+numDscVars] = node.branchLoBs
+    offset+=numDscVars
+    @. destinationArray[offset+1:offset+numDscVars] = node.branchUpBs
+    offset+=numDscVars
 
     # primal
     @. destinationArray[offset+1:offset+numVars] = node.primal
@@ -141,25 +129,12 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         offset += 3
 
         # bounds
-        branchLoBs = Dict{Int,Float64}()
-        for k in 1:numDscVars
-            if flatRepresentation[offset+k] != 0.
-                branchLoBs[Int(flatRepresentation[offset+k])] = flatRepresentation[offset + numDscVars + k]
-            else
-                break
-            end
-        end
-        offset += 2*numDscVars
-
-        branchUpBs = Dict{Int,Float64}()
-        for k in 1:numDscVars
-            if flatRepresentation[offset+k] != 0.
-                branchUpBs[Int(flatRepresentation[offset+k])] = flatRepresentation[offset + numDscVars + k]
-            else
-                break
-            end
-        end
-        offset += 2*numDscVars
+        branchLoBs = Array{Float64,1}(undef,numDscVars)
+        @. branchLoBs = flatRepresentation[offset+1:offset+numDscVars]
+        offset += numDscVars
+        branchUpBs = Array{Float64,1}(undef,numDscVars)
+        @. branchUpBs = flatRepresentation[offset+1:offset+numDscVars]
+        offset += numDscVars
 
         # primal
         primal = Array{Float64,1}(undef,numVars)

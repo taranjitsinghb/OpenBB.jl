@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T13:20:16+02:00
+# @Last modified time: 2019-06-03T15:22:01+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -294,6 +294,9 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         for i in  1:length(workspace.activeQueue)
             # mark all the problems as unreliable if necessary
             workspace.activeQueue[i].reliable = reliableObjLoBs && workspace.activeQueue[i].reliable
+            # extend branching bounds
+            append!(workspace.activeQueue[i].branchLoBs,-Infs(length(problem.varSet.dscIndices)))
+            append!(workspace.activeQueue[i].branchUpBs, Infs(length(problem.varSet.dscIndices)))
             # extend primal and dual optimization results
             append!(workspace.activeQueue[i].primal,copy(newPrimal))
             append!(workspace.activeQueue[i].bndDual,zeros(nVars2))
@@ -302,6 +305,9 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         for i in  1:length(workspace.solutionPool)
             # mark all the problems as unreliable if necessary
             workspace.solutionPool[i].reliable = reliableObjLoBs && workspace.solutionPool[i].reliable
+            # extend branching bounds
+            append!(workspace.solutionPool[i].branchLoBs,-Infs(length(problem.varSet.dscIndices)))
+            append!(workspace.solutionPool[i].branchUpBs, Infs(length(problem.varSet.dscIndices)))
             # extend primal and dual optimization results
             append!(workspace.solutionPool[i].primal,copy(newPrimal))
             append!(workspace.solutionPool[i].bndDual,zeros(nVars2))
@@ -310,6 +316,9 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         for i in  1:length(workspace.unactivePool)
             # mark all the problems as unreliable if necessary
             workspace.unactivePool[i].reliable = reliableObjLoBs && workspace.unactivePool[i].reliable
+            # extend branching bounds
+            append!(workspace.unactivePool[i].branchLoBs,-Infs(length(problem.varSet.dscIndices)))
+            append!(workspace.unactivePool[i].branchUpBs, Infs(length(problem.varSet.dscIndices)))
             # extend primal and dual optimization results
             append!(workspace.unactivePool[i].primal,copy(newPrimal))
             append!(workspace.unactivePool[i].bndDual,zeros(nVars2))
