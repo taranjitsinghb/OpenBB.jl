@@ -4,19 +4,19 @@
 # @Project: OpenBB
 # @Filename: branching_priority_functions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-03T14:20:49+02:00
+# @Last modified time: 2019-06-03T19:12:52+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 # priority functions for variables to branch on
 
-function pseudo_cost(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,1})::Int
+function pseudo_cost(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,2})::Int
     (_,index) = findmax(@. (1e-12 + fractionality)*pseudoCosts)
     return index
 end
 
-function most_fractional(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,1})::Int
+function most_fractional(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,2})::Int
     (_,index) = findmax(fractionality)
     if fractionality[index] == 0
         return 0
@@ -25,12 +25,7 @@ function most_fractional(fractionality::Array{Float64,1},pseudoCosts::Array{Floa
     end
 end
 
-function order_of_appearance(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,1})::Int
-    # for i in 1:length(pseudoCosts)
-    #     if pseudoCosts[i] == Inf
-    #         return i
-    #     end
-    # end
+function order_of_appearance(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,2})::Int
     for i in 1:length(fractionality)
         if fractionality[i] > 0
             return i
@@ -39,12 +34,7 @@ function order_of_appearance(fractionality::Array{Float64,1},pseudoCosts::Array{
     return 0
 end
 
-function reverse_order_of_appearance(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,1})::Int
-    # for i in length(pseudoCosts):-1:1
-    #     if pseudoCosts[i] == Inf
-    #         return i
-    #     end
-    # end
+function reverse_order_of_appearance(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,2})::Int
     for i in length(fractionality):-1:1
         if fractionality[i] > 0
             return i

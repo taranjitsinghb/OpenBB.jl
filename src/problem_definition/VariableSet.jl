@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-23T19:17:39+02:00
+# @Last modified time: 2019-06-03T19:17:02+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -21,7 +21,7 @@ struct VariableSet <: AbstractVariableSet
     val::Array{Float64,1}
     dscIndices::Array{Int,1}
     sos1Groups::Array{Int,1} # assume group -1 as no group
-    pseudoCosts::Array{Float64,1}
+    pseudoCosts::Array{Float64,2}
 end
 
 function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},val::Array{Float64,1}=Float64[],
@@ -34,10 +34,10 @@ function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},val::Array{F
         @error "sos1Groups should either be empty or have the same length of dscIndices"
     end
 
-    if length(pseudoCosts) == 0
-        pseudoCosts = ones(length(dscIndices))
-    elseif length(pseudoCosts) != length(dscIndices)
-        @error "pseudoCosts should either be empty or have the same length of dscIndices"
+    if size(pseudoCosts,1) == 0
+        pseudoCosts = ones(length(dscIndices),2)
+    elseif size(pseudoCosts,1) != length(dscIndices) || size(pseudoCosts,2) != 2
+        @error "pseudoCosts should either be empty or have size: length(dscIndices) x 2 "
     end
 
     if length(val) == 0

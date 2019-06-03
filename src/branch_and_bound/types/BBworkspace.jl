@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBworkspace.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T13:38:58+02:00
+# @Last modified time: 2019-06-03T19:13:47+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -18,7 +18,7 @@ struct BBworkspace{T1<:AbstractWorkspace,T2<:AbstractSharedMemory} <: AbstractWo
     subsolverWS::T1
     dscIndices::Array{Int64,1}
     sos1Groups::Array{Int64,1}
-    pseudoCosts::Array{Float64,1}
+    pseudoCosts::Array{Float64,2}
     # branch and bound status
     activeQueue::Array{BBnode,1}
     solutionPool::Array{BBnode,1}
