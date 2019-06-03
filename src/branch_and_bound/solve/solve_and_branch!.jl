@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve_and_branch.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-07T15:16:51+02:00
+# @Last modified time: 2019-06-03T13:26:59+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -63,7 +63,6 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
 
         return ("suboptimal",[BBnode(copy(node.branchLoBs),
                                            copy(node.branchUpBs),
-                                           copy(node.pseudoCosts),
                                            copy(out.primal),
                                            copy(out.bndDual),
                                            copy(out.cnsDual),
@@ -78,7 +77,6 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
         # new solution found!
         return ("solution",[BBnode(copy(node.branchLoBs),
                                          copy(node.branchUpBs),
-                                         copy(node.pseudoCosts),
                                          copy(out.primal),
                                          copy(out.bndDual),
                                          copy(out.cnsDual),
@@ -88,7 +86,7 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
     else
 
         # select a branching index
-        tmpIndex = workspace.settings.branching_priority_rule(fractionality,node.pseudoCosts)
+        tmpIndex = workspace.settings.branching_priority_rule(fractionality,workspace.pseudoCosts)
         branchIndex = workspace.dscIndices[tmpIndex]
 
 
@@ -118,18 +116,6 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
             newLoBs = newUpBs = [Dict{Int,Float64}([workspace.dscIndices[sos1Group[i]] => 0. for i in 1:2:length(sos1Group)]),
                                  Dict{Int,Float64}([workspace.dscIndices[sos1Group[i]] => 0. for i in 2:2:length(sos1Group)])]
 
-            # compute children pseudoCosts (incomplete)
-            tmpPseudoCosts = copy(node.pseudoCosts)
-            for i in 1:2:length(sos1Group)
-                tmpPseudoCosts[sos1Group[i]] = 0.
-            end
-            childrenPseudoCosts = [tmpPseudoCosts]
-            tmpPseudoCosts = copy(node.pseudoCosts)
-            for i in 2:2:length(sos1Group)
-                tmpPseudoCosts[sos1Group[i]] = 0.
-            end
-            push!(childrenPseudoCosts,tmpPseudoCosts)
-
             # compute average fractionality of the children
             childrenAvgFrac = [2*(sum(fractionality)-sum(fractionality[sos1Group[1:2:end]]))/length(workspace.dscIndices),
                                2*(sum(fractionality)-sum(fractionality[sos1Group[2:2:end]]))/length(workspace.dscIndices)]
@@ -145,81 +131,19 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
             newUpBs = [Dict{Int,Float64}(),
                        Dict{Int,Float64}(branchIndex=>floor(out.primal[branchIndex]+get_primalTolerance(workspace.subsolverWS)))]
 
-
-            # compute children pseudoCosts (incomplete)
-            tmpPseudoCosts = copy(node.pseudoCosts)
-            if varUpBs[branchIndex] == newLoBs[1][branchIndex]
-                tmpPseudoCosts[tmpIndex] = 0.
-            end
-            childrenPseudoCosts = [tmpPseudoCosts]
-            tmpPseudoCosts = copy(node.pseudoCosts)
-            if varLoBs[branchIndex] == newUpBs[2][branchIndex]
-                tmpPseudoCosts[tmpIndex] = 0.
-            end
-            push!(childrenPseudoCosts,tmpPseudoCosts)
-
             # compute average fractionality of the children
             childrenAvgFrac = repeat([2*(sum(fractionality)-fractionality[tmpIndex])/length(workspace.dscIndices)],2)
 
-        else # case to consider due to possible infinite pseudo costs
-
-            # number of children to create (depends on the value of the selected variable)
-            numChildren = 1
-
-            # first child: fix the value of the branching variable
-            newLoBs = newUpBs = [Dict{Int,Float64}(branchIndex=>round(out.primal[branchIndex]))]
-            tmpPseudoCosts = copy(node.pseudoCosts)
-            tmpPseudoCosts[tmpIndex] = 0.
-            childrenPseudoCosts = [tmpPseudoCosts]
-
-
-            # second child: round down
-            roundedVal = round(out.primal[branchIndex])-1
-            if roundedVal >= varLoBs[branchIndex]
-                numChildren += 1
-                newLoBs = vcat(newLoBs,[Dict{Int,Float64}()])
-                newUpBs = vcat(newUpBs,[Dict{Int,Float64}(branchIndex=>roundedVal)])
-
-                tmpPseudoCosts = copy(node.pseudoCosts)
-                if roundedVal == varLoBs[branchIndex]
-                    tmpPseudoCosts[tmpIndex] = 0.
-                end
-                push!(childrenPseudoCosts,tmpPseudoCosts)
-            end
-
-            # second third child: round up
-            roundedVal = round(out.primal[branchIndex])+1
-            if roundedVal <= varUpBs[branchIndex]
-                numChildren += 1
-                newLoBs = vcat(newLoBs,[Dict{Int,Float64}(branchIndex=>roundedVal)])
-                newUpBs = vcat(newUpBs,[Dict{Int,Float64}()])
-
-                tmpPseudoCosts = copy(node.pseudoCosts)
-                if roundedVal == varUpBs[branchIndex]
-                    tmpPseudoCosts[tmpIndex] = 0.
-                end
-                push!(childrenPseudoCosts,tmpPseudoCosts)
-            end
-
-            childrenAvgFrac = repeat([2*(sum(fractionality)-fractionality[tmpIndex])/length(workspace.dscIndices)],numChildren)
         end
-
-        # println(newLoBs," - ",newUpBs)
-        # println(node.pseudoCosts)
-        # println(out.primal[workspace.dscIndices])
 
         # create the list of children
         children = Array{BBnode}(undef,numChildren)
         for k in 1:numChildren
-            # println(node.branchLoBs,newLoBs[k])
-            # println(node.branchUpBs,newUpBs[k])
-            # println(childrenPseudoCosts[k])
 
             # perform bound propagation (TO DO)
 
             children[k] = BBnode(merge(node.branchLoBs,newLoBs[k]),
                                        merge(node.branchUpBs,newUpBs[k]),
-                                       childrenPseudoCosts[k],
                                        copy(out.primal),
                                        copy(out.bndDual),
                                        copy(out.cnsDual),

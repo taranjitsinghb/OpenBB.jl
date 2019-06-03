@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-28T18:00:17+02:00
+# @Last modified time: 2019-06-03T13:20:16+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -291,13 +291,11 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         reliableObjLoBs = append_problem!(workspace.subsolverWS,problem,suppressUpdate=true)
         # update all the sub-problems
         newPrimal = problem.varSet.val
-        newPseudoCosts = problem.varSet.pseudoCosts
         for i in  1:length(workspace.activeQueue)
             # mark all the problems as unreliable if necessary
             workspace.activeQueue[i].reliable = reliableObjLoBs && workspace.activeQueue[i].reliable
             # extend primal and dual optimization results
             append!(workspace.activeQueue[i].primal,copy(newPrimal))
-            append!(workspace.activeQueue[i].pseudoCosts,copy(newPseudoCosts))
             append!(workspace.activeQueue[i].bndDual,zeros(nVars2))
             append!(workspace.activeQueue[i].cnsDual,zeros(nCnss2))
         end
@@ -306,7 +304,6 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
             workspace.solutionPool[i].reliable = reliableObjLoBs && workspace.solutionPool[i].reliable
             # extend primal and dual optimization results
             append!(workspace.solutionPool[i].primal,copy(newPrimal))
-            append!(workspace.solutionPool[i].pseudoCosts,copy(newPseudoCosts))
             append!(workspace.solutionPool[i].bndDual,zeros(nVars2))
             append!(workspace.solutionPool[i].cnsDual,zeros(nCnss2))
         end
@@ -315,7 +312,6 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
             workspace.unactivePool[i].reliable = reliableObjLoBs && workspace.unactivePool[i].reliable
             # extend primal and dual optimization results
             append!(workspace.unactivePool[i].primal,copy(newPrimal))
-            append!(workspace.unactivePool[i].pseudoCosts,copy(newPseudoCosts))
             append!(workspace.unactivePool[i].bndDual,zeros(nVars2))
             append!(workspace.unactivePool[i].cnsDual,zeros(nCnss2))
         end
@@ -339,22 +335,19 @@ end
 
 #
 function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,1};
-                                newSos1Groups::Array{Int,1}=Int[],newPseudoCosts::Array{Float64,1}=Float64[],
-                                suppressWarnings::Bool=false,suppressUpdate::Bool=false)::Nothing
+                                newSos1Groups::Array{Int,1}=Int[],suppressWarnings::Bool=false,suppressUpdate::Bool=false)::Nothing
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.integralize_variables!(workspace,$newDscIndices,
                                                                                 newSos1Groups=$newSos1Groups,
-                                                                                newPseudoCosts=$newPseudoCosts,
                                                                                 suppressWarnings=$suppressUpdate,
                                                                                 suppressUpdate=true,localOnly=true)))
         end
         # call the local version of the function on the main process
         integralize_variables!(workspace,newDscIndices,
                                newSos1Groups=newSos1Groups,
-                               newPseudoCosts=newPseudoCosts,
                                suppressWarnings=suppressUpdate,
                                suppressUpdate=true,localOnly=true)
     else
@@ -368,29 +361,12 @@ function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,
         elseif length(newSos1Groups) != length(newDscIndices)
             @error "newSos1Groups should either be empty or have the same dimension than newDscIndices"
         end
-        if length(newPseudoCosts) == 0
-            newPseudoCosts = ones(length(newDscIndices))
-        elseif length(newPseudoCosts) != length(newDscIndices)
-            @error "newPseudoCosts should either be empty or have the same dimension than newDscIndices"
-        end
+
         # add the new discrete variables
         append!(workspace.dscIndices,copy(newDscIndices))
         append!(workspace.sos1Groups,copy(newSos1Groups))
         tmpPerm = sortperm!(workspace.dscIndices)
         permute!(workspace.sos1Groups,tmpPerm)
-        # update the nodes pseudoCosts
-        for i in 1:length(workspace.activeQueue)
-            append!(workspace.activeQueue[i].pseudoCosts,newPseudoCosts)
-            permute!(workspace.activeQueue[i].pseudoCosts,tmpPerm)
-        end
-        for i in 1:length(workspace.solutionPool)
-            append!(workspace.solutionPool[i].pseudoCosts,newPseudoCosts)
-            permute!(workspace.solutionPool[i].pseudoCosts,tmpPerm)
-        end
-        for i in 1:length(workspace.unactivePool)
-            append!(workspace.unactivePool[i].pseudoCosts,newPseudoCosts)
-            permute!(workspace.unactivePool[i].pseudoCosts,tmpPerm)
-        end
     end
 
     # adapt the workspace to the changes

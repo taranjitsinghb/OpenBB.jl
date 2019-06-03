@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-31T13:27:59+02:00
+# @Last modified time: 2019-06-03T13:17:06+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -12,7 +12,7 @@
 # this function returns the size of a flat representation of a node
 function flat_size(numVars::Int,numDscVars::Int,numCnss::Int)::Int
     return 4 + 3 +        # header + average fractionality + objective value + reliable
-           5*numDscVars + # branching bounds + pseudoCosts
+           4*numDscVars + # branching bounds
            2*numVars +    # primal + bound_dual
            numCnss        # cns_dual
 end
@@ -21,7 +21,7 @@ end
 function flat_size(node::BBnode)::Int
 
     numVars = length(node.primal)
-    numDscVars = length(node.pseudoCosts)
+    numDscVars = length(node.branchLoBs)
     numCnss = length(node.cnsDual)
 
     return flat_size(numVars,numDscVars,numCnss)
@@ -40,7 +40,7 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
 
 
     numVars = length(node.primal)
-    numDscVars = length(node.pseudoCosts)
+    numDscVars = length(node.branchLoBs)
     numCnss = length(node.cnsDual)
 
     @assert length(destinationArray) >= flat_size(numVars,numDscVars,numCnss) + offset
@@ -75,10 +75,6 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
         destinationArray[offset+length(node.branchUpBs)+1] = 0.
     end
     offset+=2*numDscVars
-
-    # pseudo-costs
-    @. destinationArray[offset+1:offset+numDscVars] = node.pseudoCosts
-    offset += numDscVars
 
     # primal
     @. destinationArray[offset+1:offset+numVars] = node.primal
@@ -165,11 +161,6 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         end
         offset += 2*numDscVars
 
-        #pseudo costs
-        pseudoCosts = Array{Float64,1}(undef,numDscVars)
-        @. pseudoCosts = flatRepresentation[offset+1:offset+numDscVars]
-        offset += numDscVars
-
         # primal
         primal = Array{Float64,1}(undef,numVars)
         @. primal = flatRepresentation[offset+1:offset+numVars]
@@ -183,7 +174,7 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         @. cnsDual = flatRepresentation[offset+1:offset+numCnss]
         offset += numCnss
 
-        return BBnode(branchLoBs,branchUpBs,pseudoCosts,primal,bndDual,cnsDual,avgFrac,objVal,reliable)
+        return BBnode(branchLoBs,branchUpBs,primal,bndDual,cnsDual,avgFrac,objVal,reliable)
     elseif flatRepresentation[offset+1] == -1.0
         return KillerNode(flatRepresentation[offset+2])
     else
