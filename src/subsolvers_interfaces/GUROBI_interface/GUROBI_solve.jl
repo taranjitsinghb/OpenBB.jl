@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBIsolve.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T19:03:21+02:00
+# @Last modified time: 2019-06-04T14:12:53+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -68,5 +68,5 @@ function solve!(workspace::GUROBIworkspace,
     @. primal = info_primal
     @. bndDual = info_bndDual
     @. cnsDual = info_cnsDual
-    return (info_obj, status, info_runtime
+    return (info_obj, status, info_runtime)
 end

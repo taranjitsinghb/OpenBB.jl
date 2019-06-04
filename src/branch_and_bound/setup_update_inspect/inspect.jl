@@ -87,7 +87,7 @@ function get_best_node(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Abs
         for node in nodes
             if bestNode isa NullBBnode || # there is no best node yet
                (node.avgFrac==0 && bestNode.avgFrac > 0) || # the new node is a solution while the best so far isn't
-               workspace.settings.expansion_priority_rule(node,bestNode,workspace.status) # the new node is better than the best so far
+               workspace.settings.expansionPriorityRule(node,bestNode,workspace.status) # the new node is better than the best so far
                 # set the new node as the best one
                 bestNode = node
            end
@@ -104,7 +104,7 @@ function get_best_node(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Abs
         # otherwise, check the unactivePool for better nodes
         if bestNode isa NullBBnode && length(workspace.unactivePool) > 0
             for node in workspace.unactivePool
-                if bestNode isa NullBBnode || workspace.settings.expansion_priority_rule(bestNode,node,workspace.status)
+                if bestNode isa NullBBnode || workspace.settings.expansionPriorityRule(bestNode,node,workspace.status)
                     bestNode = node
                 end
             end

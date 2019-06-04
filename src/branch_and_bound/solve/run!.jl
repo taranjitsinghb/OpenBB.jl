@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-31T18:21:13+02:00
+# @Last modified time: 2019-06-04T14:36:20+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -44,7 +44,7 @@ end
 
 
 # branch and bound algorithm
-function run!(workspace::BBworkspace)::Nothing
+function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # timing
     lastTimeCheckpoint = time()
@@ -86,21 +86,26 @@ function run!(workspace::BBworkspace)::Nothing
 
        else # continue with branch and bound
 
-           # update print algorithm status
-           if workspace.settings.verbose && processId == 1
+            # update print algorithm status
+            if workspace.settings.verbose && processId == 1
                if printCountdown <= 0
                    print_status(workspace)
                    printCountdown = workspace.settings.statusInfoPeriod
               end
-           end
+            end
 
-           # pick a node to process from the activeQueue
-           node = pop!(workspace.activeQueue)
+            # pick a node to process from the activeQueue
+            node = pop!(workspace.activeQueue)
 
-            # solve the node
+            # solve the node and branch
+            # output guide:
+            # 0 -> solution
+            # 1 -> children
+            # 2 -> suboptimal
+            # 3 -> infeasible
             out = solve_and_branch!(node,workspace)
 
-            if out[1] == "solution" && out[2][1].reliable # a reliable solution has been found
+            if out[1] == 0 && out[2][1].reliable # a reliable solution has been found
                 # insert new solution into the solutionPool
                 push!(workspace.solutionPool,out[2][1])
 
@@ -115,15 +120,15 @@ function run!(workspace::BBworkspace)::Nothing
                     workspace.sharedMemory.stats[1] +=1
                 end
 
-            elseif out[1] == "solution"  # a not reliable solution has been found
+            elseif out[1] == 0  # a not reliable solution has been found
                 # store the obtained (not reliable) solution
                 push!(workspace.unactivePool,out[2][1])
 
-            elseif out[1] == "suboptimal" && workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes cannot be completely eliminated
+            elseif out[1] == 2 && workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes cannot be completely eliminated
                 # store the suboptimal node
                 push!(workspace.unactivePool,out[2][1])
 
-            elseif out[1] == "children"  # no solution found. two children nodes have been created
+            elseif out[1] == 1  # no solution found. two children nodes have been created
 
                 #  send one of the children to the neighbouring node
                 if !(workspace.sharedMemory isa NullSharedMemory) && # multiprocessing?
@@ -137,7 +142,7 @@ function run!(workspace::BBworkspace)::Nothing
                            put!(workspace.sharedMemory.outputChannel,out[2][2])
                        else
                            # insert the remaining children into the queue
-                           insert_node!(workspace.activeQueue,out[2][k],workspace.settings.expansion_priority_rule,
+                           insert_node!(workspace.activeQueue,out[2][k],workspace.settings.expansionPriorityRule,
                                         workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
                         end
 
@@ -145,7 +150,7 @@ function run!(workspace::BBworkspace)::Nothing
                else
                    # insert the new nodes into the activeQueue
                    for k in 1:length(out[2])
-                       insert_node!(workspace.activeQueue,out[2][k],workspace.settings.expansion_priority_rule,
+                       insert_node!(workspace.activeQueue,out[2][k],workspace.settings.expansionPriorityRule,
                                     workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
                    end
                end
@@ -216,7 +221,7 @@ function run!(workspace::BBworkspace)::Nothing
                     end
 
                     # insert the new node in the queue
-                    insert_node!(workspace.activeQueue,newNode,workspace.settings.expansion_priority_rule,
+                    insert_node!(workspace.activeQueue,newNode,workspace.settings.expansionPriorityRule,
                                   workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
 
                     # go active and exit the local loop
@@ -263,7 +268,7 @@ function run!(workspace::BBworkspace)::Nothing
 
     elseif length(workspace.activeQueue) == 0 && workspace.status.objUpB == Inf
 
-        workspace.status.description = "infeasible"
+        workspace.status.description = 3
         if workspace.settings.verbose && processId == 1
             print_status(workspace)
             println(" Exit: infeasibilty detected")

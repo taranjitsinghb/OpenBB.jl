@@ -4,16 +4,23 @@
 # @Project: OpenBB
 # @Filename: solve_and_branch.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T18:56:01+02:00
+# @Last modified time: 2019-06-04T14:39:54+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 # this function is called everytime a node is picked from the activeQueue
-function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,Array{BBnode,1}}
+# output guide:
+# 0 -> solution
+# 1 -> children
+# 2 -> suboptimal
+# 3 -> infeasible
+function solve_and_branch!(node::BBnode, workspace::BBworkspace{T1,T2})::Tuple{Int8,Array{BBnode,1}} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
-    # count how many nodes we have solved
-    workspace.status.numExploredNodes = workspace.status.numExploredNodes + 1
+    # check if node is already suboptimal (the uperbound might have changed)
+    if node.objVal > workspace.status.objUpB - workspace.settings.primalTolerance
+        return (2,[node])
+    end
 
     # set the node bounds (considering that the general bounds might have changed)
     globalLoBs, globalUpBs = get_variableBounds(workspace)
@@ -30,9 +37,12 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
     # 3 -> error
     (node.objVal,ssStatus,~) = solve!(workspace.subsolverWS,varLoBs,varUpBs,node.primal,node.bndDual,node.cnsDual)
 
+    # count how many nodes we have solved
+    workspace.status.numExploredNodes = workspace.status.numExploredNodes + 1
+
     # check feasibility of the node solution
     if ssStatus == 1
-        return ("infeasible",Array{BBnode,1}())
+        return (3,Array{BBnode,1}())
     end
 
     # compute node fractionality
@@ -45,7 +55,7 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
     if node.objVal + (1 - 101*(ssStatus==2))*get_primalTolerance(workspace.subsolverWS) > min(workspace.status.objUpB,workspace.settings.objectiveCutoff)
 
         node
-        return ("suboptimal",[BBnode(copy(node.branchLoBs),copy(node.branchUpBs),
+        return (2,[BBnode(copy(node.branchLoBs),copy(node.branchUpBs),
                                      copy(node.primal),copy(node.bndDual),copy(node.cnsDual),
                                      2*sum(fractionality)/length(workspace.dscIndices),
                                      node.objVal,ssStatus==0)])
@@ -55,14 +65,14 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
         @. node.primal[workspace.dscIndices] = round(node.primal[workspace.dscIndices])
 
         # new solution found!
-        return ("solution",[BBnode(copy(node.branchLoBs),copy(node.branchUpBs),
+        return (0,[BBnode(copy(node.branchLoBs),copy(node.branchUpBs),
                                    copy(node.primal),copy(node.bndDual),copy(node.cnsDual),
                                    2*sum(fractionality)/length(workspace.dscIndices),
                                    node.objVal,ssStatus==0)])
     else
 
         # select a branching index
-        tmpIndex = workspace.settings.branching_priority_rule(fractionality,workspace.pseudoCosts)
+        tmpIndex = workspace.settings.branchingPriorityRule(fractionality,workspace.pseudoCosts)
         branchIndex = workspace.dscIndices[tmpIndex]
 
 
@@ -127,6 +137,6 @@ function solve_and_branch!(node::BBnode, workspace::BBworkspace)::Tuple{String,A
 
 
 
-        return ("children",children)
+        return (1,children)
     end
 end

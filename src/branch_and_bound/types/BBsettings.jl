@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T12:40:24+02:00
+# @Last modified time: 2019-06-03T19:33:50+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -24,8 +24,8 @@ mutable struct BBsettings <: AbstractSettings
     primalTolerance::Float64                # constraint violation tolerance
     objectiveCutoff::Float64                # look only for solutions that are better than the provided upper bound
     # priority rules
-    expansion_priority_rule::Function       # ordering of the nodes in the activeQueue
-    branching_priority_rule::Function       # ordering of the discrete variables for branching
+    expansionPriorityRule::Function       # ordering of the nodes in the activeQueue
+    branchingPriorityRule::Function       # ordering of the discrete variables for branching
     unreliable_subps_priority::Int          # activeQueue insertion priority for unreliable nodes (-1->low, 0->normal, 1->high)
     # stopping criteria
     custom_stopping_rule::Function          # user-defined stopping criterion
@@ -47,8 +47,8 @@ function BBsettings(;verbose::Bool=false,
                      integerTolerance::Float64=1e-4,
                      primalTolerance::Float64=1e-4,
                      objectiveCutoff::Float64=Inf,
-                     expansion_priority_rule::Function=lower_mixed,
-                     branching_priority_rule::Function=most_fractional,
+                     expansionPriorityRule::Function=lower_mixed,
+                     branchingPriorityRule::Function=most_fractional,
                      unreliable_subps_priority::Int=0,
                      custom_stopping_rule::Function=x->false,
                      timeLimit::Float64=Inf,
@@ -61,6 +61,6 @@ function BBsettings(;verbose::Bool=false,
 
     return BBsettings(verbose,statusInfoPeriod,numProcesses,stopAfterSolution,dynamicMode,
                       integerTolerance,primalTolerance,objectiveCutoff,
-                      expansion_priority_rule,branching_priority_rule,unreliable_subps_priority,
+                      expansionPriorityRule,branchingPriorityRule,unreliable_subps_priority,
                       custom_stopping_rule,timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,roundingHeuristicsThreshold)
 end

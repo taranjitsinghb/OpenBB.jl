@@ -32,7 +32,7 @@ function reset_explored_nodes!(workspace::BBworkspace{T1,T2};localOnly::Bool=fal
         append!(workspace.activeQueue,workspace.unactivePool)
 		append!(workspace.activeQueue,workspace.solutionPool)
         sort!(workspace.activeQueue,alg=MergeSort,rev=true,
-              lt=(l,r)->workspace.settings.expansion_priority_rule(l,r,workspace.status))
+              lt=(l,r)->workspace.settings.expansionPriorityRule(l,r,workspace.status))
 
         deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
         deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
