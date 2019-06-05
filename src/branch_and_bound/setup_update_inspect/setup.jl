@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T19:31:20+02:00
+# @Last modified time: 2019-06-04T17:15:18+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -57,6 +57,9 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		@everywhere Main.eval(:(using OpenBB))
 		workersList = workers()[1:bbSettings.numProcesses-1]
 
+		# build the root node
+		rootNode = BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
+						  zeros(numVars),zeros(numCnss),NaN,NaN,false)
 
 		# construct the communication channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,bbSettings.numProcesses)
@@ -77,9 +80,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
 								problem.varSet.dscIndices,problem.varSet.sos1Groups,problem.varSet.pseudoCosts,
-								[BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
-									   zeros(numVars),zeros(numCnss),1.,NaN,false)],
-								Array{BBnode,1}(),Array{BBnode,1}(),
+								[rootNode],Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats),bbSettings)
 
 
@@ -105,16 +106,17 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 
 	else # only one process: no communication channels needed
 
+		# build the root node
+		rootNode = BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
+						  zeros(numVars),zeros(numCnss),NaN,NaN,false)
+
 		# construct the master BBworkspace
 		workspace = BBworkspace(setup(problem,ssSettings,
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
 								problem.varSet.dscIndices,problem.varSet.sos1Groups,problem.varSet.pseudoCosts,
-								[BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
-									   zeros(numVars),zeros(numCnss),1.,NaN,false)],
-								Array{BBnode,1}(),Array{BBnode,1}(),
+								[rootNode],Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),NullSharedMemory(),bbSettings)
-
 	end
 
     return workspace
