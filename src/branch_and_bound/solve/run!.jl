@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-05T19:00:50+02:00
+# @Last modified time: 2019-06-06T14:53:54+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -215,74 +215,67 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
         # communicate with the other processes
         if !(workspace.sharedMemory isa NullSharedMemory)
 
-            # if locally it looks like the work is done send a killerNode
-            if idle &&
-               !isready(workspace.sharedMemory.inputChannel) &&
-               !isready(workspace.sharedMemory.outputChannel)
+            if idle
+                # declare the worker ready to stop
+                workspace.sharedMemory.arrestable[processId] = true
 
-                # send a killerNode
-                put!(workspace.sharedMemory.outputChannel,KillerNode(1))
+                # wait for a message to arrive in the inputChannel
+                while !isready(workspace.sharedMemory.inputChannel) &&
+                      !all(@. workspace.sharedMemory.arrestable)
+                    # pause for some time
+                    pause(1e-5)
+                end
             end
 
-            while idle || isready(workspace.sharedMemory.inputChannel)
+            if isready(workspace.sharedMemory.inputChannel)
+
+                # undeclare the worker ready to stop
+                if idle
+                    workspace.sharedMemory.arrestable[processId] = false
+                end
+
+                # go active
+                idle = false
 
                 # take a new node from the input channel
                 newNode = take!(workspace.sharedMemory.inputChannel)
 
-                if newNode isa KillerNode # handle killer-nodes
+                # insert the new node in the queue
+                insert_node!(workspace.activeQueue,newNode,workspace.settings.expansionPriorityRule,
+                             workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
 
-                    if idle && newNode.count < 2*workspace.settings.numProcesses - 1
-                        # propagate the killerNode
-                        put!(workspace.sharedMemory.outputChannel,KillerNode(newNode.count+1))
+                # update the objective lower bound
+                if newNode.objVal < workspace.status.objLoB
+                    workspace.status.objLoB = newNode.objVal
+                    # recompute optimality gaps
+                    if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                        workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+                    else
+                        workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                        workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
                     end
-
-                    if newNode.count >= workspace.settings.numProcesses
-                        # go idle and exit the local loop
-                        idle=true; break
-                    end
-
-                else # a normal node: insert it in the queue
-
-                    # insert the new node in the queue
-                    insert_node!(workspace.activeQueue,newNode,workspace.settings.expansionPriorityRule,
-                              workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
-
-                    if newNode.objVal < workspace.status.objLoB
-                        # update the objective lower bound
-                        workspace.status.objLoB = newNode.objVal
-                        # recompute optimality gaps
-                        if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
-                            workspace.status.absoluteGap = workspace.status.relativeGap = Inf
-                        else
-                            workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-                            workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
-                        end
-                    end
-
-                    # go active and exit the local loop
-                    idle = false; break
                 end
             end
 
-            # update the number of solutions found and the upper bound
+
+            # receive the number of solutions found and the global upper bound
             workspace.status.objUpB = workspace.sharedMemory.objectiveBounds[end]
             workspace.status.numSolutions = workspace.sharedMemory.stats[1]
 
-            # comunicate the current lowerbound
+            # comunicate the current local lower bound
             workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB
         end
     end
 
     ############################## termination ##############################
 
+    # check for erroneous termination (to remove at release)
     if !(workspace.sharedMemory isa NullSharedMemory)
         # empty the communicationChannels
         while isready(workspace.sharedMemory.inputChannel)
             @assert take!(workspace.sharedMemory.inputChannel) isa KillerNode
         end
     end
-
-
 
     if workspace.status.absoluteGap < workspace.settings.absoluteGapTolerance ||
        workspace.status.relativeGap < workspace.settings.relativeGapTolerance
