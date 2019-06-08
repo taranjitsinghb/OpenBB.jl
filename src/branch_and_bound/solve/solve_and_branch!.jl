@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve_and_branch.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-04T14:39:54+02:00
+# @Last modified time: 2019-06-04T15:20:49+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -17,10 +17,10 @@
 # 3 -> infeasible
 function solve_and_branch!(node::BBnode, workspace::BBworkspace{T1,T2})::Tuple{Int8,Array{BBnode,1}} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
-    # check if node is already suboptimal (the uperbound might have changed)
-    if node.objVal > workspace.status.objUpB - workspace.settings.primalTolerance
-        return (2,[node])
-    end
+    # # check if node is already suboptimal (the upperbound might have changed)
+    # if node.objVal > workspace.status.objUpB - workspace.settings.primalTolerance
+    #     return (2,[node])
+    # end
 
     # set the node bounds (considering that the general bounds might have changed)
     globalLoBs, globalUpBs = get_variableBounds(workspace)

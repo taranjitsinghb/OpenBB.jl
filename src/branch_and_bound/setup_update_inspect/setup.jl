@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T19:31:20+02:00
+# @Last modified time: 2019-06-06T14:24:01+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -57,6 +57,9 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		@everywhere Main.eval(:(using OpenBB))
 		workersList = workers()[1:bbSettings.numProcesses-1]
 
+		# build the root node
+		rootNode = BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
+						  zeros(numVars),zeros(numCnss),NaN,NaN,false)
 
 		# construct the communication channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,bbSettings.numProcesses)
@@ -70,26 +73,25 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 
 		# construct shared Memory
 		objectiveBounds = SharedArray{Float64,1}(vcat([-Inf],repeat([Inf],bbSettings.numProcesses)))
-		stats = SharedArray{Int,1}([0,0,0])
+		stats = SharedArray{Int,1}([0])
+		arrestable = SharedArray{Bool,1}(repeat([false],bbSettings.numProcesses))
 
 		# construct the master BBworkspace
 		workspace = BBworkspace(setup(problem,ssSettings,
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
 								problem.varSet.dscIndices,problem.varSet.sos1Groups,problem.varSet.pseudoCosts,
-								[BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
-									   zeros(numVars),zeros(numCnss),1.,NaN,false)],
-								Array{BBnode,1}(),Array{BBnode,1}(),
-								BBstatus(),BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats),bbSettings)
+								[rootNode],Array{BBnode,1}(),Array{BBnode,1}(),
+								BBstatus(),BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats,arrestable),bbSettings)
 
 
 		# construct the remote workspaces
 		expressions = Array{Expr,1}(undef,length(workersList))
 		for k in 2:workspace.settings.numProcesses
 			if k < workspace.settings.numProcesses
-				sharedMemory = BBsharedMemory(communicationChannels[k],communicationChannels[k+1],objectiveBounds,stats)
+				sharedMemory = BBsharedMemory(communicationChannels[k],communicationChannels[k+1],objectiveBounds,stats,arrestable)
 			else
-				sharedMemory = BBsharedMemory(communicationChannels[k],communicationChannels[1],objectiveBounds,stats)
+				sharedMemory = BBsharedMemory(communicationChannels[k],communicationChannels[1],objectiveBounds,stats,arrestable)
 			end
 			expressions[k-1] = :(workspace = OpenBB.BBworkspace(OpenBB.setup($problem,$ssSettings,
 																		bb_primalTolerance=$(bbSettings.primalTolerance),
@@ -105,16 +107,17 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 
 	else # only one process: no communication channels needed
 
+		# build the root node
+		rootNode = BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
+						  zeros(numVars),zeros(numCnss),NaN,NaN,false)
+
 		# construct the master BBworkspace
 		workspace = BBworkspace(setup(problem,ssSettings,
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
 								problem.varSet.dscIndices,problem.varSet.sos1Groups,problem.varSet.pseudoCosts,
-								[BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
-									   zeros(numVars),zeros(numCnss),1.,NaN,false)],
-								Array{BBnode,1}(),Array{BBnode,1}(),
+								[rootNode],Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),NullSharedMemory(),bbSettings)
-
 	end
 
     return workspace

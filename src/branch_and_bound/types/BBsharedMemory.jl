@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsharedMemory.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-27T15:41:10+02:00
+# @Last modified time: 2019-06-06T15:51:51+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -28,5 +28,6 @@ mutable struct BBsharedMemory{T} <: AbstractSharedMemory where T <: Union{Remote
     inputChannel::T # channel to send nodes
     outputChannel::T # channel to receive nodes
     objectiveBounds::SharedArray{Float64,1} # local objective lower bounds and global objective upper bound
-    stats::SharedArray{Int,1} # counters like: how many solutions found and number of idle workers
+    stats::SharedArray{Int,1} # counters like: how many solutions found
+    arrestable::SharedArray{Bool,1} # processes that are done with their local work
 end

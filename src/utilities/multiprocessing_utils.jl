@@ -3,9 +3,17 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: multiprocessing_utils.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-13T19:19:41+02:00
+# @Last modified time: 2019-06-06T12:52:39+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
+
+# pause the current process without giving up the control of it
+function pause(duration::Float64)::Nothing
+    start_time = time()
+    while time() - start_time < duration
+    end
+    return
+end
 
 # define variables on remote workers
 function remote_define(remoteSymbol::Symbol,variable::Any,processId::Int)::Nothing

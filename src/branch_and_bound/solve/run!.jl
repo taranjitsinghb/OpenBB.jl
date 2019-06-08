@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-04T14:36:20+02:00
+# @Last modified time: 2019-06-06T14:53:54+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -55,14 +55,15 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
     # set the algorithm in "active state"
     idle = false
 
-    # it is necessary to update the objective lowerbound
-    objLoBMayHaveChanged = false
-
     # id of the process the workspace is being manipulated from
     processId = myid()
 
     # print the initial algorithm status
     printCountdown = 0.0
+
+    # keep in memory how many nodes the algorithm has explored since the last time
+    # it has sent a node to the neighbouring process
+    workBalaceCounter = 0
 
     # main loop
     while !idle
@@ -86,7 +87,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
 
        else # continue with branch and bound
 
-            # update print algorithm status
+            # print algorithm status
             if workspace.settings.verbose && processId == 1
                if printCountdown <= 0
                    print_status(workspace)
@@ -94,77 +95,95 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
               end
             end
 
+            # apply rounding heuristics (#TODO  rewrite it!)
+            # if node.avgFrac <= workspace.settings.roundingHeuristicsThreshold
+            #     push!(workspace.activeQueue,simple_rounding_heuristics(node,workspace))
+            # end
+
             # pick a node to process from the activeQueue
             node = pop!(workspace.activeQueue)
 
-            # solve the node and branch
-            # output guide:
-            # 0 -> solution
-            # 1 -> children
-            # 2 -> suboptimal
-            # 3 -> infeasible
-            out = solve_and_branch!(node,workspace)
-
-            if out[1] == 0 && out[2][1].reliable # a reliable solution has been found
-                # insert new solution into the solutionPool
-                push!(workspace.solutionPool,out[2][1])
-
-                # update the number of solutions found
-                workspace.status.numSolutions += 1
-                # update the objective upper bound
-                workspace.status.objUpB = out[2][1].objVal
-
-                # update the global objective upper bound and the number of solutions found
-                if !(workspace.sharedMemory isa NullSharedMemory) && out[2][1].objVal < workspace.sharedMemory.objectiveBounds[end]
-                    workspace.sharedMemory.objectiveBounds[end] = out[2][1].objVal
-                    workspace.sharedMemory.stats[1] +=1
+            # check if node is already suboptimal (the upper-bound might have changed)
+            if node.objVal > workspace.status.objUpB - workspace.settings.primalTolerance
+                if workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes are stored
+                    push!(workspace.unactivePool,node)
                 end
 
-            elseif out[1] == 0  # a not reliable solution has been found
-                # store the obtained (not reliable) solution
-                push!(workspace.unactivePool,out[2][1])
+            elseif !(workspace.sharedMemory isa NullSharedMemory) && # we are multiprocessing
+                   workBalaceCounter >= 1 && # time to send the node to another process
+                   !isready(workspace.sharedMemory.outputChannel) # send only one node per time
 
-            elseif out[1] == 2 && workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes cannot be completely eliminated
-                # store the suboptimal node
-                push!(workspace.unactivePool,out[2][1])
+                    # send the new node to the neighbouring process
+                    put!(workspace.sharedMemory.outputChannel,node)
 
-            elseif out[1] == 1  # no solution found. two children nodes have been created
+                    # reset work balance counter
+                    workBalaceCounter = 0
 
-                #  send one of the children to the neighbouring node
-                if !(workspace.sharedMemory isa NullSharedMemory) && # multiprocessing?
-                   !isready(workspace.sharedMemory.outputChannel) && # send only one node per time
-                   length(out[2]) > 1 # there actually is a node to send
+            else
 
-                    for k in 1:length(out[2])
+                # update work balance counter
+                workBalaceCounter += 1
 
-                        if k == 2
-                           # send a new node to the neighbouring process
-                           put!(workspace.sharedMemory.outputChannel,out[2][2])
-                       else
-                           # insert the remaining children into the queue
-                           insert_node!(workspace.activeQueue,out[2][k],workspace.settings.expansionPriorityRule,
-                                        workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+                # create a list of children nodes
+                children = branch_and_solve!(node,workspace)
+
+                # remove the infeasible children
+                filter!((child)->child.objVal<Inf,children)
+
+                # handle the rest of the children
+                for child in children
+
+                    if workspace.status.objUpB < child.objVal + workspace.settings.primalTolerance # the child is suboptimal
+                        if workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes are stored
+                            push!(workspace.unactivePool,child)
                         end
 
-                    end
-               else
-                   # insert the new nodes into the activeQueue
-                   for k in 1:length(out[2])
-                       insert_node!(workspace.activeQueue,out[2][k],workspace.settings.expansionPriorityRule,
-                                    workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
-                   end
-               end
+                    elseif child.avgFrac == 0.0 # a new solution has been found
 
-                # apply rounding heuristics
-                if node.avgFrac <= workspace.settings.roundingHeuristicsThreshold
-                    push!(workspace.activeQueue,simple_rounding_heuristics(node,workspace))
+                        if child.reliable # the solution is reliable
+
+                            # insert new solution into the solutionPool
+                            push!(workspace.solutionPool,child)
+
+                            # update the number of solutions found
+                            workspace.status.numSolutions += 1
+                            # update the objective upper bound
+                            workspace.status.objUpB = child.objVal
+
+                            # update the global objective upper bound and the number of solutions found
+                            if !(workspace.sharedMemory isa NullSharedMemory)
+                                workspace.sharedMemory.stats[1] +=1
+                                if workspace.status.objUpB < workspace.sharedMemory.objectiveBounds[end]
+                                    workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
+                                end
+                            end
+
+                            # recompute optimality gaps
+                            if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                                workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+                            else
+                                workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                                workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
+                            end
+
+                        else # the solution is not reliable
+
+                            # store the unreliable solution in the unactivePool
+                            push!(workspace.unactivePool,child)
+                        end
+
+                    else  # the child has to be inserted in the active_queue
+
+                        # insert the child in the queue
+                        insert_node!(workspace.activeQueue,child,workspace.settings.expansionPriorityRule,
+                                     workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+                     end
                 end
             end
 
             # recompute the objective lower bound
-            if length(workspace.activeQueue) > 0 &&
-               workspace.status.objLoB == -Inf || node.objVal == workspace.status.objLoB || length(workspace.activeQueue) == 0
-
+            if workspace.status.objLoB == -Inf || node.objVal == workspace.status.objLoB
+                # compute the new lower-bound
                 newObjLoB = workspace.status.objUpB
                 for i in length(workspace.activeQueue):-1:1
                     # if we have unreliable problems in the activeQueue we cannot update the lower bound
@@ -172,90 +191,91 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                         newObjLoB = workspace.status.objLoB
                         break
                     elseif workspace.activeQueue[i].objVal < newObjLoB
-                        newObjLoB =  workspace.activeQueue[i].objVal
+                        newObjLoB = workspace.activeQueue[i].objVal
                     end
                 end
+
                 if workspace.status.objLoB > newObjLoB + workspace.settings.primalTolerance
-                    println("branch and bound: the objective lower bound has decreased from "*string(workspace.status.objLoB)*" to "*string(newObjLoB)*"...")
+                    @warn "branch and bound: the objective lower bound has decreased from "*string(workspace.status.objLoB)*" to "*string(newObjLoB)*"..."
                 end
 
+                # update the objective lower-bound
                 workspace.status.objLoB = newObjLoB
+
+                # recompute optimality gaps
+                if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                    workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+                else
+                    workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                    workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
+                end
             end
         end
 
         # communicate with the other processes
         if !(workspace.sharedMemory isa NullSharedMemory)
 
-            # if locally it looks like the work is done send a killerNode
-            if idle &&
-               !isready(workspace.sharedMemory.inputChannel) &&
-               !isready(workspace.sharedMemory.outputChannel)
+            if idle
+                # declare the worker ready to stop
+                workspace.sharedMemory.arrestable[processId] = true
 
-                # send a killerNode
-                put!(workspace.sharedMemory.outputChannel,KillerNode(1))
+                # wait for a message to arrive in the inputChannel
+                while !isready(workspace.sharedMemory.inputChannel) &&
+                      !all(@. workspace.sharedMemory.arrestable)
+                    # pause for some time
+                    pause(1e-5)
+                end
             end
 
-            while idle || isready(workspace.sharedMemory.inputChannel)
+            if isready(workspace.sharedMemory.inputChannel)
+
+                # undeclare the worker ready to stop
+                if idle
+                    workspace.sharedMemory.arrestable[processId] = false
+                end
+
+                # go active
+                idle = false
 
                 # take a new node from the input channel
                 newNode = take!(workspace.sharedMemory.inputChannel)
 
-                if newNode isa KillerNode # handle killer-nodes
+                # insert the new node in the queue
+                insert_node!(workspace.activeQueue,newNode,workspace.settings.expansionPriorityRule,
+                             workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
 
-                    if idle && newNode.count < 2*workspace.settings.numProcesses - 1
-                        # propagate the killerNode
-                        put!(workspace.sharedMemory.outputChannel,KillerNode(newNode.count+1))
+                # update the objective lower bound
+                if newNode.objVal < workspace.status.objLoB
+                    workspace.status.objLoB = newNode.objVal
+                    # recompute optimality gaps
+                    if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                        workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+                    else
+                        workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                        workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
                     end
-
-                    if newNode.count >= workspace.settings.numProcesses
-                        # go idle and exit the local loop
-                        idle=true; break
-                    end
-
-                else # a normal node: insert it in the queue
-
-
-                    # update the objective lower bound
-                    if newNode.objVal < workspace.status.objLoB
-                        workspace.status.objLoB = newNode.objVal
-                    end
-
-                    # insert the new node in the queue
-                    insert_node!(workspace.activeQueue,newNode,workspace.settings.expansionPriorityRule,
-                                  workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
-
-                    # go active and exit the local loop
-                    idle = false; break
                 end
             end
 
-            # recompute optimality gaps
-            if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
-                workspace.status.absoluteGap = workspace.status.relativeGap = Inf
-            else
-                workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-                workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
-            end
 
-            # update the number of solutions found and the upper bound
+            # receive the number of solutions found and the global upper bound
             workspace.status.objUpB = workspace.sharedMemory.objectiveBounds[end]
             workspace.status.numSolutions = workspace.sharedMemory.stats[1]
 
-            # comunicate the current lowerbound
+            # comunicate the current local lower bound
             workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB
         end
     end
 
     ############################## termination ##############################
 
+    # check for erroneous termination (to remove at release)
     if !(workspace.sharedMemory isa NullSharedMemory)
         # empty the communicationChannels
         while isready(workspace.sharedMemory.inputChannel)
             @assert take!(workspace.sharedMemory.inputChannel) isa KillerNode
         end
     end
-
-
 
     if workspace.status.absoluteGap < workspace.settings.absoluteGapTolerance ||
        workspace.status.relativeGap < workspace.settings.relativeGapTolerance

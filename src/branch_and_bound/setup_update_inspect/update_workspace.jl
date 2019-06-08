@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T18:06:04+02:00
+# @Last modified time: 2019-06-06T14:22:53+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -23,7 +23,8 @@ function reset_explored_nodes!(workspace::BBworkspace{T1,T2};localOnly::Bool=fal
 
         # reset the global info
         workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0.
+        @. workspace.sharedMemory.stats = 0
+		@. workspace.sharedMemory.arrestable = false
 
     else
 
@@ -97,7 +98,8 @@ function update!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing w
 
         # reset the global info
         workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0.
+        @. workspace.sharedMemory.stats = 0
+		@. workspace.sharedMemory.arrestable = false
 
 
         # update the communication channels (if needed)
@@ -153,7 +155,8 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
         # reset the global info
         @. workspace.sharedMemory.objectiveBounds[1:end-1] = -Inf
         workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats[1] .= 0.
+        @. workspace.sharedMemory.stats = 0
+		@. workspace.sharedMemory.arrestable = false
 
     else
         # eliminate all the generated nodes and reinsert the root of the BB tree
@@ -186,8 +189,8 @@ function clear!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
         # update the global info
         @. workspace.sharedMemory.objectiveBounds[1:end-1] = Inf
         workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0.
-
+        @. workspace.sharedMemory.stats = 0
+		@. workspace.sharedMemory.arrestable = false
 
     else
         deleteat!(workspace.activeQueue, 1:length(workspace.activeQueue))

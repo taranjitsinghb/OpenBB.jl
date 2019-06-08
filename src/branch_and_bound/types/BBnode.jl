@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBnode.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T19:04:26+02:00
+# @Last modified time: 2019-06-05T18:25:13+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -26,4 +26,20 @@ end
 # this node is used to arrest the branch and bound process
 struct KillerNode <:AbstractBBnode
     count::Int
+end
+
+# overload of functions
+import Base.copy
+function copy(node::BBnode)::BBnode
+    return BBnode(node.branchLoBs,node.branchUpBs,
+                  node.primal,node.bndDual,node.cnsDual,
+                  node.avgFrac,node.objVal,node.reliable)
+end
+
+
+import Base.deepcopy
+function deepcopy(node::BBnode)::BBnode
+    return BBnode(copy(node.branchLoBs),copy(node.branchUpBs),
+                  copy(node.primal),copy(node.bndDual),copy(node.cnsDual),
+                  node.avgFrac,node.objVal,node.reliable)
 end
