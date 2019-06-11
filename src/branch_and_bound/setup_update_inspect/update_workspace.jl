@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-06T14:22:53+02:00
+# @Last modified time: 2019-06-11T13:09:44+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -33,7 +33,7 @@ function reset_explored_nodes!(workspace::BBworkspace{T1,T2};localOnly::Bool=fal
         append!(workspace.activeQueue,workspace.unactivePool)
 		append!(workspace.activeQueue,workspace.solutionPool)
         sort!(workspace.activeQueue,alg=MergeSort,rev=true,
-              lt=(l,r)->workspace.settings.expansionPriorityRule(l,r,workspace.status))
+              lt=(l,r)->expansion_priority_rule(workspace.settings.expansionPriorityRule,l,r,workspace.status))
 
         deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
         deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
@@ -166,7 +166,8 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
                                              zeros(get_numVariables(workspace)),
 											 zeros(get_numVariables(workspace)),
                                              zeros(get_numConstraints(workspace)),
-                                             1.0,-Inf,false))
+                                             NaN,NaN,NaN,false))
+		workspace.status.description = "new"
     end
 
     return

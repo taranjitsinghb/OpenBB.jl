@@ -109,7 +109,7 @@ function append_problem!(workspace::GUROBIworkspace,
     # test the future validity of the already computed lower bounds
     testWorkspace = setup(problem,workspace.settings)
     testSolution = solve!(testWorkspace)
-    if testSolution.objVal < -workspace.settings.FeasibilityTol
+    if testSolution.objective < -workspace.settings.FeasibilityTol
         reliableObjLoBs = false
     else
         reliableObjLoBs = true
@@ -144,7 +144,7 @@ function append_problem!(workspace::GUROBIworkspace,
     # test the future validity of the already computed lower bounds
     testWorkspace = setup(problem,workspace.settings)
     testSolution = solve!(testWorkspace)
-    if testSolution.objVal < -workspace.settings.FeasibilityTol
+    if testSolution.objective < -workspace.settings.FeasibilityTol
         reliableObjLoBs = false
     else
         reliableObjLoBs = true

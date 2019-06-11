@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T18:12:47+02:00
+# @Last modified time: 2019-06-08T13:46:02+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -53,10 +53,10 @@ function get_best_solution(workspace::BBworkspace{T1,T2};localOnly::Bool=false):
 
     # check the other workers if needed/required
     if !(localOnly || workspace.sharedMemory isa NullSharedMemory) &&
-       (solution isa NullBBnode || solution.objVal > workspace.status.objLoB)
+       (solution isa NullBBnode || solution.objective > workspace.status.objLoB)
         for p in 2:workspace.settings.numProcesses
             node = remotecall_fetch(Main.eval,p,:(OpenBB.get_best_solution(workspace,localOnly=true)))
-            if !(node isa NullBBnode) && node.objVal == workspace.sharedMemory.objectiveBounds[end]
+            if !(node isa NullBBnode) && node.objective == workspace.sharedMemory.objectiveBounds[end]
                 solution = node
                 break
             end
@@ -86,8 +86,9 @@ function get_best_node(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Abs
         # choose the best of the returned nodes
         for node in nodes
             if bestNode isa NullBBnode || # there is no best node yet
-               (node.avgFrac==0 && bestNode.avgFrac > 0) || # the new node is a solution while the best so far isn't
-               workspace.settings.expansionPriorityRule(node,bestNode,workspace.status) # the new node is better than the best so far
+               (node.avgAbsFrac==0 && bestNode.avgAbsFrac > 0) || # the new node is a solution while the best so far isn't
+               expansion_priority_rule(workspace.settings.expansionPriorityRule,node,bestNode,workspace.status) # the new node is better than the best so far
+
                 # set the new node as the best one
                 bestNode = node
            end
@@ -104,7 +105,7 @@ function get_best_node(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Abs
         # otherwise, check the unactivePool for better nodes
         if bestNode isa NullBBnode && length(workspace.unactivePool) > 0
             for node in workspace.unactivePool
-                if bestNode isa NullBBnode || workspace.settings.expansionPriorityRule(bestNode,node,workspace.status)
+                if bestNode isa NullBBnode || expansion_priority_rule(workspace.settings.expansionPriorityRule,bestNode,node,workspace.status)
                     bestNode = node
                 end
             end

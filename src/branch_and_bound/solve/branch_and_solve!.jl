@@ -3,39 +3,65 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-05T18:27:42+02:00
+# @Last modified time: 2019-06-11T16:51:06+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BBnode,1} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # create a list of children
-    if node.avgFrac != 0.0
-        children = branch!(node,workspace)
+    if node.avgAbsFrac != 0.0
+        children, branchIndices = branch!(node,workspace)
     else
-        children = [deepcopy(node)]
+        children, branchIndices = [deepcopy(node)], [0]
     end
+
+
     # solve all the children
     for k in 1:length(children)
         solve!(children[k],workspace)
-        #TODO compute pseudoCost
+
+        # update pseudoCosts
+        if branchIndices[k]>0 && children[k].reliable && children[k].objective < Inf
+
+            # compute the pseudoCost learning rate
+            mu = max(2.0^-workspace.pseudoCosts[branchIndices[k],3],workspace.settings.pseudoCostsLearningRate)
+
+            # compute objective and primal variation
+            deltaObjective = children[k].objective-node.objective
+            deltaVariable = children[k].primal[workspace.dscIndices[branchIndices[k]]] - node.primal[workspace.dscIndices[branchIndices[k]]]
+
+            if deltaVariable < -workspace.settings.integerTolerance
+                # update the pseudoCost
+                workspace.pseudoCosts[branchIndices[k],1] = (1-mu)*workspace.pseudoCosts[branchIndices[k],1] - mu*deltaObjective/deltaVariable
+                workspace.pseudoCosts[branchIndices[k],3] += 1
+
+            elseif deltaVariable > workspace.settings.integerTolerance
+                # update the pseudoCost
+                workspace.pseudoCosts[branchIndices[k],2] = (1-mu)*workspace.pseudoCosts[branchIndices[k],2] + mu*deltaObjective/deltaVariable
+                workspace.pseudoCosts[branchIndices[k],3] += 1
+            end
+        end
+
     end
     # return the solved children
     return children
 end
 
 
-function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BBnode,1} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
-
-    # compute the variables fractionality
-    fractionality = @. abs(round(node.primal[workspace.dscIndices]) - node.primal[workspace.dscIndices])
-    @. fractionality = fractionality*(fractionality>workspace.settings.integerTolerance)
+function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Tuple{Array{BBnode,1},Array{Int,1}} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # select a branching index
-    tmpIndex = workspace.settings.branchingPriorityRule(fractionality,workspace.pseudoCosts)
-    branchIndex = workspace.dscIndices[tmpIndex]
+    tmpIndex, priorityScores = branching_priority_rule(workspace.settings.branchingPriorityRule,
+                                                       node.primal[workspace.dscIndices],workspace.pseudoCosts,
+                                                       workspace.settings.integerTolerance)
+
+    @assert tmpIndex > 0; branchIndex = workspace.dscIndices[tmpIndex]
+
+
 
     # check if the selected variable belongs to a sos1 group
+    sos1Branching = false
     if length(workspace.sos1Groups)>0 && workspace.sos1Groups[tmpIndex] != -1
 
         # collect all the variables belonging to the same sos1 groups
@@ -44,49 +70,48 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BBnode,1} wh
                           node.branchLoBs[i] != node.branchUpBs[i]]
 
         sos1Branching = true
-    else
-        sos1Branching = false
     end
 
-    numChildren = 0
+    # actually branch
     if sos1Branching == true && length(sos1Group) > 1 # SOS1 branching
 
-        # number of children to create
-        numChildren = 2
+        # order the variables in the sos1 group by their priority score
+        permute!(sos1Group,sortperm(priorityScores[sos1Group]))
 
-        # order the variables in the sos1 group by their fractionality
-        permute!(sos1Group,sortperm(fractionality[sos1Group]))
+        # create a list of children nodes
+        children = Array{BBnode}(undef,2)
 
-        # create the new bounds for the children nodes
-        newLoBs = [copy(node.branchLoBs),copy(node.branchLoBs)]
-        newUpBs = [copy(node.branchUpBs),copy(node.branchUpBs)]
-        @. newLoBs[1][sos1Group[1:2:end]] = newUpBs[1][sos1Group[1:2:end]] = 0.
-        @. newLoBs[2][sos1Group[2:2:end]] = newUpBs[2][sos1Group[2:2:end]] = 0.
+        # first child
+        children[1] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),
+                             copy(node.bndDual),copy(node.cnsDual),NaN,NaN,NaN,false)
+        @. children[1].branchLoBs[sos1Group[2:2:end]] = children[1].branchUpBs[sos1Group[2:2:end]] = 0.
+
+        # second child
+        children[2] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),
+                             copy(node.bndDual),copy(node.cnsDual),NaN,NaN,NaN,false)
+        @. children[2].branchLoBs[sos1Group[1:2:end]] = children[2].branchUpBs[sos1Group[1:2:end]] = 0.
 
 
-    elseif fractionality[tmpIndex] >= workspace.settings.integerTolerance # standard branching
+        return children, [tmpIndex,tmpIndex] # [sos1Group[2],sos1Group[1]]
 
-        # number of children to create
-        numChildren = 2
+    else # standard branching
 
-        # create the new bounds for the children nodes
-        newLoBs = [copy(node.branchLoBs),copy(node.branchLoBs)]
-        newLoBs[1][tmpIndex] = ceil(node.primal[branchIndex]-get_primalTolerance(workspace.subsolverWS))
-        newUpBs = [copy(node.branchUpBs),copy(node.branchUpBs)]
-        newUpBs[2][tmpIndex] = floor(node.primal[branchIndex]+get_primalTolerance(workspace.subsolverWS))
+        # create a list of children nodes
+        children = Array{BBnode}(undef,2)
+
+        # first child
+        children[1] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),
+                             copy(node.bndDual),copy(node.cnsDual),NaN,NaN,NaN,false)
+        children[1].branchLoBs[tmpIndex] = ceil(node.primal[branchIndex]-get_primalTolerance(workspace.subsolverWS))
+
+        # second child
+        children[2] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),
+                             copy(node.bndDual),copy(node.cnsDual),NaN,NaN,NaN,false)
+        children[2].branchUpBs[tmpIndex] = floor(node.primal[branchIndex]+get_primalTolerance(workspace.subsolverWS))
+
+        return children, [tmpIndex,tmpIndex]
 
     end
-
-    # create the list of children
-    children = Array{BBnode}(undef,numChildren)
-    for k in 1:numChildren
-
-        children[k] = BBnode(newLoBs[k],newUpBs[k],copy(node.primal),
-                             copy(node.bndDual),copy(node.cnsDual),
-                             NaN,NaN,false)
-    end
-
-    return children
 end
 
 
@@ -106,17 +131,21 @@ function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:A
     # 1 -> infeasible
     # 2 -> unreliable
     # 3 -> error
-    (objVal,ssStatus,~) = solve!(workspace.subsolverWS,varLoBs,varUpBs,node.primal,node.bndDual,node.cnsDual)
+    (objective,ssStatus,~) = solve!(workspace.subsolverWS,varLoBs,varUpBs,node.primal,node.bndDual,node.cnsDual)
 
     if ssStatus == 0
-        node.objVal = objVal
+        node.objective = objective
+        node.pseudoObjective = objective +
+                          maximum(@. (node.primal[workspace.dscIndices]-floor(node.primal[workspace.dscIndices]+workspace.settings.integerTolerance))*workspace.pseudoCosts[:,1] +
+                                     (ceil(node.primal[workspace.dscIndices]-workspace.settings.integerTolerance)-node.primal[workspace.dscIndices])*workspace.pseudoCosts[:,2])
         node.reliable = true
     elseif ssStatus == 1
-        node.objVal = Inf
+        node.objective = Inf
+        node.pseudoObjective = Inf
         node.reliable = true
     elseif ssStatus == 2
         @warn "Numerical difficulties in the subsolver"
-        node.objVal = objVal
+        node.objective = objective
         node.reliable = false
     else
         @error "Error in the subsolver"
@@ -129,6 +158,6 @@ function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:A
     fractionality = @. node.primal[workspace.dscIndices] - round(node.primal[workspace.dscIndices])
     @. fractionality =  fractionality*(fractionality>workspace.settings.integerTolerance)
 
-    node.avgFrac = 2. * sum(@. abs(fractionality))/length(workspace.dscIndices)
+    node.avgAbsFrac = 2. * sum(@. abs(fractionality))/length(workspace.dscIndices)
     return
 end

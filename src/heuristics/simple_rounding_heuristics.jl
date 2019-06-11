@@ -21,6 +21,6 @@ function simple_rounding_heuristics(node::BBnode, workspace::BBworkspace)::BBnod
     # return the resulting node
     BBnode(newBranchLoBs,newBranchUpBs,
            primal,copy(node.bndDual),copy(node.cnsDual),
-           0,node.objVal,true)
+           0,node.objective,true)
 
 end

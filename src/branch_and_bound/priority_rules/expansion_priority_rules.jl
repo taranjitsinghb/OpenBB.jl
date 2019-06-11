@@ -1,56 +1,68 @@
 # @Author: Massimo De Mauri <massimodemauri>
 # @Date:   2019-02-06T16:19:45+01:00
-# @Email:  massimo.demauri@gmail.com
+# @Email:  massimo.demauri@gmaileftNode.com
 # @Project: OpenBB
 # @Filename: nodes_priority_functions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-18T00:31:21+01:00
+# @Last modified time: 2019-06-11T16:33:18+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
+# wrappers for nodes priority rules
+function expansion_priority_rule(functionTuple::Tuple,leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    @assert functionTuple[1] isa Function
+    return functionTuple[1](leftNode,rightNode,status,functionTuple[2:end]...)
+end
+
+
 # priority functions for nodes
-function lower_objective(l::BBnode,r::BBnode,status::BBstatus)::Bool
-    if l.objVal <= r.objVal
+function lower_objective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.objective <= rightNode.objective
         return true
     else
         return false
     end
 end
 
-function higher_objective(l::BBnode,r::BBnode,status::BBstatus)::Bool
-    if l.objVal >= r.objVal
+function higher_objective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.objective >= rightNode.objective
         return true
     else
         return false
     end
 end
 
-function lower_fractionality(l::BBnode,r::BBnode,status::BBstatus)::Bool
-    if l.avgFrac <= r.avgFrac
+function lower_avgAbsFractionality(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.avgAbsFrac <= rightNode.avgAbsFrac
         return true
     else
         return false
     end
 end
 
-function higher_fractionality(l::BBnode,r::BBnode,status::BBstatus)::Bool
-    if l.avgFrac >= r.avgFrac
+function higher_avgAbsFractionality(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.avgAbsFrac >= rightNode.avgAbsFrac
         return true
     else
         return false
     end
 end
 
-function lower_mixed(l::BBnode,r::BBnode,status::BBstatus)::Bool
-    if status.objLoB > -Inf
-        if l.objVal + l.avgFrac*(l.objVal-status.objLoB) < r.objVal + r.avgFrac*(r.objVal - status.objLoB)
-            return true
-        else
-            return false
-        end
 
-    elseif l.avgFrac <= r.avgFrac
+
+
+# priority functions for nodes
+function lower_pseudoObjective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.pseudoObjective <= rightNode.pseudoObjective
+        return true
+    else
+        return false
+    end
+end
+
+function higher_pseudoObjective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.pseudoObjective >= rightNode.pseudoObjective
         return true
     else
         return false

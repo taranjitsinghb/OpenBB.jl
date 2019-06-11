@@ -4,21 +4,21 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-06T14:53:54+02:00
+# @Last modified time: 2019-06-08T13:47:12+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 # insert a list of equivalent nodes into a queue
 function insert_node!(queue::Array{BBnode,1},node::BBnode,
-                       priorityRule::Function,status::BBstatus;
+                       priorityRule::Tuple,status::BBstatus;
                        unreliablePriority::Int=0)::Nothing
 
     if node.reliable || unreliablePriority == 0
     # normal queue insertion
         insertionPoint = 1
         for i in length(queue):-1:1
-            if priorityRule(node,queue[i],status)
+            if expansion_priority_rule(priorityRule,node,queue[i],status)
                 insertionPoint = i+1
                 break
             end
@@ -77,7 +77,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
         # stopping conditions
         if length(workspace.activeQueue) == 0 || # no more nodes in the queue
            workspace.status.totalTime >= workspace.settings.timeLimit || # time is up
-           workspace.settings.custom_stopping_rule(workspace) || # custom stopping rule triggered
+           workspace.settings.customStoppingRule(workspace) || # custom stopping rule triggered
            workspace.status.absoluteGap <= workspace.settings.absoluteGapTolerance || # reached required absolute gap
            workspace.status.relativeGap <= workspace.settings.relativeGapTolerance || # reached required relative gap
            (workspace.settings.numSolutionsLimit > 0 && workspace.status.numSolutions >= workspace.settings.numSolutionsLimit) # the required number of solutions has been found
@@ -96,7 +96,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
             end
 
             # apply rounding heuristics (#TODO  rewrite it!)
-            # if node.avgFrac <= workspace.settings.roundingHeuristicsThreshold
+            # if node.avgAbsFrac <= workspace.settings.roundingHeuristicsThreshold
             #     push!(workspace.activeQueue,simple_rounding_heuristics(node,workspace))
             # end
 
@@ -104,13 +104,13 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
             node = pop!(workspace.activeQueue)
 
             # check if node is already suboptimal (the upper-bound might have changed)
-            if node.objVal > workspace.status.objUpB - workspace.settings.primalTolerance
+            if node.objective > workspace.status.objUpB - workspace.settings.primalTolerance
                 if workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes are stored
                     push!(workspace.unactivePool,node)
                 end
 
             elseif !(workspace.sharedMemory isa NullSharedMemory) && # we are multiprocessing
-                   workBalaceCounter >= 1 && # time to send the node to another process
+                   workBalaceCounter >= 1 && # it is time to send the node to another process
                    !isready(workspace.sharedMemory.outputChannel) # send only one node per time
 
                     # send the new node to the neighbouring process
@@ -128,17 +128,17 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 children = branch_and_solve!(node,workspace)
 
                 # remove the infeasible children
-                filter!((child)->child.objVal<Inf,children)
+                filter!((child)->child.objective<Inf,children)
 
                 # handle the rest of the children
                 for child in children
 
-                    if workspace.status.objUpB < child.objVal + workspace.settings.primalTolerance # the child is suboptimal
+                    if workspace.status.objUpB < child.objective + workspace.settings.primalTolerance # the child is suboptimal
                         if workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes are stored
                             push!(workspace.unactivePool,child)
                         end
 
-                    elseif child.avgFrac == 0.0 # a new solution has been found
+                    elseif child.avgAbsFrac == 0.0 # a new solution has been found
 
                         if child.reliable # the solution is reliable
 
@@ -148,7 +148,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                             # update the number of solutions found
                             workspace.status.numSolutions += 1
                             # update the objective upper bound
-                            workspace.status.objUpB = child.objVal
+                            workspace.status.objUpB = child.objective
 
                             # update the global objective upper bound and the number of solutions found
                             if !(workspace.sharedMemory isa NullSharedMemory)
@@ -176,13 +176,13 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
 
                         # insert the child in the queue
                         insert_node!(workspace.activeQueue,child,workspace.settings.expansionPriorityRule,
-                                     workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+                                     workspace.status,unreliablePriority=workspace.settings.unreliableSubproblemsPriority)
                      end
                 end
             end
 
             # recompute the objective lower bound
-            if workspace.status.objLoB == -Inf || node.objVal == workspace.status.objLoB
+            if workspace.status.objLoB == -Inf || node.objective == workspace.status.objLoB
                 # compute the new lower-bound
                 newObjLoB = workspace.status.objUpB
                 for i in length(workspace.activeQueue):-1:1
@@ -190,8 +190,8 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                     if !workspace.activeQueue[i].reliable
                         newObjLoB = workspace.status.objLoB
                         break
-                    elseif workspace.activeQueue[i].objVal < newObjLoB
-                        newObjLoB = workspace.activeQueue[i].objVal
+                    elseif workspace.activeQueue[i].objective < newObjLoB
+                        newObjLoB = workspace.activeQueue[i].objective
                     end
                 end
 
@@ -223,7 +223,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 while !isready(workspace.sharedMemory.inputChannel) &&
                       !all(@. workspace.sharedMemory.arrestable)
                     # pause for some time
-                    pause(1e-5)
+                    pause(1e-4)
                 end
             end
 
@@ -242,11 +242,11 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
 
                 # insert the new node in the queue
                 insert_node!(workspace.activeQueue,newNode,workspace.settings.expansionPriorityRule,
-                             workspace.status,unreliablePriority=workspace.settings.unreliable_subps_priority)
+                             workspace.status,unreliablePriority=workspace.settings.unreliableSubproblemsPriority)
 
                 # update the objective lower bound
-                if newNode.objVal < workspace.status.objLoB
-                    workspace.status.objLoB = newNode.objVal
+                if newNode.objective < workspace.status.objLoB
+                    workspace.status.objLoB = newNode.objective
                     # recompute optimality gaps
                     if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
                         workspace.status.absoluteGap = workspace.status.relativeGap = Inf
@@ -260,6 +260,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
 
             # receive the number of solutions found and the global upper bound
             workspace.status.objUpB = workspace.sharedMemory.objectiveBounds[end]
+            workspace.status.objLoB = min(workspace.status.objLoB,workspace.status.objUpB)
             workspace.status.numSolutions = workspace.sharedMemory.stats[1]
 
             # comunicate the current local lower bound

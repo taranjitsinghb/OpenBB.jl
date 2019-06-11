@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T19:33:50+02:00
+# @Last modified time: 2019-06-11T16:47:43+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -15,8 +15,8 @@ abstract type AbstractSettings end; struct NullSettings  <: AbstractSettings  en
 mutable struct BBsettings <: AbstractSettings
     # execution modifiers
     verbose::Bool                           # print info during execution
-    statusInfoPeriod::Float64                 # frequency of status info print
-    numProcesses::Int                       # max number of process to launch
+    statusInfoPeriod::Float64               # frequency of status info print
+    numProcesses::Int                       # max number of processes to launch
     stopAfterSolution::Bool                 # stop workers after the solution for the current problem has been found
     dynamicMode::Bool                       # store in memory suboptimal solutions and nodes to allow later updates
     # problem bounds
@@ -24,15 +24,18 @@ mutable struct BBsettings <: AbstractSettings
     primalTolerance::Float64                # constraint violation tolerance
     objectiveCutoff::Float64                # look only for solutions that are better than the provided upper bound
     # priority rules
-    expansionPriorityRule::Function       # ordering of the nodes in the activeQueue
-    branchingPriorityRule::Function       # ordering of the discrete variables for branching
-    unreliable_subps_priority::Int          # activeQueue insertion priority for unreliable nodes (-1->low, 0->normal, 1->high)
+    expansionPriorityRule::Tuple            # ordering of the nodes in the activeQueue
+    branchingPriorityRule::Tuple            # ordering of the discrete variables for branching
+    unreliableSubproblemsPriority::Int      # activeQueue insertion priority for unreliable nodes (-1->low, 0->normal, 1->high)
+    # pseudo-costs
+    pseudoCostsLearningRate::Float64        # learning rate for pseudo-costs
+    pseudoCostsInitialization::Tuple        # function returning the initialization of the pseudo-costs
     # stopping criteria
-    custom_stopping_rule::Function          # user-defined stopping criterion
+    customStoppingRule::Function            # user-defined stopping criterion
     timeLimit::Float64                      # max running time
     numSolutionsLimit::Int                  # stop after the given number of integral solutions have been found
-    absoluteGapTolerance::Float64                # stop if the absolute optimality gap is below the given level
-    relativeGapTolerance::Float64                # stop if the relative optimality gap is below the given level
+    absoluteGapTolerance::Float64           # stop if the absolute optimality gap is below the given level
+    relativeGapTolerance::Float64           # stop if the relative optimality gap is below the given level
     # heuristic search
     roundingHeuristicsThreshold::Float64    # use the simple rounding heuristics whenever the average fractionality is under the threshold
 end
@@ -47,10 +50,12 @@ function BBsettings(;verbose::Bool=false,
                      integerTolerance::Float64=1e-4,
                      primalTolerance::Float64=1e-4,
                      objectiveCutoff::Float64=Inf,
-                     expansionPriorityRule::Function=lower_mixed,
-                     branchingPriorityRule::Function=most_fractional,
-                     unreliable_subps_priority::Int=0,
-                     custom_stopping_rule::Function=x->false,
+                     expansionPriorityRule::Tuple=(lower_pseudoObjective,),
+                     branchingPriorityRule::Tuple=(pseudoIncrements_geomean,),
+                     unreliableSubproblemsPriority::Int=0,
+                     pseudoCostsLearningRate::Float64=0.05 ,
+                     pseudoCostsInitialization::Tuple=(initialize_to_constant!,1.),
+                     customStoppingRule::Function=x->false,
                      timeLimit::Float64=Inf,
                      numSolutionsLimit::Int=0,
                      absoluteGapTolerance::Float64=1e-4,
@@ -61,6 +66,7 @@ function BBsettings(;verbose::Bool=false,
 
     return BBsettings(verbose,statusInfoPeriod,numProcesses,stopAfterSolution,dynamicMode,
                       integerTolerance,primalTolerance,objectiveCutoff,
-                      expansionPriorityRule,branchingPriorityRule,unreliable_subps_priority,
-                      custom_stopping_rule,timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,roundingHeuristicsThreshold)
+                      expansionPriorityRule,branchingPriorityRule,unreliableSubproblemsPriority,
+                      pseudoCostsLearningRate,pseudoCostsInitialization,
+                      customStoppingRule,timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,roundingHeuristicsThreshold)
 end

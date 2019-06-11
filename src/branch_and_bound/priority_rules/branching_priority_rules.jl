@@ -4,41 +4,122 @@
 # @Project: OpenBB
 # @Filename: branching_priority_functions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T19:12:52+02:00
+# @Last modified time: 2019-06-11T16:31:28+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
-# priority functions for variables to branch on
-
-function pseudo_cost(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,2})::Int
-    (_,index) = findmax(@. (1e-12 + fractionality)*pseudoCosts)
-    return index
+# wrapper for branching priority rules
+function branching_priority_rule(functionTuple::Tuple,dscValues::Array{Float64,1},pseudoCosts::Array{Float64,2},integerTolerance::Float64)::Tuple{Int,Array{Float64,1}}
+    @assert functionTuple[1] isa Function
+    return functionTuple[1](dscValues,pseudoCosts,integerTolerance,functionTuple[2:end]...)
 end
 
-function most_fractional(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,2})::Int
-    (_,index) = findmax(fractionality)
-    if fractionality[index] == 0
-        return 0
+# actual priority rules
+function pseudoIncrements_mean(dscValues::Array{Float64,1},pseudoCosts::Array{Float64,2},integerTolerance::Float64)::Tuple{Int,Array{Float64,1}}
+    return pseudoIncrements_mean(dscValues,pseudoCosts,integerTolerance,1,1)
+end
+
+function pseudoIncrements_mean(dscValues::Array{Float64,1},pseudoCosts::Array{Float64,2},integerTolerance::Float64,
+                          ratio::Rational)::Tuple{Int,Array{Float64,1}}
+    return pseudoIncrements_mean(dscValues,pseudoCosts,integerTolerance,numerator(ratio),denominator(ratio)-numerator(ratio))
+end
+
+function pseudoIncrements_mean(dscValues::Array{Float64,1},pseudoCosts::Array{Float64,2},integerTolerance::Float64,
+                          gainOfMin::Int64,gainOfMax::Int64)::Tuple{Int,Array{Float64,1}}
+
+    scores = zeros(length(dscValues))
+    bestIndex = 1
+    for k in 1: length(dscValues)
+        deltaMinus = dscValues[k] - floor(dscValues[k]+integerTolerance)
+        deltaMinus = pseudoCosts[k,1]*deltaMinus*(deltaMinus>integerTolerance)
+        deltaPlus  = ceil(dscValues[k]-integerTolerance) - dscValues[k]
+        deltaPlus  = pseudoCosts[k,2]*deltaPlus*(deltaPlus>integerTolerance)
+
+        if deltaMinus <= deltaPlus
+            scores[k] = deltaMinus*gainOfMin + deltaPlus*gainOfMax
+        else
+            scores[k] = deltaPlus*gainOfMin + deltaMinus*gainOfMax
+        end
+
+        if scores[k] > scores[bestIndex]
+            bestIndex = k
+        end
+    end
+    return bestIndex, scores
+end
+
+function pseudoIncrements_geomean(dscValues::Array{Float64,1},pseudoCosts::Array{Float64,2},integerTolerance::Float64)::Tuple{Int,Array{Float64,1}}
+    return pseudoIncrements_geomean(dscValues,pseudoCosts,integerTolerance,1,1)
+end
+
+function pseudoIncrements_geomean(dscValues::Array{Float64,1},pseudoCosts::Array{Float64,2},integerTolerance::Float64,
+                                      ratio::Rational)::Tuple{Int,Array{Float64,1}}
+    return pseudoIncrements_geomean(dscValues,pseudoCosts,integerTolerance,numerator(ratio),denominator(ratio)-numerator(ratio))
+end
+
+function pseudoIncrements_geomean(dscValues::Array{Float64,1},pseudoCosts::Array{Float64,2},integerTolerance::Float64,
+                             gainOfMin::Int,gainOfMax::Int)::Tuple{Int,Array{Float64,1}}
+
+    scores = zeros(length(dscValues))
+    bestIndex = 1
+    for k in 1:length(dscValues)
+        deltaMinus = dscValues[k] - floor(dscValues[k])
+        deltaMinus = pseudoCosts[k,1]*deltaMinus*(deltaMinus>integerTolerance)
+        deltaPlus  = ceil(dscValues[k]) - dscValues[k]
+        deltaPlus  = pseudoCosts[k,2]*deltaPlus*(deltaPlus>integerTolerance)
+
+        if deltaMinus <= deltaPlus
+            scores[k] = deltaMinus^gainOfMin*deltaPlus^gainOfMax
+        else
+            scores[k] = deltaPlus^gainOfMin*deltaMinus^gainOfMax
+        end
+
+        if scores[k] > scores[bestIndex]
+            bestIndex = k
+        end
+    end
+    return bestIndex, scores
+end
+
+
+
+function absolute_fractionality(dscValues::Array{Float64,1},pseudoCosts::Array{Float64,2},integerTolerance::Float64)::Tuple{Int,Array{Float64,1}}
+
+    scores = zeros(length(dscValues))
+    bestIndex = 1
+    for k in 1:length(dscValues)
+        scores[k] = abs(dscValues[k] - round(dscValues[k]))
+        scores[k] = scores[k]*(scores[k]>integerTolerance)
+
+        if scores[k] > scores[bestIndex]
+            bestIndex = k
+        end
+    end
+
+    return bestIndex, scores
+end
+
+
+
+function order_of_appearance(dscValues::Array{Float64,1},pseudoCosts::Array{Float64,2},integerTolerance::Float64;reverse::Bool=false)::Tuple{Int,Array{Float64,1}}
+
+    scores = zeros(length(dscValues))
+    if reverse
+        for k in length(dscValues):-1:1
+            if abs(dscValues[k] - round(dscValues[k])) > integerTolerance
+                scores[k] = Inf
+                return k, scores
+            end
+        end
     else
-        return index
-    end
-end
-
-function order_of_appearance(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,2})::Int
-    for i in 1:length(fractionality)
-        if fractionality[i] > 0
-            return i
+        for k in 1:length(dscValues)
+            if abs(dscValues[k] - round(dscValues[k])) > integerTolerance
+                scores[k] = Inf
+                return k, scores
+            end
         end
     end
-    return 0
-end
 
-function reverse_order_of_appearance(fractionality::Array{Float64,1},pseudoCosts::Array{Float64,2})::Int
-    for i in length(fractionality):-1:1
-        if fractionality[i] > 0
-            return i
-        end
-    end
-    return 0
+    return 0, scores
 end

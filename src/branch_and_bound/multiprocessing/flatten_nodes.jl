@@ -53,8 +53,8 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     offset += 4
 
     # numeric values
-    destinationArray[offset+1] = node.objVal
-    destinationArray[offset+2] = node.avgFrac
+    destinationArray[offset+1] = node.objective
+    destinationArray[offset+2] = node.avgAbsFrac
     destinationArray[offset+3] = node.reliable
     offset += 3
 
@@ -123,8 +123,8 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         offset += 4
 
         # numeric values
-        objVal = flatRepresentation[offset+1]
-        avgFrac = flatRepresentation[offset+2]
+        objective = flatRepresentation[offset+1]
+        avgAbsFrac = flatRepresentation[offset+2]
         reliable = Bool(flatRepresentation[offset+ 3])
         offset += 3
 
@@ -149,7 +149,7 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         @. cnsDual = flatRepresentation[offset+1:offset+numCnss]
         offset += numCnss
 
-        return BBnode(branchLoBs,branchUpBs,primal,bndDual,cnsDual,avgFrac,objVal,reliable)
+        return BBnode(branchLoBs,branchUpBs,primal,bndDual,cnsDual,avgAbsFrac,objective,reliable)
     elseif flatRepresentation[offset+1] == -1.0
         return KillerNode(flatRepresentation[offset+2])
     else

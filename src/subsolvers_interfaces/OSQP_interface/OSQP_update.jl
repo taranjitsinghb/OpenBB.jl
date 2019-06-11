@@ -121,7 +121,7 @@ function append_problem!(workspace::OSQPworkspace,
     # test the future validity of the already computed lower bounds
     testWorkspace = setup(problem,workspace.settings)
     testSolution = solve!(testWorkspace)
-    if testSolution.objVal < -workspace.settings.eps_prim_inf
+    if testSolution.objective < -workspace.settings.eps_prim_inf
         reliableObjLoBs = false
     else
         reliableObjLoBs = true
@@ -155,7 +155,7 @@ function append_problem!(workspace::OSQPworkspace,
     # test the future validity of the already computed lower bounds
     testWorkspace = setup(problem,workspace.settings)
     testSolution = solve!(testWorkspace)
-    if testSolution.objVal < -workspace.settings.eps_prim_inf
+    if testSolution.objective < -workspace.settings.eps_prim_inf
         reliableObjLoBs = false
     else
         reliableObjLoBs = true
