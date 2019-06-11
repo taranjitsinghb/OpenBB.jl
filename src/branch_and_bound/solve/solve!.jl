@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-10T19:10:33+02:00
+# @Last modified time: 2019-06-11T19:46:45+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -21,7 +21,6 @@ function solve!(workspace::BBworkspace)::Nothing
 	@sync if workspace.status.description == "new"
 		solve!(workspace.activeQueue[1],workspace)
 		workspace.status.objLoB = workspace.activeQueue[1].objective
-
 		# initialize the pseudo costs
 		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.pseudoCosts,workspace.activeQueue[1])
 		if workspace.settings.numProcesses > 1

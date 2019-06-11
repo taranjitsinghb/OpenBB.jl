@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-08T13:47:12+02:00
+# @Last modified time: 2019-06-11T19:45:41+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -223,19 +223,18 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 while !isready(workspace.sharedMemory.inputChannel) &&
                       !all(@. workspace.sharedMemory.arrestable)
                     # pause for some time
-                    pause(1e-4)
+                    pause(1e-3)
                 end
             end
 
             if isready(workspace.sharedMemory.inputChannel)
-
-                # undeclare the worker ready to stop
                 if idle
+                    # undeclare the worker ready to stop
                     workspace.sharedMemory.arrestable[processId] = false
+                    # go active
+                    idle = false
                 end
 
-                # go active
-                idle = false
 
                 # take a new node from the input channel
                 newNode = take!(workspace.sharedMemory.inputChannel)
@@ -289,24 +288,17 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
 
     elseif length(workspace.activeQueue) == 0 && workspace.status.objUpB == Inf
 
-        workspace.status.description = 3
+        workspace.status.description = "infeasible"
         if workspace.settings.verbose && processId == 1
             print_status(workspace)
-            println(" Exit: infeasibilty detected")
+            println(" Exit: Infeasibilty Detected")
         end
-    # elseif length(workspace.activeQueue) == 0 && length(workspace.solutionPool) > 0
-    #
-    #     workspace.status.description = "noReliableSolutionFound"
-    #     if workspace.settings.verbose && processId == 1
-    #         print_status(workspace)
-    #         println(" Exit: no reliable solution found")
-    #     end
 
     else
         workspace.status.description = "interrupted"
         if workspace.settings.verbose && processId == 1
             print_status(workspace)
-            println(" Exit: interrupted")
+            println(" Exit: Interrupted")
         end
     end
 

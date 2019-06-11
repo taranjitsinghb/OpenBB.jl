@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-11T13:09:25+02:00
+# @Last modified time: 2019-06-11T18:52:39+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -59,7 +59,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 
 		# build the root node
 		rootNode = BBnode(-Infs(numDscVars),Infs(numDscVars),problem.varSet.val,
-						  zeros(numVars),zeros(numCnss),NaN,NaN,false)
+						  zeros(numVars),zeros(numCnss),NaN,NaN,NaN,false)
 
 		# construct the communication channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,bbSettings.numProcesses)
@@ -97,7 +97,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 																		bb_primalTolerance=$(bbSettings.primalTolerance),
 																		bb_timeLimit=$(bbSettings.timeLimit)
 																		),
-														   copy($(problem.varSet.dscIndices)),copy($(problem.varSet.sos1Groups)),hcat($problem.varSet.pseudoCosts,zeros(numDscVars)),
+														   copy($(problem.varSet.dscIndices)),copy($(problem.varSet.sos1Groups)),hcat($problem.varSet.pseudoCosts,zeros($numDscVars)),
 														   Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),
 														   OpenBB.BBstatus(objLoB=Inf,description="empty"),$sharedMemory,deepcopy($bbSettings)))
 	    end
