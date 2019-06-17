@@ -4,21 +4,36 @@
 # @Project: OpenBB
 # @Filename: solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-21T19:37:59+02:00
+# @Last modified time: 2019-06-17T13:19:56+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 # include referred code
-include("./solve_and_branch!.jl")
+include("./branch_and_solve!.jl")
 include("./run!.jl")
 
 
 # This is the main function called to solve a branch and bound problem
 function solve!(workspace::BBworkspace)::Nothing
 
+	# solve the root node
+	@sync if workspace.status.description == "new"
+		solve!(workspace.activeQueue[1],workspace)
+		workspace.status.objLoB = workspace.activeQueue[1].objective
+		# initialize the pseudo costs
+		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.pseudoCosts,workspace.activeQueue[1])
+		if workspace.settings.numProcesses > 1
+			# initialize the pseudoCosts in the remote workers
+			for k in 2:workspace.settings.numProcesses
+				@async remotecall_fetch(Main.eval,k,:(workspace.pseudoCosts[1] .= $(workspace.pseudoCosts[1]);workspace.pseudoCosts[2] .= $(workspace.pseudoCosts[2])))
+			end
+		end
+	end
+
+
 	if workspace.settings.numProcesses > 1
-	# start the remote branch and bound processes
+		# start the remote branch and bound processes
 		for k in 2:workspace.settings.numProcesses
 			@async remotecall_fetch(Main.eval,k,:(OpenBB.run!(workspace)))
 		end

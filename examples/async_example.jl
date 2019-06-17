@@ -28,7 +28,7 @@ end
 
 
 # setup the BB process
-workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,custom_stopping_rule=stopBB),OpenBB.OSQPsettings())
+workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,customStoppingRule=stopBB),OpenBB.OSQPsettings())
 
 
 # start the BB a first time and then stop it

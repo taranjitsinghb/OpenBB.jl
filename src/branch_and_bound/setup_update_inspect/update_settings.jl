@@ -3,13 +3,14 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_settings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-20T10:17:34+02:00
+# @Last modified time: 2019-06-03T18:04:56+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 #TODO: implement update_settings!
-# function update_settings!(workspace::BBworkspace;bb_settings::AbstractSettings=NullSettings(),ss_settings::AbstractSettings=NullSettings())::Nothing
+# function update_settings!(workspace::BBworkspace{T1,T2};bb_settings::AbstractSettings=NullSettings(),ss_settings::AbstractSettings=NullSettings())::Nothing
+#          where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 #
 #
 #     @error "Not implemented yet"

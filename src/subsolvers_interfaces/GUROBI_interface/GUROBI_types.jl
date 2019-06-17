@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBI_types.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-05T23:58:22+01:00
+# @Last modified time: 2019-06-12T22:34:03+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -43,6 +43,8 @@ mutable struct GUROBIsettings <:AbstractSettings
     Crossover::Int  	           #Barrier crossover strategy
     CrossoverBasis::Int 	       #Crossover initial basis construction strategy
     QCPDual::Int 	               #Compute dual variables for QCP models
+    # thead count
+    Threads::Int                   # number of threads to use
 end
 
 
@@ -72,7 +74,8 @@ function GUROBIsettings(;   Method::Int=2,
                             BarOrder::Int=-1,
                             Crossover::Int=-1,
                             CrossoverBasis::Int=0,
-                            QCPDual::Int=0)::GUROBIsettings
+                            QCPDual::Int=0,
+                            Threads::Int=1)::GUROBIsettings
 
     return GUROBIsettings(Method, OutputFlag, DisplayInterval, IterationLimit, TimeLimit,
                           FeasibilityTol, OptimalityTol, PSDTol, MarkowitzTol,
@@ -80,7 +83,7 @@ function GUROBIsettings(;   Method::Int=2,
                           ScaleFlag, Sifting, SiftMethod, SimplexPricing,
                           BarIterLimit, BarConvTol, BarQCPConvTol, BarCorrectors,
                           BarHomogeneous, BarOrder, Crossover, CrossoverBasis,
-                          QCPDual)
+                          QCPDual, Threads)
 end
 # structure used for storing data for OSQP solver
 mutable struct GUROBIworkspace <: AbstractWorkspace

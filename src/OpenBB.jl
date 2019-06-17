@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-31T10:39:41+02:00
+# @Last modified time: 2019-06-17T17:03:39+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -27,7 +27,7 @@ function withGUROBI()::Bool
     return true
 end
 function withQPALM()::Bool
-    return false
+    return true
 end
 
 
@@ -36,6 +36,9 @@ include("./problem_definition/problem_definition.jl")
 
 # solvers
 include("./branch_and_bound/BB.jl")
+
+# code for preprocessing
+include("./preprocessing/preprocessing.jl")
 
 # some utilities
 include("./utilities/utilities.jl")

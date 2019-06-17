@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-31T13:27:59+02:00
+# @Last modified time: 2019-06-11T19:44:41+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -11,8 +11,8 @@
 
 # this function returns the size of a flat representation of a node
 function flat_size(numVars::Int,numDscVars::Int,numCnss::Int)::Int
-    return 4 + 3 +        # header + average fractionality + objective value + reliable
-           5*numDscVars + # branching bounds + pseudoCosts
+    return 4 + 4 +        # header + (average fractionality + objective + pseudo-objective + reliable)
+           2*numDscVars + # branching bounds
            2*numVars +    # primal + bound_dual
            numCnss        # cns_dual
 end
@@ -21,7 +21,7 @@ end
 function flat_size(node::BBnode)::Int
 
     numVars = length(node.primal)
-    numDscVars = length(node.pseudoCosts)
+    numDscVars = length(node.branchLoBs)
     numCnss = length(node.cnsDual)
 
     return flat_size(numVars,numDscVars,numCnss)
@@ -40,7 +40,7 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
 
 
     numVars = length(node.primal)
-    numDscVars = length(node.pseudoCosts)
+    numDscVars = length(node.branchLoBs)
     numCnss = length(node.cnsDual)
 
     @assert length(destinationArray) >= flat_size(numVars,numDscVars,numCnss) + offset
@@ -53,32 +53,17 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     offset += 4
 
     # numeric values
-    destinationArray[offset+1] = node.objVal
-    destinationArray[offset+2] = node.avgFrac
-    destinationArray[offset+3] = node.reliable
-    offset += 3
+    destinationArray[offset+1] = node.avgAbsFrac
+    destinationArray[offset+2] = node.objective
+    destinationArray[offset+3] = node.pseudoObjective
+    destinationArray[offset+4] = node.reliable
+    offset += 4
 
     # bounds
-    for (k,pair) in enumerate(node.branchLoBs)
-        destinationArray[offset+k] = pair[1]
-        destinationArray[offset+numDscVars+k] = pair[2]
-    end
-    if length(node.branchLoBs) < numDscVars # put a zero to mark the end of the info
-        destinationArray[offset+length(node.branchLoBs)+1] = 0.
-    end
-    offset+=2*numDscVars
-    for (k,pair) in enumerate(node.branchUpBs)
-        destinationArray[offset+k] = pair[1]
-        destinationArray[offset+numDscVars+k] = pair[2]
-    end
-    if length(node.branchUpBs) < numDscVars # put a zero to mark the end of the info
-        destinationArray[offset+length(node.branchUpBs)+1] = 0.
-    end
-    offset+=2*numDscVars
-
-    # pseudo-costs
-    @. destinationArray[offset+1:offset+numDscVars] = node.pseudoCosts
-    offset += numDscVars
+    @. destinationArray[offset+1:offset+numDscVars] = node.branchLoBs
+    offset+=numDscVars
+    @. destinationArray[offset+1:offset+numDscVars] = node.branchUpBs
+    offset+=numDscVars
 
     # primal
     @. destinationArray[offset+1:offset+numVars] = node.primal
@@ -134,40 +119,23 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
 
         # rest of header
         numDscVars = Int(flatRepresentation[offset+2])
-        numVars =    Int(flatRepresentation[offset+3])
-        numCnss =    Int(flatRepresentation[offset+4])
+        numVars    = Int(flatRepresentation[offset+3])
+        numCnss    = Int(flatRepresentation[offset+4])
         offset += 4
 
         # numeric values
-        objVal = flatRepresentation[offset+1]
-        avgFrac = flatRepresentation[offset+2]
-        reliable = Bool(flatRepresentation[offset+ 3])
-        offset += 3
+        avgAbsFrac      = flatRepresentation[offset+1]
+        objective       = flatRepresentation[offset+2]
+        pseudoObjective = flatRepresentation[offset+3]
+        reliable        = Bool(flatRepresentation[offset+4])
+        offset += 4
 
         # bounds
-        branchLoBs = Dict{Int,Float64}()
-        for k in 1:numDscVars
-            if flatRepresentation[offset+k] != 0.
-                branchLoBs[Int(flatRepresentation[offset+k])] = flatRepresentation[offset + numDscVars + k]
-            else
-                break
-            end
-        end
-        offset += 2*numDscVars
-
-        branchUpBs = Dict{Int,Float64}()
-        for k in 1:numDscVars
-            if flatRepresentation[offset+k] != 0.
-                branchUpBs[Int(flatRepresentation[offset+k])] = flatRepresentation[offset + numDscVars + k]
-            else
-                break
-            end
-        end
-        offset += 2*numDscVars
-
-        #pseudo costs
-        pseudoCosts = Array{Float64,1}(undef,numDscVars)
-        @. pseudoCosts = flatRepresentation[offset+1:offset+numDscVars]
+        branchLoBs = Array{Float64,1}(undef,numDscVars)
+        @. branchLoBs = flatRepresentation[offset+1:offset+numDscVars]
+        offset += numDscVars
+        branchUpBs = Array{Float64,1}(undef,numDscVars)
+        @. branchUpBs = flatRepresentation[offset+1:offset+numDscVars]
         offset += numDscVars
 
         # primal
@@ -183,7 +151,7 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         @. cnsDual = flatRepresentation[offset+1:offset+numCnss]
         offset += numCnss
 
-        return BBnode(branchLoBs,branchUpBs,pseudoCosts,primal,bndDual,cnsDual,avgFrac,objVal,reliable)
+        return BBnode(branchLoBs,branchUpBs,primal,bndDual,cnsDual,avgAbsFrac,objective,pseudoObjective,reliable)
     elseif flatRepresentation[offset+1] == -1.0
         return KillerNode(flatRepresentation[offset+2])
     else

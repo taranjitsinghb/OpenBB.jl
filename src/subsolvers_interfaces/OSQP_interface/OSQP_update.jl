@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-17T14:40:21+01:00
+# @Last modified time: 2019-06-17T15:36:37+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -121,7 +121,7 @@ function append_problem!(workspace::OSQPworkspace,
     # test the future validity of the already computed lower bounds
     testWorkspace = setup(problem,workspace.settings)
     testSolution = solve!(testWorkspace)
-    if testSolution.objVal < -workspace.settings.eps_prim_inf
+    if testSolution[1] < -workspace.settings.eps_prim_inf
         reliableObjLoBs = false
     else
         reliableObjLoBs = true
@@ -155,7 +155,7 @@ function append_problem!(workspace::OSQPworkspace,
     # test the future validity of the already computed lower bounds
     testWorkspace = setup(problem,workspace.settings)
     testSolution = solve!(testWorkspace)
-    if testSolution.objVal < -workspace.settings.eps_prim_inf
+    if testSolution[1] < -workspace.settings.eps_prim_inf
         reliableObjLoBs = false
     else
         reliableObjLoBs = true

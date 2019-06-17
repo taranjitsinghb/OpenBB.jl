@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-10T20:55:21+01:00
+# @Last modified time: 2019-06-14T14:42:00+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -33,13 +33,13 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
 
 
     # check the objective function
-    if problem.objFun isa NullObjectiveFun
+    if problem.objFun isa NullObjectiveFunction
         Q = spzeros(nVars,nVars)
         L = zeros(nVars)
-    elseif problem.objFun isa LinearObj
+    elseif problem.objFun isa LinearObjective
         Q = spzeros(nVars,nVars)
         L = problem.objFun.L
-    elseif problem.objFun isa QuadraticObj
+    elseif problem.objFun isa QuadraticObjective
         Q = sparse(problem.objFun.Q)
         L = problem.objFun.L
     else
@@ -53,7 +53,7 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
         cnsLoBs = Float64[]
         cnsUpBs = Float64[]
 
-    elseif problem.cnsSet isa LinearCns
+    elseif problem.cnsSet isa LinearConstraintSet
         # adapt the constraint set to accomodate for variables bounds
         A = sparse(problem.cnsSet.A)
         cnsLoBs = copy(problem.cnsSet.loBs)

@@ -3,18 +3,18 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-28T18:00:17+02:00
+# @Last modified time: 2019-06-17T15:53:43+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 #
-function append_constraints!(workspace::BBworkspace,
+function append_constraints!(workspace::BBworkspace{T1,T2},
                              A::Union{Array{Float64,2},SparseMatrixCSC{Float64}},
                              cnsLoBs::Array{Float64,1},
                              cnsUpBs::Array{Float64,1};
                              suppressWarnings::Bool=false,
                              suppressUpdate::Bool=false,
-                             localOnly::Bool=false)::Nothing
+                             localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     return insert_constraints!(workspace,A,cnsLoBs,cnsUpBs,
                                get_numConstraints(workspace)+1,
@@ -24,14 +24,14 @@ function append_constraints!(workspace::BBworkspace,
 end
 
 #
-function insert_constraints!(workspace::BBworkspace,
+function insert_constraints!(workspace::BBworkspace{T1,T2},
                              A::Union{Array{Float64,2},SparseMatrixCSC{Float64}},
                              cnsLoBs::Array{Float64,1},
                              cnsUpBs::Array{Float64,1},
                              index::Int;
                              suppressWarnings::Bool=false,
                              suppressUpdate::Bool=false,
-                             localOnly::Bool=false)::Nothing
+                             localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # check if it is possible to make changes
     if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode
@@ -85,10 +85,10 @@ end
 
 
 #
-function remove_constraints!(workspace::BBworkspace,indices::Array{Int,1};
+function remove_constraints!(workspace::BBworkspace{T1,T2},indices::Array{Int,1};
                              suppressWarnings::Bool=false,
                              suppressUpdate::Bool=true,
-                             localOnly::Bool=true)::Nothing
+                             localOnly::Bool=true)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     ## check if it is possible to make changes
     if !suppressWarnings && workspace.status.description != "new"
@@ -134,10 +134,10 @@ end
 
 
 #
-function permute_constraints!(workspace::BBworkspace,permutation::Array{Int,1};
+function permute_constraints!(workspace::BBworkspace{T1,T2},permutation::Array{Int,1};
                               suppressWarnings::Bool=false,
                               suppressUpdate::Bool=true,
-                              localOnly::Bool=false)::Nothing
+                              localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
@@ -184,14 +184,14 @@ end
 
 
 #
-function update_bounds!(workspace::BBworkspace;
+function update_bounds!(workspace::BBworkspace{T1,T2};
                         cnsLoBs::Array{Float64,1}=Float64[],
                         cnsUpBs::Array{Float64,1}=Float64[],
                         varLoBs::Array{Float64,1}=Float64[],
                         varUpBs::Array{Float64,1}=Float64[],
                         suppressWarnings::Bool=false,
                         suppressUpdate::Bool=false,
-                        localOnly::Bool=false)::Nothing
+                        localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # check the correctness of the input
     @assert length(cnsLoBs)==0 || length(cnsLoBs)==length(workspace.subsolverWS.cnsLoBs)
@@ -260,10 +260,10 @@ function update_bounds!(workspace::BBworkspace;
 end
 
 #
-function append_problem!(workspace::BBworkspace,problem::Problem;
+function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
                          suppressWarnings::Bool=false,
                          suppressUpdate::Bool=false,
-                         localOnly::Bool=false)::Nothing
+                         localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # check if it is possible to make changes
     if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode
@@ -291,31 +291,36 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         reliableObjLoBs = append_problem!(workspace.subsolverWS,problem,suppressUpdate=true)
         # update all the sub-problems
         newPrimal = problem.varSet.val
-        newPseudoCosts = problem.varSet.pseudoCosts
         for i in  1:length(workspace.activeQueue)
             # mark all the problems as unreliable if necessary
             workspace.activeQueue[i].reliable = reliableObjLoBs && workspace.activeQueue[i].reliable
+            # extend branching bounds
+            append!(workspace.activeQueue[i].branchLoBs,-Infs(length(problem.varSet.dscIndices)))
+            append!(workspace.activeQueue[i].branchUpBs, Infs(length(problem.varSet.dscIndices)))
             # extend primal and dual optimization results
             append!(workspace.activeQueue[i].primal,copy(newPrimal))
-            append!(workspace.activeQueue[i].pseudoCosts,copy(newPseudoCosts))
             append!(workspace.activeQueue[i].bndDual,zeros(nVars2))
             append!(workspace.activeQueue[i].cnsDual,zeros(nCnss2))
         end
         for i in  1:length(workspace.solutionPool)
             # mark all the problems as unreliable if necessary
             workspace.solutionPool[i].reliable = reliableObjLoBs && workspace.solutionPool[i].reliable
+            # extend branching bounds
+            append!(workspace.solutionPool[i].branchLoBs,-Infs(length(problem.varSet.dscIndices)))
+            append!(workspace.solutionPool[i].branchUpBs, Infs(length(problem.varSet.dscIndices)))
             # extend primal and dual optimization results
             append!(workspace.solutionPool[i].primal,copy(newPrimal))
-            append!(workspace.solutionPool[i].pseudoCosts,copy(newPseudoCosts))
             append!(workspace.solutionPool[i].bndDual,zeros(nVars2))
             append!(workspace.solutionPool[i].cnsDual,zeros(nCnss2))
         end
         for i in  1:length(workspace.unactivePool)
             # mark all the problems as unreliable if necessary
             workspace.unactivePool[i].reliable = reliableObjLoBs && workspace.unactivePool[i].reliable
+            # extend branching bounds
+            append!(workspace.unactivePool[i].branchLoBs,-Infs(length(problem.varSet.dscIndices)))
+            append!(workspace.unactivePool[i].branchUpBs, Infs(length(problem.varSet.dscIndices)))
             # extend primal and dual optimization results
             append!(workspace.unactivePool[i].primal,copy(newPrimal))
-            append!(workspace.unactivePool[i].pseudoCosts,copy(newPseudoCosts))
             append!(workspace.unactivePool[i].bndDual,zeros(nVars2))
             append!(workspace.unactivePool[i].cnsDual,zeros(nCnss2))
         end
@@ -326,6 +331,7 @@ function append_problem!(workspace::BBworkspace,problem::Problem;
         # update discrete variables
         append!(workspace.dscIndices,@. problem.varSet.dscIndices + nVars1)
         append!(workspace.sos1Groups,@. problem.varSet.sos1Groups + maximum(workspace.sos1Groups) + 1)
+        workspace.pseudoCosts = (vcat(workspace.pseudoCosts[1],problem.varSet.pseudoCosts),vcat(workspace.pseudoCosts[2],repeat([0 0],length(problem.varSet.dscIndices),1)))
     end
 
     # adapt the workspace to the changes
@@ -338,23 +344,21 @@ end
 
 
 #
-function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,1};
-                                newSos1Groups::Array{Int,1}=Int[],newPseudoCosts::Array{Float64,1}=Float64[],
-                                suppressWarnings::Bool=false,suppressUpdate::Bool=false)::Nothing
+function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Array{Int,1};
+                                newSos1Groups::Array{Int,1}=Int[],
+                                suppressWarnings::Bool=false,suppressUpdate::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.integralize_variables!(workspace,$newDscIndices,
                                                                                 newSos1Groups=$newSos1Groups,
-                                                                                newPseudoCosts=$newPseudoCosts,
                                                                                 suppressWarnings=$suppressUpdate,
                                                                                 suppressUpdate=true,localOnly=true)))
         end
         # call the local version of the function on the main process
         integralize_variables!(workspace,newDscIndices,
                                newSos1Groups=newSos1Groups,
-                               newPseudoCosts=newPseudoCosts,
                                suppressWarnings=suppressUpdate,
                                suppressUpdate=true,localOnly=true)
     else
@@ -368,29 +372,12 @@ function integralize_variables!(workspace::BBworkspace,newDscIndices::Array{Int,
         elseif length(newSos1Groups) != length(newDscIndices)
             @error "newSos1Groups should either be empty or have the same dimension than newDscIndices"
         end
-        if length(newPseudoCosts) == 0
-            newPseudoCosts = ones(length(newDscIndices))
-        elseif length(newPseudoCosts) != length(newDscIndices)
-            @error "newPseudoCosts should either be empty or have the same dimension than newDscIndices"
-        end
+
         # add the new discrete variables
         append!(workspace.dscIndices,copy(newDscIndices))
         append!(workspace.sos1Groups,copy(newSos1Groups))
         tmpPerm = sortperm!(workspace.dscIndices)
         permute!(workspace.sos1Groups,tmpPerm)
-        # update the nodes pseudoCosts
-        for i in 1:length(workspace.activeQueue)
-            append!(workspace.activeQueue[i].pseudoCosts,newPseudoCosts)
-            permute!(workspace.activeQueue[i].pseudoCosts,tmpPerm)
-        end
-        for i in 1:length(workspace.solutionPool)
-            append!(workspace.solutionPool[i].pseudoCosts,newPseudoCosts)
-            permute!(workspace.solutionPool[i].pseudoCosts,tmpPerm)
-        end
-        for i in 1:length(workspace.unactivePool)
-            append!(workspace.unactivePool[i].pseudoCosts,newPseudoCosts)
-            permute!(workspace.unactivePool[i].pseudoCosts,tmpPerm)
-        end
     end
 
     # adapt the workspace to the changes

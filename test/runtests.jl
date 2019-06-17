@@ -4,9 +4,14 @@
 # @Project: OpenBB
 # @Filename: runtests.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-27T18:06:04+02:00
+# @Last modified time: 2019-06-17T16:57:31+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
+
+
+using OpenBB
+using LinearAlgebra
+using SparseArrays
 
 println("OpenBB tests:")
 include("./test_problem_definitions.jl")

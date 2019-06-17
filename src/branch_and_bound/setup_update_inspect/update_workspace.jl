@@ -3,13 +3,13 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-28T20:20:07+02:00
+# @Last modified time: 2019-06-11T13:09:44+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 
 #
-function reset_explored_nodes!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
+function reset_explored_nodes!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
 
@@ -23,7 +23,8 @@ function reset_explored_nodes!(workspace::BBworkspace;localOnly::Bool=false)::No
 
         # reset the global info
         workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0.
+        @. workspace.sharedMemory.stats = 0
+		@. workspace.sharedMemory.arrestable = false
 
     else
 
@@ -32,7 +33,7 @@ function reset_explored_nodes!(workspace::BBworkspace;localOnly::Bool=false)::No
         append!(workspace.activeQueue,workspace.unactivePool)
 		append!(workspace.activeQueue,workspace.solutionPool)
         sort!(workspace.activeQueue,alg=MergeSort,rev=true,
-              lt=(l,r)->workspace.settings.expansion_priority_rule(l,r,workspace.status))
+              lt=(l,r)->expansion_priority_rule(workspace.settings.expansionPriorityRule,l,r,workspace.status))
 
         deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
         deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
@@ -50,8 +51,37 @@ end
 
 
 
+#
+function update_sharedMemory(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
-function update!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
+	if workspace.sharedMemory isa BBsharedMemory{BBnodeChannel}
+		numVars = get_numVariables(workspace)
+		numCnss = get_numConstraints(workspace)
+		numDscVars = get_numDiscreteVariables(workspace)
+
+		# construct new communication Channels
+		communicationChannels = Array{BBnodeChannel,1}(undef,workspace.settings.numProcesses)
+		for k in 1:workspace.settings.numProcesses
+			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numDscVars,numCnss))
+		end
+		@sync for k in 2:workspace.settings.numProcesses
+			@async if k < workspace.settings.numProcesses
+				remotecall_fetch(Main.eval,k,:(workspace.sharedMemory.inputChannel = $(communicationChannels[k]);
+											   workspace.sharedMemory.outputChannel = $(communicationChannels[k+1]);
+											   nothing))
+			else
+				remotecall_fetch(Main.eval,k,:(workspace.sharedMemory.inputChannel = $(communicationChannels[k]);
+											   workspace.sharedMemory.outputChannel = $(communicationChannels[1]);
+											   nothing))
+			end
+		end
+	end
+	return
+end
+
+
+#
+function update!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
 
@@ -63,9 +93,13 @@ function update!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
         # call the local version of the function on the current process
         update!(workspace,localOnly=true)
 
+		# adapt the shared memory to the new problem
+		update_sharedMemory(workspace)
+
         # reset the global info
         workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0.
+        @. workspace.sharedMemory.stats = 0
+		@. workspace.sharedMemory.arrestable = false
 
 
         # update the communication channels (if needed)
@@ -106,7 +140,7 @@ end
 
 
 # return the workspace to the initial state
-function reset!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
+function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
 
@@ -121,7 +155,8 @@ function reset!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
         # reset the global info
         @. workspace.sharedMemory.objectiveBounds[1:end-1] = -Inf
         workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats[1] .= 0.
+        @. workspace.sharedMemory.stats = 0
+		@. workspace.sharedMemory.arrestable = false
 
     else
         # eliminate all the generated nodes and reinsert the root of the BB tree
@@ -131,7 +166,8 @@ function reset!(workspace::BBworkspace;localOnly::Bool=false)::Nothing
                                              zeros(get_numVariables(workspace)),
 											 zeros(get_numVariables(workspace)),
                                              zeros(get_numConstraints(workspace)),
-                                             1.0,-Inf,false))
+                                             NaN,NaN,NaN,false))
+		workspace.status.description = "new"
     end
 
     return
@@ -139,7 +175,7 @@ end
 
 
 # eliminates all the generated nodes from the workspace
-function clear!(workspace;localOnly::Bool=false)::Nothing
+function clear!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
 
@@ -154,8 +190,8 @@ function clear!(workspace;localOnly::Bool=false)::Nothing
         # update the global info
         @. workspace.sharedMemory.objectiveBounds[1:end-1] = Inf
         workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0.
-
+        @. workspace.sharedMemory.stats = 0
+		@. workspace.sharedMemory.arrestable = false
 
     else
         deleteat!(workspace.activeQueue, 1:length(workspace.activeQueue))
