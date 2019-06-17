@@ -3,8 +3,8 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T16:47:44+02:00
-# @License: LGPL-3.0
+# @Last modified time: 2019-06-17T17:28:52+02:00
+# @License: apache 2.0
 # @Copyright: {{copyright}}
 
 function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BBnode,1} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
