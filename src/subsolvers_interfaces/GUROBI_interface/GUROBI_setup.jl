@@ -4,7 +4,7 @@
 # @Filename: Gurobi_setup.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-03-10T20:55:10+01:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 

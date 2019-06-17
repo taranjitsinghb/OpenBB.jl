@@ -4,7 +4,7 @@
 # @Filename: numerical_utilities.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-03-04T14:13:36+01:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 const IntInf = 2^63-1

@@ -4,7 +4,7 @@
 # @Filename: types.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-05-06T17:31:03+02:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 

@@ -4,7 +4,7 @@
 # @Filename: OSQP_interface_update.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-06-17T15:36:37+02:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 

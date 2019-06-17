@@ -4,5 +4,5 @@
 # @Filename: NullConstraintSet.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-05-23T18:57:23+02:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}

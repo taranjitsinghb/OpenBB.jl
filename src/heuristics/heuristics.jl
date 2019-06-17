@@ -4,7 +4,7 @@
 # @Filename: heuristics.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-03-12T15:40:57+01:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 include("./simple_rounding_heuristics.jl")

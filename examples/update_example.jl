@@ -5,7 +5,7 @@
 # @Filename:
 # @Last modified by:   massimo
 # @Last modified time: 2019-05-06T18:49:24+02:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 using OpenBB

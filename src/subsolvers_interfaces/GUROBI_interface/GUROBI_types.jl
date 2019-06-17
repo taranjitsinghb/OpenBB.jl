@@ -4,7 +4,7 @@
 # @Filename: GUROBI_types.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-06-12T22:34:03+02:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 const GUROBImaxint = 2000000000

@@ -4,7 +4,7 @@
 # @Filename: async_example.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-05-06T18:49:13+02:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 # this would show how to make OpenBB run asynchronously

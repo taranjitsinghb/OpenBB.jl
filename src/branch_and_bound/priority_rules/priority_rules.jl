@@ -5,7 +5,7 @@
 # @Filename: priority_rules.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-02-07T16:46:05+01:00
-# @License: apache 2.0
+# @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
