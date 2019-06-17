@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-17T14:40:21+01:00
+# @Last modified time: 2019-06-17T17:01:43+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -117,13 +117,13 @@ end
 
 #
 function append_problem!(workspace::QPALMworkspace,
-                         problem::Problem{LinearObj,LinearCns{T}};
+                         problem::Problem{LinearObjective,LinearConstraintSet{T}};
                          suppressUpdate::Bool=false)::Bool where T
 
     # test the future validity of the already computed lower bounds
     testWorkspace = setup(problem,workspace.settings)
     testSolution = solve!(testWorkspace)
-    if testSolution.objective < -workspace.settings.eps_prim_inf
+    if testSolution[1] < -workspace.settings.eps_prim_inf
         reliableObjLoBs = false
     else
         reliableObjLoBs = true
@@ -151,7 +151,7 @@ end
 
 #
 function append_problem!(workspace::QPALMworkspace,
-                         problem::Problem{QuadraticObj{T1},LinearCns{T2}};
+                         problem::Problem{QuadraticObjective{T1},LinearConstraintSet{T2}};
                          suppressUpdate::Bool=false)::Bool where T1 where T2
 
     # test the future validity of the already computed lower bounds

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-11T19:46:45+02:00
+# @Last modified time: 2019-06-17T13:19:56+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -26,7 +26,7 @@ function solve!(workspace::BBworkspace)::Nothing
 		if workspace.settings.numProcesses > 1
 			# initialize the pseudoCosts in the remote workers
 			for k in 2:workspace.settings.numProcesses
-				@async remotecall_fetch(Main.eval,k,:(@. workspace.pseudoCosts = $(workspace.pseudoCosts)))
+				@async remotecall_fetch(Main.eval,k,:(workspace.pseudoCosts[1] .= $(workspace.pseudoCosts[1]);workspace.pseudoCosts[2] .= $(workspace.pseudoCosts[2])))
 			end
 		end
 	end

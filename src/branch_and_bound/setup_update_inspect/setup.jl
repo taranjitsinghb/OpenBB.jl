@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-11T18:52:39+02:00
+# @Last modified time: 2019-06-17T15:25:25+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -34,18 +34,8 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 	end
 
 
-    # check correctness of the inputs
-    @assert bbSettings.numProcesses>=0
-
-	if bbSettings.numProcesses == 0
-	# set the processes to use to the number of cpus in the machine
-    	bbSettings.numProcesses = length(Sys.cpu_info())
-	else
-		bbSettings.numProcesses = min(length(Sys.cpu_info()),bbSettings.numProcesses)
-	end
-
-	if nprocs() < bbSettings.numProcesses
 	# add new processes if there aren't enough
+	if nprocs() < bbSettings.numProcesses
 		addprocs(bbSettings.numProcesses - nprocs())
 	end
 
@@ -80,7 +70,8 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		workspace = BBworkspace(setup(problem,ssSettings,
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
-								problem.varSet.dscIndices,problem.varSet.sos1Groups,hcat(problem.varSet.pseudoCosts,zeros(numDscVars)),
+								problem.varSet.dscIndices,problem.varSet.sos1Groups,
+								(problem.varSet.pseudoCosts,Array{Int,2}(undef,size(problem.varSet.pseudoCosts))),
 								[rootNode],Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats,arrestable),bbSettings)
 
@@ -97,7 +88,8 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 																		bb_primalTolerance=$(bbSettings.primalTolerance),
 																		bb_timeLimit=$(bbSettings.timeLimit)
 																		),
-														   copy($(problem.varSet.dscIndices)),copy($(problem.varSet.sos1Groups)),hcat($problem.varSet.pseudoCosts,zeros($numDscVars)),
+														   copy($(problem.varSet.dscIndices)),copy($(problem.varSet.sos1Groups)),
+														   ($problem.varSet.pseudoCosts,Array{Int,2}(undef,size($problem.varSet.pseudoCosts))),
 														   Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),
 														   OpenBB.BBstatus(objLoB=Inf,description="empty"),$sharedMemory,deepcopy($bbSettings)))
 	    end
@@ -115,7 +107,8 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		workspace = BBworkspace(setup(problem,ssSettings,
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
-								problem.varSet.dscIndices,problem.varSet.sos1Groups,hcat(problem.varSet.pseudoCosts,zeros(numDscVars)),
+								problem.varSet.dscIndices,problem.varSet.sos1Groups,
+								(problem.varSet.pseudoCosts,Array{Int,2}(undef,size(problem.varSet.pseudoCosts))),
 								[rootNode],Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),NullSharedMemory(),bbSettings)
 	end

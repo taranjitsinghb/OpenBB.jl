@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-11T19:45:41+02:00
+# @Last modified time: 2019-06-17T14:24:43+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -63,16 +63,26 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
 
     # keep in memory how many nodes the algorithm has explored since the last time
     # it has sent a node to the neighbouring process
-    workBalaceCounter = 0
+    timeToShareNodes = false
 
     # main loop
     while !idle
 
-        # update total time
-        elapsedTime = time() - lastTimeCheckpoint
-        workspace.status.totalTime += elapsedTime
-        printCountdown -= elapsedTime
+        # get elapsed time for the last iteration
+        iterationTime = time() - lastTimeCheckpoint
         lastTimeCheckpoint = time()
+        # update total time
+        workspace.status.totalTime += iterationTime
+        printCountdown -= iterationTime
+
+        # print algorithm status
+        if workspace.settings.verbose && processId == 1
+           if printCountdown <= 0
+               print_status(workspace)
+               printCountdown = workspace.settings.statusInfoPeriod
+          end
+        end
+
 
         # stopping conditions
         if length(workspace.activeQueue) == 0 || # no more nodes in the queue
@@ -86,14 +96,6 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
            idle = true
 
        else # continue with branch and bound
-
-            # print algorithm status
-            if workspace.settings.verbose && processId == 1
-               if printCountdown <= 0
-                   print_status(workspace)
-                   printCountdown = workspace.settings.statusInfoPeriod
-              end
-            end
 
             # apply rounding heuristics (#TODO  rewrite it!)
             # if node.avgAbsFrac <= workspace.settings.roundingHeuristicsThreshold
@@ -110,19 +112,19 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 end
 
             elseif !(workspace.sharedMemory isa NullSharedMemory) && # we are multiprocessing
-                   workBalaceCounter >= 1 && # it is time to send the node to another process
-                   !isready(workspace.sharedMemory.outputChannel) # send only one node per time
+                   timeToShareNodes # it is time to send a child to the next process
+                   # !isready(workspace.sharedMemory.outputChannel) # the channel is free
 
-                    # send the new node to the neighbouring process
-                    put!(workspace.sharedMemory.outputChannel,node)
+                # send the new node to the neighbouring process
+                put!(workspace.sharedMemory.outputChannel,node)
 
-                    # reset work balance counter
-                    workBalaceCounter = 0
+                # the next node has to be explored locally
+                timeToShareNodes = false
 
-            else
+            else # explore the node locally
 
-                # update work balance counter
-                workBalaceCounter += 1
+                # the next node will be sent to the neighbouring process
+                timeToShareNodes = true
 
                 # create a list of children nodes
                 children = branch_and_solve!(node,workspace)
@@ -167,17 +169,14 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                             end
 
                         else # the solution is not reliable
-
                             # store the unreliable solution in the unactivePool
                             push!(workspace.unactivePool,child)
                         end
-
-                    else  # the child has to be inserted in the active_queue
-
+                    else # insert the child in the local queue
                         # insert the child in the queue
                         insert_node!(workspace.activeQueue,child,workspace.settings.expansionPriorityRule,
                                      workspace.status,unreliablePriority=workspace.settings.unreliableSubproblemsPriority)
-                     end
+                    end
                 end
             end
 
@@ -219,12 +218,18 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 # declare the worker ready to stop
                 workspace.sharedMemory.arrestable[processId] = true
 
+                # keep track of the time spent in waiting
+                waitingStartTime = time()
+
                 # wait for a message to arrive in the inputChannel
                 while !isready(workspace.sharedMemory.inputChannel) &&
                       !all(@. workspace.sharedMemory.arrestable)
                     # pause for some time
                     pause(1e-3)
                 end
+
+                # keep track of the time spent in waiting
+                workspace.status.waitingTime += time()-waitingStartTime
             end
 
             if isready(workspace.sharedMemory.inputChannel)
@@ -234,7 +239,6 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                     # go active
                     idle = false
                 end
-
 
                 # take a new node from the input channel
                 newNode = take!(workspace.sharedMemory.inputChannel)
@@ -268,14 +272,6 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
     end
 
     ############################## termination ##############################
-
-    # check for erroneous termination (to remove at release)
-    if !(workspace.sharedMemory isa NullSharedMemory)
-        # empty the communicationChannels
-        while isready(workspace.sharedMemory.inputChannel)
-            @assert take!(workspace.sharedMemory.inputChannel) isa KillerNode
-        end
-    end
 
     if workspace.status.absoluteGap < workspace.settings.absoluteGapTolerance ||
        workspace.status.relativeGap < workspace.settings.relativeGapTolerance

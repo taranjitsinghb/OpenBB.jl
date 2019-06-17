@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T19:05:25+02:00
+# @Last modified time: 2019-06-17T16:59:03+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -47,5 +47,31 @@ function solve!(workspace::OSQPworkspace,
     @. primal = sol.x
     @. bndDual = sol.y[1:nVars]
     @. cnsDual = sol.y[nVars+1:end]
+    return (sol.info.obj_val, status, sol.info.run_time)
+end
+
+
+function solve!(workspace::OSQPworkspace)::Tuple{Float64,Int8,Float64}
+
+    # solve problem
+    sol = OSQP.solve!(workspace.model)
+
+    # output sol info
+    if  sol.info.status_val == 1
+        status = 0 # "solved"
+    elseif sol.info.status_val == -3
+        status = 1 # "infeasible"
+    elseif sol.info.status_val in [2,3,4,-6,-2]
+        status = 2 # "unreliable"
+        sol.x = @. min(max(sol.x,varLoBs),varUpBs)
+        @warn "Inaccuracy in node sol, message: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
+    elseif sol.info.status_val in [-7,-10]
+        status = 3 # "error"
+        @error "Subsover error, status: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
+    else
+        @error "Subsolver unknown status: "*string(sol.info.status)*"("*string(sol.info.status_val)*")"
+    end
+
+    #return solution info
     return (sol.info.obj_val, status, sol.info.run_time)
 end

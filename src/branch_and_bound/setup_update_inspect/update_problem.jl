@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T18:07:06+02:00
+# @Last modified time: 2019-06-17T15:53:43+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -331,6 +331,7 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
         # update discrete variables
         append!(workspace.dscIndices,@. problem.varSet.dscIndices + nVars1)
         append!(workspace.sos1Groups,@. problem.varSet.sos1Groups + maximum(workspace.sos1Groups) + 1)
+        workspace.pseudoCosts = (vcat(workspace.pseudoCosts[1],problem.varSet.pseudoCosts),vcat(workspace.pseudoCosts[2],repeat([0 0],length(problem.varSet.dscIndices),1)))
     end
 
     # adapt the workspace to the changes

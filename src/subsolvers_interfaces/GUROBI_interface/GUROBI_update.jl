@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBI_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-17T23:30:59+01:00
+# @Last modified time: 2019-06-17T16:59:58+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -48,7 +48,7 @@ function remove_constraints!(workspace::GUROBIworkspace,indices::Array{Int,1};
     # perform the removal
     indicesCnssToKeep = filter(x->!(x in indices),collect(1:size(workspace.A,1)))
     workspace.A = workspace.A[indicesCnssToKeep,:]
-    
+
     deleteat!(workspace.cnsLoBs,indices)
     deleteat!(workspace.cnsUpBs,indices)
 
@@ -144,7 +144,7 @@ function append_problem!(workspace::GUROBIworkspace,
     # test the future validity of the already computed lower bounds
     testWorkspace = setup(problem,workspace.settings)
     testSolution = solve!(testWorkspace)
-    if testSolution.objective < -workspace.settings.FeasibilityTol
+    if testSolution[1] < -workspace.settings.FeasibilityTol
         reliableObjLoBs = false
     else
         reliableObjLoBs = true

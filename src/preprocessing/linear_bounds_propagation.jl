@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: linear_bounds_propagation.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-12T12:22:39+01:00
+# @Last modified time: 2019-06-14T11:45:59+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -95,8 +95,6 @@ function bounds_propagation!(cns::SparseVector{Float64,Int},
                   iteration = iteration + 1
             end
       end
-
-
 end
 
 

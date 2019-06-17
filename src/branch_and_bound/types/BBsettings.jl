@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-11T16:47:43+02:00
+# @Last modified time: 2019-06-17T15:27:43+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -20,7 +20,6 @@ mutable struct BBsettings <: AbstractSettings
     stopAfterSolution::Bool                 # stop workers after the solution for the current problem has been found
     dynamicMode::Bool                       # store in memory suboptimal solutions and nodes to allow later updates
     # problem bounds
-    integerTolerance::Float64               # integer tolerance
     primalTolerance::Float64                # constraint violation tolerance
     objectiveCutoff::Float64                # look only for solutions that are better than the provided upper bound
     # priority rules
@@ -28,7 +27,6 @@ mutable struct BBsettings <: AbstractSettings
     branchingPriorityRule::Tuple            # ordering of the discrete variables for branching
     unreliableSubproblemsPriority::Int      # activeQueue insertion priority for unreliable nodes (-1->low, 0->normal, 1->high)
     # pseudo-costs
-    pseudoCostsLearningRate::Float64        # learning rate for pseudo-costs
     pseudoCostsInitialization::Tuple        # function returning the initialization of the pseudo-costs
     # stopping criteria
     customStoppingRule::Function            # user-defined stopping criterion
@@ -47,14 +45,12 @@ function BBsettings(;verbose::Bool=false,
                      numProcesses::Int=0,
                      stopAfterSolution::Bool = true,
                      dynamicMode::Bool=false,
-                     integerTolerance::Float64=1e-4,
                      primalTolerance::Float64=1e-4,
                      objectiveCutoff::Float64=Inf,
                      expansionPriorityRule::Tuple=(lower_pseudoObjective,),
                      branchingPriorityRule::Tuple=(pseudoIncrements_geomean,),
                      unreliableSubproblemsPriority::Int=0,
-                     pseudoCostsLearningRate::Float64=0.05 ,
-                     pseudoCostsInitialization::Tuple=(initialize_to_constant!,1.),
+                     pseudoCostsInitialization::Tuple=(initialize_to_constant!,1e-4),
                      customStoppingRule::Function=x->false,
                      timeLimit::Float64=Inf,
                      numSolutionsLimit::Int=0,
@@ -64,9 +60,15 @@ function BBsettings(;verbose::Bool=false,
                      )::BBsettings
 
 
+    # check correctness of the inputs
+    @assert numProcesses>=0
+	if numProcesses == 0
+    	numProcesses = div(Sys.CPU_THREADS,2)
+	end
+
     return BBsettings(verbose,statusInfoPeriod,numProcesses,stopAfterSolution,dynamicMode,
-                      integerTolerance,primalTolerance,objectiveCutoff,
+                      primalTolerance,objectiveCutoff,
                       expansionPriorityRule,branchingPriorityRule,unreliableSubproblemsPriority,
-                      pseudoCostsLearningRate,pseudoCostsInitialization,
-                      customStoppingRule,timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,roundingHeuristicsThreshold)
+                      pseudoCostsInitialization,customStoppingRule,
+                      timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,roundingHeuristicsThreshold)
 end

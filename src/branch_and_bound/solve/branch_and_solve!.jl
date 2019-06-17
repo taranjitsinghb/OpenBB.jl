@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-11T16:51:06+02:00
+# @Last modified time: 2019-06-17T16:47:44+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -24,22 +24,24 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BB
         # update pseudoCosts
         if branchIndices[k]>0 && children[k].reliable && children[k].objective < Inf
 
-            # compute the pseudoCost learning rate
-            mu = max(2.0^-workspace.pseudoCosts[branchIndices[k],3],workspace.settings.pseudoCostsLearningRate)
 
             # compute objective and primal variation
             deltaObjective = children[k].objective-node.objective
             deltaVariable = children[k].primal[workspace.dscIndices[branchIndices[k]]] - node.primal[workspace.dscIndices[branchIndices[k]]]
 
-            if deltaVariable < -workspace.settings.integerTolerance
-                # update the pseudoCost
-                workspace.pseudoCosts[branchIndices[k],1] = (1-mu)*workspace.pseudoCosts[branchIndices[k],1] - mu*deltaObjective/deltaVariable
-                workspace.pseudoCosts[branchIndices[k],3] += 1
+            if deltaVariable < -workspace.settings.primalTolerance
 
-            elseif deltaVariable > workspace.settings.integerTolerance
                 # update the pseudoCost
-                workspace.pseudoCosts[branchIndices[k],2] = (1-mu)*workspace.pseudoCosts[branchIndices[k],2] + mu*deltaObjective/deltaVariable
-                workspace.pseudoCosts[branchIndices[k],3] += 1
+                mu = 1/(workspace.pseudoCosts[2][branchIndices[k],1]+1)
+                workspace.pseudoCosts[1][branchIndices[k],1] = (1-mu)*workspace.pseudoCosts[1][branchIndices[k],1] - mu*deltaObjective/deltaVariable
+                workspace.pseudoCosts[2][branchIndices[k],1] += 1
+
+            elseif deltaVariable > workspace.settings.primalTolerance
+
+                # update the pseudoCost
+                mu = 1/(workspace.pseudoCosts[2][branchIndices[k],2]+1)
+                workspace.pseudoCosts[1][branchIndices[k],2] = (1-mu)*workspace.pseudoCosts[1][branchIndices[k],2] + mu*deltaObjective/deltaVariable
+                workspace.pseudoCosts[2][branchIndices[k],2] += 1
             end
         end
 
@@ -54,8 +56,7 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Tuple{Array{BBnode
     # select a branching index
     tmpIndex, priorityScores = branching_priority_rule(workspace.settings.branchingPriorityRule,
                                                        node.primal[workspace.dscIndices],workspace.pseudoCosts,
-                                                       workspace.settings.integerTolerance)
-
+                                                       workspace.settings.primalTolerance)
     @assert tmpIndex > 0; branchIndex = workspace.dscIndices[tmpIndex]
 
 
@@ -131,13 +132,18 @@ function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:A
     # 1 -> infeasible
     # 2 -> unreliable
     # 3 -> error
-    (objective,ssStatus,~) = solve!(workspace.subsolverWS,varLoBs,varUpBs,node.primal,node.bndDual,node.cnsDual)
+    if any(@. varLoBs > varUpBs + workspace.settings.primalTolerance)
+        ssStatus = 1
+    else
+        (objective,ssStatus,~) = solve!(workspace.subsolverWS,varLoBs,varUpBs,node.primal,node.bndDual,node.cnsDual)
+    end
+
 
     if ssStatus == 0
         node.objective = objective
         node.pseudoObjective = objective +
-                          maximum(@. (node.primal[workspace.dscIndices]-floor(node.primal[workspace.dscIndices]+workspace.settings.integerTolerance))*workspace.pseudoCosts[:,1] +
-                                     (ceil(node.primal[workspace.dscIndices]-workspace.settings.integerTolerance)-node.primal[workspace.dscIndices])*workspace.pseudoCosts[:,2])
+                          maximum(@. (node.primal[workspace.dscIndices]-floor(node.primal[workspace.dscIndices]+workspace.settings.primalTolerance))*workspace.pseudoCosts[1][:,1] +
+                                     (ceil(node.primal[workspace.dscIndices]-workspace.settings.primalTolerance)-node.primal[workspace.dscIndices])*workspace.pseudoCosts[1][:,2])
         node.reliable = true
     elseif ssStatus == 1
         node.objective = Inf
@@ -152,11 +158,11 @@ function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:A
     end
 
     # count how many subproblems we have solved
-    workspace.status.numExploredNodes = workspace.status.numExploredNodes + 1
+    workspace.status.numRelaxationsSolved = workspace.status.numRelaxationsSolved + 1
 
     # compute node average fractionality and pseudo_cost
     fractionality = @. node.primal[workspace.dscIndices] - round(node.primal[workspace.dscIndices])
-    @. fractionality =  fractionality*(fractionality>workspace.settings.integerTolerance)
+    @. fractionality =  fractionality*(fractionality>workspace.settings.primalTolerance)
 
     node.avgAbsFrac = 2. * sum(@. abs(fractionality))/length(workspace.dscIndices)
     return

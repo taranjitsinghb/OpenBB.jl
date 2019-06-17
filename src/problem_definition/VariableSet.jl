@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T19:17:02+02:00
+# @Last modified time: 2019-06-17T15:47:54+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -35,7 +35,7 @@ function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},val::Array{F
     end
 
     if size(pseudoCosts,1) == 0
-        pseudoCosts = ones(length(dscIndices),2)
+        pseudoCosts = 1e-4*ones(length(dscIndices),2)
     elseif size(pseudoCosts,1) != length(dscIndices) || size(pseudoCosts,2) != 2
         @error "pseudoCosts should either be empty or have size: length(dscIndices) x 2 "
     end
@@ -63,7 +63,7 @@ function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},val::Array{F
 end
 
 function EmptyVarSet()::VariableSet
-    return VariableSet(Float64[],Float64[],Float64[],Int[],Int[],Float64[])
+    return VariableSet(Float64[],Float64[],Float64[],Int[],Int[],Array{Float64,2}(undef,0,0))
 end
 
 

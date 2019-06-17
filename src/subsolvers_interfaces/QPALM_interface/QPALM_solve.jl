@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T19:01:30+02:00
+# @Last modified time: 2019-06-17T17:01:24+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -54,5 +54,39 @@ function solve!(workspace::QPALMworkspace,
     @. primal = sol.x
     @. bndDual = sol.y[1:nVars]
     @. cnsDual = sol.y[nVars+1:end]
+    return (sol.info.obj_val, status, sol.info.run_time)
+end
+
+
+
+function solve!(workspace::QPALMworkspace)::Tuple{Float64,Int8,Float64}
+
+    # solve problem
+    sol = QPALM.solve!(workspace.model)
+
+    if sol.info.status_val in [1,2,3,4,-6,-2]
+        obj_val = 1/2 * transpose(sol.x) * workspace.Q * sol.x + transpose(workspace.L) * sol.x
+    else
+        obj_val = NaN
+    end
+
+    # output sol info
+    if  sol.info.status_val == 1
+        status = 0 # "solved"
+    elseif sol.info.status_val == -3
+        status = 1 # "infeasible"
+    elseif sol.info.status_val in [2,3,4,-6,-2]
+        status = 2 # "unreliable"
+        sol.x = @. min(max(sol.x,varLoBs),varUpBs)
+        obj_val = 0 # TODO
+        @warn "Inaccuracy in node sol, message: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
+    elseif sol.info.status_val in [-7,-10]
+        status = 3 # "error"
+        @error "Subsover error, status: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
+    else
+        @error "Subsolver unknown status: "*string(sol.info.status)*"("*string(sol.info.status_val)*")"
+    end
+
+    #return solution
     return (sol.info.obj_val, status, sol.info.run_time)
 end
