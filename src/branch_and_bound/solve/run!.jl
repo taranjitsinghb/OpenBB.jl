@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-18T14:44:00+02:00
+# @Last modified time: 2019-06-18T17:35:29+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -86,6 +86,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
 
         # stopping conditions
         if length(workspace.activeQueue) == 0 || # no more nodes in the queue
+           workspace.status.objLoB > workspace.settings.objectiveCutoff || # no solutions within the cutoff possible
            workspace.status.totalTime >= workspace.settings.timeLimit || # time is up
            workspace.settings.customStoppingRule(workspace) || # custom stopping rule triggered
            workspace.status.absoluteGap <= workspace.settings.absoluteGapTolerance || # reached required absolute gap
@@ -106,7 +107,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
             node = pop!(workspace.activeQueue)
 
             # check if node is already suboptimal (the upper-bound might have changed)
-            if node.objective > workspace.status.objUpB - workspace.settings.primalTolerance
+            if node.objective > min(workspace.status.objUpB,workspace.settings.objectiveCutoff) - workspace.settings.primalTolerance
                 if workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes are stored
                     push!(workspace.unactivePool,node)
                 end
@@ -135,7 +136,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 # handle the rest of the children
                 for child in children
 
-                    if workspace.status.objUpB < child.objective + workspace.settings.primalTolerance # the child is suboptimal
+                    if min(workspace.status.objUpB,workspace.settings.objectiveCutoff) < child.objective + workspace.settings.primalTolerance # the child is suboptimal
                         if workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes are stored
                             push!(workspace.unactivePool,child)
                         end
@@ -282,7 +283,9 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
             println(" Exit: Optimal Solution Found")
         end
 
-    elseif length(workspace.activeQueue) == 0 && workspace.status.objUpB == Inf
+    elseif workspace.status.objLoB > workspace.settings.objectiveCutoff ||
+           (length(workspace.activeQueue) == 0 && workspace.status.objUpB == Inf)
+
 
         workspace.status.description = "infeasible"
         if workspace.settings.verbose && processId == 1

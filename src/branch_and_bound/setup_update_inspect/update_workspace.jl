@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-11T13:09:44+02:00
+# @Last modified time: 2019-06-18T19:17:53+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -52,7 +52,7 @@ end
 
 
 #
-function update_sharedMemory(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+function update_sharedMemory!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
 	if workspace.sharedMemory isa BBsharedMemory{BBnodeChannel}
 		numVars = get_numVariables(workspace)
@@ -94,7 +94,7 @@ function update!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing w
         update!(workspace,localOnly=true)
 
 		# adapt the shared memory to the new problem
-		update_sharedMemory(workspace)
+		update_sharedMemory!(workspace)
 
         # reset the global info
         workspace.sharedMemory.objectiveBounds[end] = Inf

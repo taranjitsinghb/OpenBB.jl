@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T15:53:43+02:00
+# @Last modified time: 2019-06-18T16:50:30+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -34,7 +34,7 @@ function insert_constraints!(workspace::BBworkspace{T1,T2},
                              localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # check if it is possible to make changes
-    if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode
+    if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
         @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
     end
 
@@ -91,7 +91,7 @@ function remove_constraints!(workspace::BBworkspace{T1,T2},indices::Array{Int,1}
                              localOnly::Bool=true)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     ## check if it is possible to make changes
-    if !suppressWarnings && workspace.status.description != "new"
+    if !suppressWarnings && workspace.status.description != "new" && myid() == 1
         @warn "Removing constraints will invalidate the results found in the last solution process"
     end
 
@@ -201,7 +201,7 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
 
 
     # check if it is possible to make changes
-    if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode
+    if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
         @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
 
         # check if a bounds relaxation was requested
@@ -210,7 +210,7 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
            (length(varLoBs) > 0 && any(@. varLoBs < workspace.subsolverWS.varLoBs)) ||
            (length(varUpBs) > 0 && any(@. varUpBs > workspace.subsolverWS.varLoBs))
 
-            @warn "It is not possible to update the BB tree for a bounds relaxation, a restart might be necessary"
+            @warn "It is not possible to update the BB tree for a bound relaxation, a restart might be necessary"
         end
     end
 
@@ -266,7 +266,7 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
                          localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # check if it is possible to make changes
-    if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode
+    if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
         @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
     end
 
@@ -346,7 +346,9 @@ end
 #
 function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Array{Int,1};
                                 newSos1Groups::Array{Int,1}=Int[],
-                                suppressWarnings::Bool=false,suppressUpdate::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+                                suppressWarnings::Bool=false,
+                                suppressUpdate::Bool=false,
+                                localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
@@ -363,7 +365,7 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
                                suppressUpdate=true,localOnly=true)
     else
         # check if it is possible to make changes
-        if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode
+        if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
             @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
         end
         # check correctness of the inputs

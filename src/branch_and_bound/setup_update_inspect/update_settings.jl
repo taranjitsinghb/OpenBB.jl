@@ -3,9 +3,68 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_settings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-03T18:04:56+02:00
+# @Last modified time: 2019-06-18T17:29:04+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
+
+
+function update_objectiveCutoff!(workspace::BBworkspace{T1,T2},newCutoff::Float64;
+                                 suppressWarnings::Bool=false,
+                                 suppressUpdate::Bool=false,
+                                 localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+
+
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
+        # call the local version of the function on the remote workers
+        for p in 2:workspace.settings.numProcesses
+            @async remotecall_fetch(Main.eval,p,:(OpenBB.update_objectiveCutoff!(workspace,$newCutoff,
+                                                                                 suppressWarnings=$suppressWarnings,
+                                                                                 suppressUpdate=true,localOnly=true)))
+        end
+
+        # call the function on the local worker
+        update_objectiveCutoff!(workspace,newCutoff,
+                                suppressWarnings=suppressWarnings,
+                                suppressUpdate=true,localOnly=true)
+        # update the global info
+        workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
+    else
+        # check the correctness of the input
+        if !suppressWarnings && newCutoff > workspace.settings.objectiveCutoff && workspace.status.description != "new" && myid() == 1
+            @warn "Relaxing the cutoff after some iterations may lead to incorrect results"
+        end
+        # change the cutoff
+        workspace.settings.objectiveCutoff = newCutoff
+        # invalitate the solutions that do not respect the new cutoff
+        if workspace.status.objUpB > newCutoff
+            # update the status
+            workspace.status.objUpB = workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+            workspace.status.numSolutions = 0
+            if workspace.status.description == "optimalSolutionFound"
+                workspace.status.description = "interrupted"
+            end
+            append!(workspace.unactivePool,workspace.solutionPool)
+            deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
+        else
+            solutionsToElim = Array{Int,1}()
+            for k in 1:length(workspace.solutionPool)
+                if workspace.solutionPool[k].objective > newCutoff - workspace.settings.primalTolerance
+                    push!(solutionsToElim,k)
+                    push!(workspace.unactivePool,workspace.solutionPool[k])
+                    workspace.status.numSolutions -= 1
+                    if !(workspace.sharedMemory isa NullSharedMemory)
+                        workspace.sharedMemory.stats[1] -= 1
+                    end
+                end
+            end
+            deleteat!(workspace.solutionPool,solutionsToElim)
+        end
+    end
+
+    return
+end
+
+
 
 
 #TODO: implement update_settings!
