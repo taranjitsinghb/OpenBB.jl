@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-08T13:46:02+02:00
+# @Last modified time: 2019-06-18T12:25:36+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -64,6 +64,24 @@ function get_best_solution(workspace::BBworkspace{T1,T2};localOnly::Bool=false):
     end
     return solution
 end
+
+
+# returns all the solutions
+function get_all_solutions(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Array{AbstractBBnode,1} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+
+    # collect all the local solutions
+    solutions = copy(workspace.solutionPool)
+
+    # check the other workers if needed/required
+    if !(localOnly || workspace.sharedMemory isa NullSharedMemory)
+        for p in 2:workspace.settings.numProcesses
+            append!(solutions,remotecall_fetch(Main.eval,p,:(OpenBB.get_all_solutions(workspace,localOnly=true))))
+        end
+    end
+    sort!(solutions,alg=MergeSort,rev=true,lt=(l,r)->lower_objective(l,r,workspace.status))
+    return solutions
+end
+
 
 # returns the best node
 function get_best_node(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::AbstractBBnode  where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
