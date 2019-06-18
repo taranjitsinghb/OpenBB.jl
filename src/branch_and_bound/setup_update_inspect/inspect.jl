@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-18T12:25:36+02:00
+# @Last modified time: 2019-06-18T14:49:58+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -27,7 +27,7 @@ function print_status(workspace::BBworkspace{T1,T2})::Nothing where T1<:Abstract
             globalAbsGap = globalRelGap =  Inf
         else
             globalAbsGap = globalObjectiveUpB - globalObjectiveLoB
-            globalRelGap = workspace.status.absoluteGap/abs(1e-10 + globalObjectiveUpB)
+            globalRelGap = globalAbsGap/(1e-10 + abs(globalObjectiveUpB))
         end
 
     end
@@ -172,4 +172,35 @@ end
 #
 function get_constraintBounds(workspace::BBworkspace{T1,T2})::Tuple{Array{Float64,1},Array{Float64,1}}  where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_constraintsBounds(workspace.subsolverWS)
+end
+
+# return the status of the BB process
+function get_status(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::BBstatus  where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+
+    status = BBstatus(workspace.status)
+
+    if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
+        for p in 2:workspace.settings.numProcesses
+            tmpStatus = remotecall_fetch(Main.eval,p,:(OpenBB.get_status(workspace,localOnly=true)))
+
+            # collect the objective bounds
+            status.objLoB = min(status.objLoB,tmpStatus.objLoB)
+            status.objUpB = min(status.objUpB,tmpStatus.objUpB)
+
+            # compute optimality gaps
+            if status.objUpB == Inf || status.objLoB == -Inf
+                status.absoluteGap = status.relativeGap = Inf
+            else
+                status.absoluteGap = status.objUpB - status.objLoB
+                status.relativeGap = status.absoluteGap/(1e-10 + abs(status.objUpB))
+            end
+
+            status.totalTime += tmpStatus.totalTime
+            status.waitingTime += tmpStatus.waitingTime
+            status.numSolutions += tmpStatus.numSolutions
+            status.numRelaxationsSolved += tmpStatus.numRelaxationsSolved
+        end
+    end
+
+    return status
 end

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T14:24:43+02:00
+# @Last modified time: 2019-06-18T14:44:00+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -165,7 +165,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                                 workspace.status.absoluteGap = workspace.status.relativeGap = Inf
                             else
                                 workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-                                workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
+                                workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
                             end
 
                         else # the solution is not reliable
@@ -206,7 +206,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                     workspace.status.absoluteGap = workspace.status.relativeGap = Inf
                 else
                     workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-                    workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
+                    workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
                 end
             end
         end
@@ -255,7 +255,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                         workspace.status.absoluteGap = workspace.status.relativeGap = Inf
                     else
                         workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-                        workspace.status.relativeGap = workspace.status.absoluteGap/abs(1e-10 + workspace.status.objUpB)
+                        workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
                     end
                 end
             end

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBstatus.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T14:17:59+02:00
+# @Last modified time: 2019-06-18T14:47:14+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -26,4 +26,13 @@ function BBstatus(; objLoB::Float64=-Inf,objUpB::Float64=Inf,
                     numSolutions::Int=0,numRelaxationsSolved::Int=0,
                     description::String="new")::BBstatus
     return BBstatus(objLoB,objUpB,absoluteGap,relativeGap,waitingTime,totalTime,numSolutions,numRelaxationsSolved,description)
+end
+
+
+function BBstatus(status::BBstatus)::BBstatus
+    return BBstatus(status.objLoB,status.objUpB,
+                    status.absoluteGap,status.relativeGap,
+                    status.waitingTime,status.totalTime,
+                    status.numSolutions,status.numRelaxationsSolved,
+                    status.description)
 end
