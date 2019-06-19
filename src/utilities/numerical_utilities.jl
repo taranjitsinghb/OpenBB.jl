@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: numerical_utilities.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-04T14:13:36+01:00
+# @Last modified time: 2019-06-19T23:35:20+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 

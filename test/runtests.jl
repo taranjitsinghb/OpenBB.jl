@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: runtests.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T16:57:31+02:00
+# @Last modified time: 2019-06-20T01:02:45+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -17,3 +17,4 @@ println("OpenBB tests:")
 include("./test_problem_definitions.jl")
 include("./test_preprocessing.jl")
 include("./test_QP_subsolvers.jl")
+include("./test_flat_interface.jl")

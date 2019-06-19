@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-23T19:09:39+02:00
+# @Last modified time: 2019-06-19T21:24:39+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -13,14 +13,12 @@ mutable struct LinearConstraintSet{T<:Union{Array{Float64,2},SparseMatrixCSC{Flo
     A::T
     loBs::Array{Float64,1}
     upBs::Array{Float64,1}
-    sosIndices::Array{Int,1}
 end
 
 function LinearConstraintSet(;A::Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}},
                     loBs::Array{Float64,1},
-                    upBs::Array{Float64,1},
-                    sosIndices::Array{Int,1}=Int[])::LinearConstraintSet
-    return LinearConstraintSet(A,loBs,upBs,sosIndices)
+                    upBs::Array{Float64,1})::LinearConstraintSet
+    return LinearConstraintSet(A,loBs,upBs)
 end
 
 

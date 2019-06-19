@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T16:08:16+02:00
+# @Last modified time: 2019-06-19T19:59:32+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -25,7 +25,7 @@ struct VariableSet <: AbstractVariableSet
 end
 
 function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},vals::Array{Float64,1}=Float64[],
-                      dscIndices::Array{Int,1}=Int[],sos1Groups::Array{Int,1}=Int[],pseudoCosts=Float64[])::VariableSet
+                      dscIndices::Array{Int,1}=Int[],sos1Groups::Array{Int,1}=Int[],pseudoCosts=Array{Float64,2}(undef,0,2))::VariableSet
 
     # check the correctness of inputs
     if length(sos1Groups) == 0

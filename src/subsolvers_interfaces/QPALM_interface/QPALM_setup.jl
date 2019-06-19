@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-14T14:42:00+02:00
+# @Last modified time: 2019-06-19T21:41:32+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -40,7 +40,7 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
         Q = spzeros(nVars,nVars)
         L = problem.objFun.L
     elseif problem.objFun isa QuadraticObjective
-        Q = sparse(problem.objFun.Q)
+        Q = dropzeros(sparse(problem.objFun.Q))
         L = problem.objFun.L
     else
         @error "QPALM cannot deal with the given objective function"
@@ -49,13 +49,13 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
     # check the constraint set
     if problem.cnsSet isa NullConstraintSet
         # adapt the constraint set to accomodate for variables bounds
-        A = zeros((0,length(problem.varSet.loBs)))
+        A = spzeros((0,length(problem.varSet.loBs)))
         cnsLoBs = Float64[]
         cnsUpBs = Float64[]
 
     elseif problem.cnsSet isa LinearConstraintSet
         # adapt the constraint set to accomodate for variables bounds
-        A = sparse(problem.cnsSet.A)
+        A = dropzeros(sparse(problem.cnsSet.A))
         cnsLoBs = copy(problem.cnsSet.loBs)
         cnsUpBs = copy(problem.cnsSet.upBs)
     else

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-18T19:17:53+02:00
+# @Last modified time: 2019-06-19T20:51:40+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -159,14 +159,19 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
 		@. workspace.sharedMemory.arrestable = false
 
     else
+		# collect some data for the BBworkspace
+	    numVars = get_numVariables(workspace)
+		numCnss = get_numConstraints(workspace)
+		numDscVars = get_numDiscreteVariables(workspace)
+
         # eliminate all the generated nodes and reinsert the root of the BB tree
         clear!(workspace,localOnly=true)
-        push!(workspace.activeQueue,BBnode(Dict{Int,Float64}(),Dict{Int,Float64}(),
-                                             zeros(get_numDiscreteVariables(workspace)),
-                                             zeros(get_numVariables(workspace)),
-											 zeros(get_numVariables(workspace)),
-                                             zeros(get_numConstraints(workspace)),
-                                             NaN,NaN,NaN,false))
+
+		# build the root node
+		rootNode = BBnode(-Infs(numDscVars),Infs(numDscVars),zeros(numVars),
+						  zeros(numVars),zeros(numCnss),NaN,NaN,NaN,false)
+
+        push!(workspace.activeQueue,rootNode)
 		workspace.status.description = "new"
     end
 

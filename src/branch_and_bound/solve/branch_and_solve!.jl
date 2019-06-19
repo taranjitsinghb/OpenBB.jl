@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T17:28:52+02:00
+# @Last modified time: 2019-06-20T00:32:45+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -161,9 +161,8 @@ function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:A
     workspace.status.numRelaxationsSolved = workspace.status.numRelaxationsSolved + 1
 
     # compute node average fractionality and pseudo_cost
-    fractionality = @. node.primal[workspace.dscIndices] - round(node.primal[workspace.dscIndices])
-    @. fractionality =  fractionality*(fractionality>workspace.settings.primalTolerance)
-
-    node.avgAbsFrac = 2. * sum(@. abs(fractionality))/length(workspace.dscIndices)
+    absoluteFractionality = @. abs(node.primal[workspace.dscIndices] - round(node.primal[workspace.dscIndices]))
+    @. absoluteFractionality =  absoluteFractionality*(absoluteFractionality>workspace.settings.primalTolerance)
+    node.avgAbsFrac = 2. * sum(absoluteFractionality)/length(workspace.dscIndices)
     return
 end

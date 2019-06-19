@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBI_inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-04-30T19:48:27+02:00
+# @Last modified time: 2019-06-19T21:12:54+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -44,4 +44,9 @@ end
 #
 function get_constraintBounds(workspace::GUROBIworkspace)::Tuple{Array{Float64,1},Array{Float64,1}}
     return (workspace.cnsLoBs,workspace.cnsUpBs)
+end
+
+# ...
+function get_settings(workspace::GUROBIworkspace)::GUROBIsettings
+    return workspace.settings
 end

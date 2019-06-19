@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-04-30T19:48:04+02:00
+# @Last modified time: 2019-06-19T21:13:56+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -43,4 +43,9 @@ end
 #
 function get_constraintBounds(workspace::QPALMworkspace)::Tuple{Array{Float64,1},Array{Float64,1}}
     return (workspace.cnsLoBs,workspace.cnsUpBs)
+end
+
+# ...
+function get_settings(workspace::QPALMworkspace)::QPALMsettings
+    return workspace.settings
 end

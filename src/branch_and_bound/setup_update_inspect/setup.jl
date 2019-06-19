@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T16:09:51+02:00
+# @Last modified time: 2019-06-19T20:24:03+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,9 +28,8 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 	numCnss = get_numConstraints(problem)
 	numDscVars = get_numDiscreteVariables(problem)
 
-    if !(problem.cnsSet isa NullConstraintSet) && !(problem isa NullProblem)
+    if !(problem isa NullProblem)
         dscIndices = problem.varSet.dscIndices
-        sosIndices = problem.cnsSet.sosIndices
 	end
 
 

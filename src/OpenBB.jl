@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T17:03:39+02:00
+# @Last modified time: 2019-06-20T00:43:03+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -27,7 +27,7 @@ function withGUROBI()::Bool
     return true
 end
 function withQPALM()::Bool
-    return true
+    return false
 end
 
 
@@ -57,5 +57,7 @@ end
 # include heuristics
 include("./heuristics/heuristics.jl")
 
+# include the flat interface
+include("./alternative_interfaces/flat_interface/flat_interface.jl")
 
 end # module

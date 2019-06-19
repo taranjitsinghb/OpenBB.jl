@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-18T14:49:58+02:00
+# @Last modified time: 2019-06-19T21:45:48+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -104,8 +104,8 @@ function get_best_node(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Abs
         # choose the best of the returned nodes
         for node in nodes
             if bestNode isa NullBBnode || # there is no best node yet
-               (node.avgAbsFrac==0 && bestNode.avgAbsFrac > 0) || # the new node is a solution while the best so far isn't
-               expansion_priority_rule(workspace.settings.expansionPriorityRule,node,bestNode,workspace.status) # the new node is better than the best so far
+               !(node isa NullBBnode) && ((node.avgAbsFrac==0 && bestNode.avgAbsFrac > 0) || # the new node is a solution while the best so far isn't
+                                          expansion_priority_rule(workspace.settings.expansionPriorityRule,node,bestNode,workspace.status)) # the new node is better than the best so far
 
                 # set the new node as the best one
                 bestNode = node
@@ -171,7 +171,7 @@ end
 
 #
 function get_constraintBounds(workspace::BBworkspace{T1,T2})::Tuple{Array{Float64,1},Array{Float64,1}}  where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
-    return get_constraintsBounds(workspace.subsolverWS)
+    return get_constraintBounds(workspace.subsolverWS)
 end
 
 # return the status of the BB process
@@ -203,4 +203,14 @@ function get_status(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::BBstat
     end
 
     return status
+end
+
+# ...
+function get_settings(workspace::BBworkspace)::BBsettings
+    return workspace.settings
+end
+
+# ...
+function get_subsover_settings(workspace::BBworkspace)::AbstractSettings
+    return get_settings(workspace.subsolverWS)
 end

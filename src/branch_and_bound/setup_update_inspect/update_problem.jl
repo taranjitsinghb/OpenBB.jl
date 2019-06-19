@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T16:09:04+02:00
+# @Last modified time: 2019-06-20T00:19:21+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -331,7 +331,8 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
         # update discrete variables
         append!(workspace.dscIndices,@. problem.varSet.dscIndices + nVars1)
         append!(workspace.sos1Groups,@. problem.varSet.sos1Groups + maximum(workspace.sos1Groups) + 1)
-        workspace.pseudoCosts = (vcat(workspace.pseudoCosts[1],problem.varSet.pseudoCosts),vcat(workspace.pseudoCosts[2],repeat([0 0],length(problem.varSet.dscIndices),1)))
+        workspace.pseudoCosts = (vcat(workspace.pseudoCosts[1],problem.varSet.pseudoCosts),
+                                 vcat(workspace.pseudoCosts[2],repeat([0 0],length(problem.varSet.dscIndices),1)))
     end
 
     # adapt the workspace to the changes
@@ -349,6 +350,10 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
                                 suppressWarnings::Bool=false,
                                 suppressUpdate::Bool=false,
                                 localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+
+    # check the correctness of the input
+    @assert length(intersect(newDscIndices,workspace.dscIndices)) == 0
+
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
@@ -378,8 +383,34 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
         # add the new discrete variables
         append!(workspace.dscIndices,copy(newDscIndices))
         append!(workspace.sos1Groups,copy(newSos1Groups))
-        tmpPerm = sortperm!(workspace.dscIndices)
+        workspace.pseudoCosts = (vcat(workspace.pseudoCosts[1],repeat(sum(workspace.pseudoCosts[1],dims=1)/size(workspace.pseudoCosts[1],1),length(newDscIndices),1)),
+                                 vcat(workspace.pseudoCosts[2],repeat([0 0],length(newDscIndices),1)))
+
+        tmpPerm = sortperm(workspace.dscIndices)
+        permute!(workspace.dscIndices,tmpPerm)
         permute!(workspace.sos1Groups,tmpPerm)
+        workspace.pseudoCosts = (workspace.pseudoCosts[1][tmpPerm,:],workspace.pseudoCosts[2][tmpPerm,:])
+
+        # propagate the change to the nodes
+        for k in 1:length(workspace.activeQueue)
+            append!(workspace.activeQueue[k].branchLoBs,-Inf)
+            append!(workspace.activeQueue[k].branchUpBs, Inf)
+            permute!(workspace.activeQueue[k].branchLoBs,tmpPerm)
+            permute!(workspace.activeQueue[k].branchUpBs,tmpPerm)
+        end
+        for k in 1:length(workspace.unactivePool)
+            append!(workspace.unactivePool[k].branchLoBs,-Inf)
+            append!(workspace.unactivePool[k].branchUpBs, Inf)
+            permute!(workspace.unactivePool[k].branchLoBs,tmpPerm)
+            permute!(workspace.unactivePool[k].branchUpBs,tmpPerm)
+        end
+        for k in 1:length(workspace.solutionPool)
+            append!(workspace.solutionPool[k].branchLoBs,-Inf)
+            append!(workspace.solutionPool[k].branchUpBs, Inf)
+            permute!(workspace.solutionPool[k].branchLoBs,tmpPerm)
+            permute!(workspace.solutionPool[k].branchUpBs,tmpPerm)
+        end
+
     end
 
     # adapt the workspace to the changes
