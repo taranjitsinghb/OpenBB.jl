@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_problem_definitions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T16:57:15+02:00
+# @Last modified time: 2019-06-19T16:12:17+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -18,7 +18,7 @@ cns[1] = OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.],sosIndices=[
 cns[2] = OpenBB.NullConstraintSet()
 
 var = Array{OpenBB.VariableSet,1}(undef,2)
-var[1] = OpenBB.VariableSet(loBs=zeros(4),upBs=Infs(4),val=zeros(4),dscIndices=[1])
+var[1] = OpenBB.VariableSet(loBs=zeros(4),upBs=Infs(4),vals=zeros(4),dscIndices=[1])
 var[2] = OpenBB.EmptyVarSet()
 
 for o in obj

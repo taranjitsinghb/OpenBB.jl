@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_QP.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T15:10:53+02:00
+# @Last modified time: 2019-06-19T16:13:03+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -21,7 +21,7 @@ function test_QP_subsolver(subsolver)
     # create first problem
     problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(1.0I,4,4,),L=[-.5,0.,0.,0.]),
                              cnsSet=OpenBB.LinearConstraintSet(A=ones(0,4),loBs=Float64[],upBs=Float64[]),
-                             varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],val=zeros(4),dscIndices=[1]))
+                             varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],vals=zeros(4),dscIndices=[1]))
     workspace = OpenBB.setup(problem,OpenBB.BBsettings(dynamicMode=true,verbose=false,statusInfoPeriod=0.01,numProcesses=1),subsolverSettings)
     result0 = OpenBB.solve!(workspace)
 
@@ -35,7 +35,7 @@ function test_QP_subsolver(subsolver)
     # Basic usage of OpenBB for mixed-integer quadratic problems
     problem2 = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=sparse([1,2,3,4],[1,2,3,4],[1.,2.,3.,4.]),L=[2.,2.,2.,2.]),
                              cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.]),
-                             varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],val=zeros(4),dscIndices=[1]))
+                             varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],vals=zeros(4),dscIndices=[1]))
 
     OpenBB.append_problem!(workspace,problem2,suppressUpdate=true)
     OpenBB.permute_constraints!(workspace,reverse(collect(1:size(workspace.subsolverWS.A,1))),suppressUpdate=true)

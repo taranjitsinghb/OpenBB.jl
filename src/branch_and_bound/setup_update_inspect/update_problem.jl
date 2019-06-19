@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-18T16:50:30+02:00
+# @Last modified time: 2019-06-19T16:09:04+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -290,7 +290,7 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
         # propagate the changes to the nodes solver
         reliableObjLoBs = append_problem!(workspace.subsolverWS,problem,suppressUpdate=true)
         # update all the sub-problems
-        newPrimal = problem.varSet.val
+        newPrimal = problem.varSet.vals
         for i in  1:length(workspace.activeQueue)
             # mark all the problems as unreliable if necessary
             workspace.activeQueue[i].reliable = reliableObjLoBs && workspace.activeQueue[i].reliable

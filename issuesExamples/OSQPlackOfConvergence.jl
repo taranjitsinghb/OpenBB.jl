@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQPlackOfConvergence.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-07T15:45:51+02:00
+# @Last modified time: 2019-06-19T16:10:52+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -60,7 +60,7 @@ for s in 2:horizonLen
     append!(dscIndices,@. dscIndices_ + (s-1)*numStates + (s-1)*numControls)
     append!(sos1Groups,@. sos1Groups_ + (s-1)*(sos1Groups_>-1))
 end
-vars = OpenBB.VariableSet(loBs=varLoBs,upBs=varUpBs,val=varVals,dscIndices=dscIndices)
+vars = OpenBB.VariableSet(loBs=varLoBs,upBs=varUpBs,vals=varVals,dscIndices=dscIndices)
 
 
 # objective

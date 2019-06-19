@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: async_example.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-06T18:49:13+02:00
+# @Last modified time: 2019-06-19T16:11:41+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -18,7 +18,7 @@ using LinearAlgebra
 problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(2.0I,8,8,),L=[-.5,2.,2.,2.,2.,2.,2.,2.]),
                          cnsSet=OpenBB.LinearConstraintSet(A = vcat(hcat(ones(1,4),zeros(1,4)),hcat(zeros(1,4),ones(1,4))),
                                                  loBs=[1.,1],upBs=[1.,1]),
-                         varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3);-5;-Infs(3)],upBs=[-5.;Infs(3);5.;Infs(3)],val=zeros(8),dscIndices=[1,2,3,4,5,6,7,8]))
+                         varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3);-5;-Infs(3)],upBs=[-5.;Infs(3);5.;Infs(3)],vals=zeros(8),dscIndices=[1,2,3,4,5,6,7,8]))
 
 # setting flag to true stops the BBalgorithm
 flag = Base.RefValue(false)

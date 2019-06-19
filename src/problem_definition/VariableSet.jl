@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T15:47:54+02:00
+# @Last modified time: 2019-06-19T16:08:16+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -18,13 +18,13 @@ struct NullVariableSet <: AbstractVariableSet end
 struct VariableSet <: AbstractVariableSet
     loBs::Array{Float64,1}
     upBs::Array{Float64,1}
-    val::Array{Float64,1}
+    vals::Array{Float64,1}
     dscIndices::Array{Int,1}
     sos1Groups::Array{Int,1} # assume group -1 as no group
     pseudoCosts::Array{Float64,2}
 end
 
-function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},val::Array{Float64,1}=Float64[],
+function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},vals::Array{Float64,1}=Float64[],
                       dscIndices::Array{Int,1}=Int[],sos1Groups::Array{Int,1}=Int[],pseudoCosts=Float64[])::VariableSet
 
     # check the correctness of inputs
@@ -40,26 +40,26 @@ function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},val::Array{F
         @error "pseudoCosts should either be empty or have size: length(dscIndices) x 2 "
     end
 
-    if length(val) == 0
+    if length(vals) == 0
         @assert length(loBs) == length(upBs)
-        val = Array{Float64,1}(undef,length(loBs))
+        vals = Array{Float64,1}(undef,length(loBs))
         for i in 1:length(loBs)
             scenario = (loBs[i]>-Inf) + 2*(upBs[i]<Inf)
             if scenario == 3
-                val[i] = .5*(loBs[i] + upBs[i])
+                vals[i] = .5*(loBs[i] + upBs[i])
             elseif scenario == 2
-                val[i] = upBs[i]
+                vals[i] = upBs[i]
             elseif scenario == 1
-                val[i] = loBs[i]
+                vals[i] = loBs[i]
             else
-                val[i] = 0
+                vals[i] = 0
             end
         end
     else
-        @assert length(loBs) == length(upBs) == length(val)
+        @assert length(loBs) == length(upBs) == length(vals)
     end
 
-    return VariableSet(loBs,upBs,val,dscIndices,sos1Groups,pseudoCosts)
+    return VariableSet(loBs,upBs,vals,dscIndices,sos1Groups,pseudoCosts)
 end
 
 function EmptyVarSet()::VariableSet
