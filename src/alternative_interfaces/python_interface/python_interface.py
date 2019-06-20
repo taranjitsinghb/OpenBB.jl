@@ -1,9 +1,9 @@
 # @Author: Massimo De Mauri <massimo>
 # @Date:   2019-06-19T16:35:26+02:00
 # @Email:  massimo.demauri@gmail.com
-# @Filename: python_interface.jl
+# @Filename: python_interface.py
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T15:57:55+02:00
+# @Last modified time: 2019-06-20T17:46:31+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -15,12 +15,19 @@ from warnings import warn
 from numpy import array, matrix
 from julia import Julia,OpenBB
 
-class OpenBBmodel:
+class OpenBBinterface:
 
     def __init__(self):
         self.jl = OpenBB
         # current_directory = path.abspath(path.dirname(__file__))
         # self.jl.eval("using OpenBB")
+
+
+    ######################## general ########################
+
+    def eval(self,string):
+        return self.jl.eval_string(string)
+
 
     ######################## setup ########################
     # setup a OpenBB workspace

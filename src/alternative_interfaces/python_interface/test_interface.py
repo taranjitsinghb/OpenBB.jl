@@ -1,9 +1,9 @@
 # @Author: Massimo De Mauri <massimo>
 # @Date:   2019-06-19T18:15:50+02:00
 # @Email:  massimo.demauri@gmail.com
-# @Filename: test.py
+# @Filename: test_interface.py
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T16:00:33+02:00
+# @Last modified time: 2019-06-20T17:46:20+02:00
 # @License: LGPL-3.0
 
 import numpy as np
@@ -11,7 +11,7 @@ from python_interface import *
 
 
 # load openBB
-workspace = OpenBBmodel()
+OpenBB = OpenBBinterface()
 
 
 # create the problem
@@ -37,63 +37,63 @@ settings = {"subsolver":"osqp",
             "dynamicMode":True
             }
 
-workspace.setup(problem,settings)
-workspace.solve()
+OpenBB.setup(problem,settings)
+OpenBB.solve()
 
-assert workspace.get_best_solution()["objective"] >= 0.5 - workspace.get_settings()["primalTolerance"]
-assert workspace.get_best_solution()["objective"] <= 0.5 + workspace.get_settings()["primalTolerance"]
+assert OpenBB.get_best_solution()["objective"] >= 0.5 - OpenBB.get_settings()["primalTolerance"]
+assert OpenBB.get_best_solution()["objective"] <= 0.5 + OpenBB.get_settings()["primalTolerance"]
 
-workspace.get_all_solutions()
-workspace.get_best_node()
+OpenBB.get_all_solutions()
+OpenBB.get_best_node()
 
-assert workspace.get_numVariables() == 5
-assert workspace.get_numConstraints() == 2
-assert workspace.get_numDiscreteVariables() == 3
+assert OpenBB.get_numVariables() == 5
+assert OpenBB.get_numConstraints() == 2
+assert OpenBB.get_numDiscreteVariables() == 3
 
-workspace.get_constraints_sparsity()
-assert all(workspace.get_constraint_sparsity(0) == [0,1,3,4])
-assert all(workspace.get_constraint_sparsity(1) == [1,2,3])
-assert all(workspace.get_objective_sparsity()[0] == [0, 1, 3, 4])
+OpenBB.get_constraints_sparsity()
+assert all(OpenBB.get_constraint_sparsity(0) == [0,1,3,4])
+assert all(OpenBB.get_constraint_sparsity(1) == [1,2,3])
+assert all(OpenBB.get_objective_sparsity()[0] == [0, 1, 3, 4])
 
-assert all(workspace.get_variableBounds()[0] == [0.5, 0.0, 0.0, 0.0, -10.0])
-assert all(workspace.get_constraintBounds()[0] == [0.0, 1.0])
-assert workspace.get_status()["description"] == "optimalSolutionFound"
+assert all(OpenBB.get_variableBounds()[0] == [0.5, 0.0, 0.0, 0.0, -10.0])
+assert all(OpenBB.get_constraintBounds()[0] == [0.0, 1.0])
+assert OpenBB.get_status()["description"] == "optimalSolutionFound"
 
-workspace.reset_explored_nodes()
-assert workspace.get_numUnactiveNodes() == workspace.get_numSolutions() == 0
-assert workspace.get_status()["objUpB"] == np.inf
+OpenBB.reset_explored_nodes()
+assert OpenBB.get_numUnactiveNodes() == OpenBB.get_numSolutions() == 0
+assert OpenBB.get_status()["objUpB"] == np.inf
 
-workspace.clear()
-assert workspace.get_numActiveNodes() == 0
+OpenBB.clear()
+assert OpenBB.get_numActiveNodes() == 0
 
-workspace.reset()
-assert workspace.get_numActiveNodes() == 1
+OpenBB.reset()
+assert OpenBB.get_numActiveNodes() == 1
 
-workspace.solve()
-workspace.append_constraints(problem["cnsSet"],False,True,False)
-workspace.remove_constraints([2,3],True,True,False)
-workspace.permute_constraints([1,0],True,True,False)
-assert all(workspace.get_constraintBounds()[0] == [1.0, 0.0])
-
-
-workspace.update_bounds({"cnsLoBs":[0.0,0.0],"varLoBs":[0.5, 0.0, 0.0, 0.0, -100.0]},False,True,False)
-assert all(workspace.get_constraintBounds()[0] == [0.0, 0.0])
-assert all(workspace.get_variableBounds()[0] == [0.5, 0.0, 0.0, 0.0, -100.0])
-workspace.update_bounds({"cnsLoBs":[1.0,0.0]},False,True,False)
+OpenBB.solve()
+OpenBB.append_constraints(problem["cnsSet"],False,True,False)
+OpenBB.remove_constraints([2,3],True,True,False)
+OpenBB.permute_constraints([1,0],True,True,False)
+assert all(OpenBB.get_constraintBounds()[0] == [1.0, 0.0])
 
 
-workspace.append_problem(problem,False,False,False)
-workspace.solve()
-assert workspace.get_best_solution()["objective"] >= 1.0 - workspace.get_settings()["primalTolerance"]
-assert workspace.get_best_solution()["objective"] <= 1.0 + workspace.get_settings()["primalTolerance"]
+OpenBB.update_bounds({"cnsLoBs":[0.0,0.0],"varLoBs":[0.5, 0.0, 0.0, 0.0, -100.0]},False,True,False)
+assert all(OpenBB.get_constraintBounds()[0] == [0.0, 0.0])
+assert all(OpenBB.get_variableBounds()[0] == [0.5, 0.0, 0.0, 0.0, -100.0])
+OpenBB.update_bounds({"cnsLoBs":[1.0,0.0]},False,True,False)
 
 
-workspace.integralize_variables([4])
-workspace.solve()
-assert workspace.get_status()["description"] == "infeasible"
+OpenBB.append_problem(problem,False,False,False)
+OpenBB.solve()
+assert OpenBB.get_best_solution()["objective"] >= 1.0 - OpenBB.get_settings()["primalTolerance"]
+assert OpenBB.get_best_solution()["objective"] <= 1.0 + OpenBB.get_settings()["primalTolerance"]
 
 
-workspace.get_constraints()
-workspace.get_objective()
+OpenBB.integralize_variables([4])
+OpenBB.solve()
+assert OpenBB.get_status()["description"] == "infeasible"
+
+
+OpenBB.get_constraints()
+OpenBB.get_objective()
 
 print(" - Python interface, ok")
