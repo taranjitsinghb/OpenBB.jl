@@ -1,5 +1,5 @@
 # OpenBB
-An open and modular Branch and Bound framework written in Julia.
+An open and modular Branch and Bound framework written in Julia. 
 * version 0.2.0
 
 ## The Idea
@@ -11,10 +11,11 @@ Those are the driving ideas behind this project:
 * The code should be optimized as much as possible without harming the generality
 
 ## What is already here
-* A sequential Branch and Bound implementation for Mixed-Integer Quadratic Problems with linear constraints.
-* OSQP interface (https://osqp.org/) based on OSQP.jl (https://github.com/oxfordcontrol/OSQP.jl)
-* QPALM interface (https://github.com/Benny44/QPALM) based on QPALM.jl (https://github.com/kul-forbes/QPALM.jl).
-* Gurobi (QP only) interface (http://www.gurobi.com/) based on Gurobi.jl (https://github.com/JuliaOpt/Gurobi.jl).
+* A concurrent Branch and Bound implementation for Mixed-Integer Quadratic Problems with linear constraints.
+* An integrated Python interface based on pyjulia (https://github.com/JuliaPy/pyjulia).
+* OSQP binding (https://osqp.org/) based on OSQP.jl (https://github.com/oxfordcontrol/OSQP.jl).
+* QPALM binding (https://github.com/Benny44/QPALM) based on QPALM.jl (https://github.com/kul-forbes/QPALM.jl).
+* Gurobi (QP only) binding (http://www.gurobi.com/) based on Gurobi.jl (https://github.com/JuliaOpt/Gurobi.jl).
 
 The code allows you to easily define your custom priority rules for the selection of the next node to solve and the next variable to branch on. Moreover, it is very easy to define custom stopping criteria for Branch & Bound. Moreover, the whole code is subsolver-invariant and a new subsolver can be added by simply overloading the interface functions that the user can find in the "subsolvers_interfaces" folder. Finally, OpenBB provides a number of functions that allow safe constraints addition, problem expansion, bounds restrictions, etc..
 
@@ -24,7 +25,6 @@ The code allows you to easily define your custom priority rules for the selectio
 The project is a early phase of development. Some features are still missing. Here is a temptative to do list:
 * Add MPC functionalities (my main reason for this project)
 * Add SDP support
-* Add NLP support (maybe... as usually Outer Approximation outperforms NLP B&B)
 * Add bound propagation, preprocessing and cuts generation techniques
 * Add presolvers
 * Document all
