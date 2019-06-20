@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T21:45:48+02:00
+# @Last modified time: 2019-06-20T15:20:58+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -147,6 +147,16 @@ end
 # returns the number of constraints
 function get_numConstraints(workspace::BBworkspace{T1,T2})::Int where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_numConstraints(workspace.subsolverWS)
+end
+
+# ...
+function get_constraints(workspace::BBworkspace)::AbstractConstraintSet
+    return get_constraints(workspace.subsolverWS)
+end
+
+# ...
+function get_objective(workspace::BBworkspace)::AbstractObjectiveFunction
+    return get_objective(workspace.subsolverWS)
 end
 
 # this function returns the sparsity pattern of the constraint set

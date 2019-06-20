@@ -3,27 +3,27 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: python_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T19:44:07+02:00
+# @Last modified time: 2019-06-20T15:57:55+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 # import the needed components
 from os import path
-from copy import copy
+from copy import copy, deepcopy
 from warnings import warn
 from numpy import array, matrix
-from julia import Julia
+from julia import Julia,OpenBB
 
 class OpenBBmodel:
 
     def __init__(self):
-        self.jl = Julia()
-        current_directory = path.abspath(path.dirname(__file__))
-        self.jl.eval("include(\""+current_directory+"/../ctypes_interface.jl\")")
+        self.jl = OpenBB
+        # current_directory = path.abspath(path.dirname(__file__))
+        # self.jl.eval("using OpenBB")
 
     ######################## setup ########################
-    # setup a OpenBB current_workspace
+    # setup a OpenBB workspace
     def setup(self,problemDict=None,options={}):
 
         # get the subsolver name
@@ -34,13 +34,13 @@ class OpenBBmodel:
             subsolver = opts.pop("subsolver")
 
         # select a subsolver and load the list of available settings
-        bb_settings_list = self.jl.fieldnames(self.jl.eval("OpenBB.BBsettings"))
+        bb_settings_list = self.jl.eval_string("fieldnames(BBsettings)")
         if subsolver == "osqp":
-            ss_settings_list = self.jl.fieldnames(self.jl.eval("OpenBB.OSQPsettings"))
+            ss_settings_list = self.jl.eval_string("fieldnames(OSQPsettings)")
         elif subsolver == "gurobi":
-            ss_settings_list = self.jl.fieldnames(self.jl.eval("OpenBB.GUROBIsettings"))
+            ss_settings_list = self.eval_string("fieldnames(GUROBIsettings)")
         elif subsolver == "qpalm":
-            ss_settings_list = self.jl.fieldnames(self.jl.eval("OpenBB.QPALMsettings"))
+            ss_settings_list = self.jl.eval_string("fieldnames(QPALMsettings)")
         else:
             raise NameError("OpenBB, unknown subsolver: "+subsolver)
 
@@ -74,25 +74,26 @@ class OpenBBmodel:
             else:
 
                 # reformat the objective
-                if "Q" in problemDict["objFun"]: problemDict["objFun"]["Q"] = matrix(problemDict["objFun"]["Q"])
-                problemDict["objFun"]["L"] = array(problemDict["objFun"]["L"]).flatten()
+                localProblemDict = deepcopy(problemDict)
+                if "Q" in localProblemDict["objFun"]: localProblemDict["objFun"]["Q"] = matrix(localProblemDict["objFun"]["Q"])
+                localProblemDict["objFun"]["L"] = array(localProblemDict["objFun"]["L"]).flatten()
 
                 # reformat the constraints set
-                problemDict["cnsSet"]["A"] = matrix(problemDict["cnsSet"]["A"])
-                problemDict["cnsSet"]["loBs"] = array(problemDict["cnsSet"]["loBs"]).flatten()
-                problemDict["cnsSet"]["upBs"] = array(problemDict["cnsSet"]["upBs"]).flatten()
+                localProblemDict["cnsSet"]["A"] = matrix(localProblemDict["cnsSet"]["A"])
+                localProblemDict["cnsSet"]["loBs"] = array(localProblemDict["cnsSet"]["loBs"]).flatten()
+                localProblemDict["cnsSet"]["upBs"] = array(localProblemDict["cnsSet"]["upBs"]).flatten()
 
                 # reformat the variables set
-                problemDict["varSet"]["loBs"] = array(problemDict["varSet"]["loBs"]).flatten()
-                problemDict["varSet"]["upBs"] = array(problemDict["varSet"]["upBs"]).flatten()
-                if "vals" in problemDict["varSet"]: problemDict["varSet"]["vals"] = array(problemDict["varSet"]["vals"]).flatten()
-                if "dscIndices" in problemDict["varSet"]: problemDict["varSet"]["dscIndices"] = [int(problemDict["varSet"]["dscIndices"][k])+1 for k in range(len(problemDict["varSet"]["dscIndices"]))]
-                if "sos1Groups" in problemDict["varSet"]: problemDict["varSet"]["sos1Groups"] = [int(problemDict["varSet"]["sos1Groups"][k]) for k in range(len(problemDict["varSet"]["sos1Groups"]))]
-                if "pseudoCosts" in problemDict["varSet"]: problemDict["varSet"]["pseudoCosts"] = array(problemDict["varSet"]["pseudoCosts"]).flatten()
+                localProblemDict["varSet"]["loBs"] = array(localProblemDict["varSet"]["loBs"]).flatten()
+                localProblemDict["varSet"]["upBs"] = array(localProblemDict["varSet"]["upBs"]).flatten()
+                if "vals" in localProblemDict["varSet"]: localProblemDict["varSet"]["vals"] = array(localProblemDict["varSet"]["vals"]).flatten()
+                if "dscIndices" in localProblemDict["varSet"]: localProblemDict["varSet"]["dscIndices"] = [int(localProblemDict["varSet"]["dscIndices"][k])+1 for k in range(len(localProblemDict["varSet"]["dscIndices"]))]
+                if "sos1Groups" in localProblemDict["varSet"]: localProblemDict["varSet"]["sos1Groups"] = [int(localProblemDict["varSet"]["sos1Groups"][k]) for k in range(len(localProblemDict["varSet"]["sos1Groups"]))]
+                if "pseudoCosts" in localProblemDict["varSet"]: localProblemDict["varSet"]["pseudoCosts"] = array(localProblemDict["varSet"]["pseudoCosts"]).flatten()
 
 
             # create a branch and bound current_workspace
-            self.jl.setup(subsolver,problemDict,bb_settings,ss_settings)
+            self.jl.setup(subsolver,localProblemDict,bb_settings,ss_settings)
             return
 
 
@@ -106,6 +107,19 @@ class OpenBBmodel:
 
 
     ######################## inspect ########################
+
+    # ...
+    def get_all(self):
+        return self.jl.globalWorkspace
+
+    # ...
+    def get_settings(self):
+        return self.jl.get_settings()
+
+    # ...
+    def get_subsolver_settings(self):
+        return self.jl.get_subsolver_settings()
+
     # get statistics and results of the last optimization
     def get_status(self):
         return self.jl.get_status()
@@ -134,12 +148,21 @@ class OpenBBmodel:
     def get_numDiscreteVariables(self):
         return self.jl.get_numDiscreteVariables()
 
+
+    # ...
+    def get_constraints(self):
+        return self.jl.get_constraints()
+
+    # ...
+    def get_objective(self):
+        return self.jl.get_objective()
+
     # ...
     def get_constraints_sparsity(self):
         out = self.jl.get_constraints_sparsity()
-        for k in range(len(out[1])):
+        for k in range(len(out[0])):
+            out[0][k] = out[0][k] - 1
             out[1][k] = out[1][k] - 1
-            out[2][k] = out[2][k] - 1
         return out
 
     # ...
@@ -152,9 +175,9 @@ class OpenBBmodel:
     # ...
     def get_objective_sparsity(self):
         out = self.jl.get_objective_sparsity()
-        for k in range(len(out[1])):
+        for k in range(len(out[0])):
+            out[0][k] = out[0][k] - 1
             out[1][k] = out[1][k] - 1
-            out[2][k] = out[2][k] - 1
         return out
 
     # ...
@@ -165,7 +188,17 @@ class OpenBBmodel:
     def get_constraintBounds(self):
         return self.jl.get_constraintBounds()
 
+    # ...
+    def get_numActiveNodes(self):
+        return self.jl.get_numActiveNodes()
 
+    # ...
+    def get_numUnactiveNodes(self):
+        return self.jl.get_numUnactiveNodes()
+
+    # ...
+    def get_numSolutions(self):
+        return self.jl.get_numSolutions()
 
     ######################## update workspace ########################
     # ...
@@ -216,7 +249,7 @@ class OpenBBmodel:
     def permute_constraints(self,permutation,suppressWarnings=False,suppressUpdate=False,localOnly=False):
         for k in range(len(permutation)):
             permutation[k] = permutation[k] + 1
-        self.jl.remove_constraints_b(permutation,suppressWarnings,suppressUpdate,localOnly)
+        self.jl.permute_constraints_b(permutation,suppressWarnings,suppressUpdate,localOnly)
         return
 
     # ...
@@ -238,34 +271,35 @@ class OpenBBmodel:
             else:
 
                 # reformat the objective
-                if "Q" in problemDict["objFun"]: problemDict["objFun"]["Q"] = matrix(problemDict["objFun"]["Q"])
-                problemDict["objFun"]["L"] = array(problemDict["objFun"]["L"]).flatten()
+                localProblemDict = deepcopy(problemDict)
+                if "Q" in localProblemDict["objFun"]: localProblemDict["objFun"]["Q"] = matrix(localProblemDict["objFun"]["Q"])
+                localProblemDict["objFun"]["L"] = array(localProblemDict["objFun"]["L"]).flatten()
 
                 # reformat the constraints set
-                problemDict["cnsSet"]["A"] = matrix(problemDict["cnsSet"]["A"])
-                problemDict["cnsSet"]["loBs"] = array(problemDict["cnsSet"]["loBs"]).flatten()
-                problemDict["cnsSet"]["upBs"] = array(problemDict["cnsSet"]["upBs"]).flatten()
+                localProblemDict["cnsSet"]["A"] = matrix(localProblemDict["cnsSet"]["A"])
+                localProblemDict["cnsSet"]["loBs"] = array(localProblemDict["cnsSet"]["loBs"]).flatten()
+                localProblemDict["cnsSet"]["upBs"] = array(localProblemDict["cnsSet"]["upBs"]).flatten()
 
                 # reformat the variables set
-                problemDict["varSet"]["loBs"] = array(problemDict["varSet"]["loBs"]).flatten()
-                problemDict["varSet"]["upBs"] = array(problemDict["varSet"]["upBs"]).flatten()
-                if "vals" in problemDict["varSet"]: problemDict["varSet"]["vals"] = array(problemDict["varSet"]["vals"]).flatten()
-                if "dscIndices" in problemDict["varSet"]: problemDict["varSet"]["dscIndices"] = [int(problemDict["varSet"]["dscIndices"][k])+1 for k in range(len(problemDict["varSet"]["dscIndices"]))]
-                if "sos1Groups" in problemDict["varSet"]: problemDict["varSet"]["sos1Groups"] = [int(problemDict["varSet"]["sos1Groups"][k]) for k in range(len(problemDict["varSet"]["sos1Groups"]))]
-                if "pseudoCosts" in problemDict["varSet"]: problemDict["varSet"]["pseudoCosts"] = array(problemDict["varSet"]["pseudoCosts"]).flatten()
+                localProblemDict["varSet"]["loBs"] = array(localProblemDict["varSet"]["loBs"]).flatten()
+                localProblemDict["varSet"]["upBs"] = array(localProblemDict["varSet"]["upBs"]).flatten()
+                if "vals" in localProblemDict["varSet"]: localProblemDict["varSet"]["vals"] = array(localProblemDict["varSet"]["vals"]).flatten()
+                if "dscIndices" in localProblemDict["varSet"]: localProblemDict["varSet"]["dscIndices"] = [int(localProblemDict["varSet"]["dscIndices"][k])+1 for k in range(len(localProblemDict["varSet"]["dscIndices"]))]
+                if "sos1Groups" in localProblemDict["varSet"]: localProblemDict["varSet"]["sos1Groups"] = [int(localProblemDict["varSet"]["sos1Groups"][k]) for k in range(len(localProblemDict["varSet"]["sos1Groups"]))]
+                if "pseudoCosts" in localProblemDict["varSet"]: localProblemDict["varSet"]["pseudoCosts"] = array(localProblemDict["varSet"]["pseudoCosts"]).flatten()
 
-                self.jl.append_problem_b(problemDict,suppressWarnings,suppressUpdate,localOnly)
+                self.jl.append_problem_b(localProblemDict,suppressWarnings,suppressUpdate,localOnly)
         return
 
 
     # marks as discrete formally not discrete variables
-    def integralize_variables(self,newDscIndices,suppressWarnings=False,suppressUpdate=False,localOnly=False):
+    def integralize_variables(self,newDscIndices,newSos1Groups=array([],int),suppressWarnings=False,suppressUpdate=False,localOnly=False):
         for k in range(len(newDscIndices)):
             newDscIndices[k] = newDscIndices[k] + 1
-        self.jl.integralize_variables_b(newDscIndices,suppressWarnings,suppressUpdate,localOnly)
+        self.jl.integralize_variables_b(newDscIndices,newSos1Groups,suppressWarnings,suppressUpdate,localOnly)
         return
 
     # ...
-    def update_cutoff(self,newCutoff,suppressWarnings=False,suppressUpdate=False,localOnly=False):
-        self.jl.update_cutoff_b(newCutoff,suppressWarnings,suppressUpdate,localOnly)
+    def update_objectiveCutoff(self,newCutoff,suppressWarnings=False,suppressUpdate=False,localOnly=False):
+        self.jl.update_objectiveCutoff_b(newCutoff,suppressWarnings,suppressUpdate,localOnly)
         return

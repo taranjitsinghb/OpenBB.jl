@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBI_inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T21:12:54+02:00
+# @Last modified time: 2019-06-20T15:15:29+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -49,4 +49,14 @@ end
 # ...
 function get_settings(workspace::GUROBIworkspace)::GUROBIsettings
     return workspace.settings
+end
+
+# ...
+function get_constraints(workspace::GUROBIworkspace)::LinearConstraintSet
+    return LinearConstraintSet(A=workspace.A,loBs=workspace.cnsLoBs,upBs=workspace.cnsUpBs)
+end
+
+# ...
+function get_objective(workspace::GUROBIworkspace)::QuadraticObjective
+    return QuadraticObjective(Q=workspace.Q,L=workspace.L)
 end

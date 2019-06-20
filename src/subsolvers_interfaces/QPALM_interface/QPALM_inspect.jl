@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T21:13:56+02:00
+# @Last modified time: 2019-06-20T15:15:42+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -48,4 +48,14 @@ end
 # ...
 function get_settings(workspace::QPALMworkspace)::QPALMsettings
     return workspace.settings
+end
+
+# ...
+function get_constraints(workspace::QPALMworkspace)::LinearConstraintSet
+    return LinearConstraintSet(A=workspace.A,loBs=workspace.cnsLoBs,upBs=workspace.cnsUpBs)
+end
+
+# ...
+function get_objective(workspace::QPALMworkspace)::QuadraticObjective
+    return QuadraticObjective(Q=workspace.Q,L=workspace.L)
 end

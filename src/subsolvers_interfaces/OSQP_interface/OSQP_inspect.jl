@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T21:13:27+02:00
+# @Last modified time: 2019-06-20T15:15:37+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -48,4 +48,14 @@ end
 # ...
 function get_settings(workspace::OSQPworkspace)::OSQPsettings
     return workspace.settings
+end
+
+# ...
+function get_constraints(workspace::OSQPworkspace)::LinearConstraintSet
+    return LinearConstraintSet(A=workspace.A,loBs=workspace.cnsLoBs,upBs=workspace.cnsUpBs)
+end
+
+# ...
+function get_objective(workspace::OSQPworkspace)::QuadraticObjective
+    return QuadraticObjective(Q=workspace.Q,L=workspace.L)
 end
