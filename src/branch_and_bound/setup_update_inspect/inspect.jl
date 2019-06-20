@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T15:20:58+02:00
+# @Last modified time: 2019-06-20T18:57:00+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -118,7 +118,7 @@ function get_best_node(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Abs
         end
         # otherwise, take the first problem in the active queue
         if bestNode isa NullBBnode && length(workspace.activeQueue) > 0
-            bestNode = activeQueue[end]
+            bestNode = workspace.activeQueue[end]
         end
         # otherwise, check the unactivePool for better nodes
         if bestNode isa NullBBnode && length(workspace.unactivePool) > 0
