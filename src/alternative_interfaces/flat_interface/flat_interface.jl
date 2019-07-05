@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T15:24:08+02:00
+# @Last modified time: 2019-07-05T11:59:55+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -20,21 +20,21 @@ global globalWorkspace = NullWorkspace()
 
 ######################## problem definition ########################
 
-function ObjectiveFunction(objectiveDict::Dict)::AbstractObjectiveFunction
+function ObjectiveFunction(objectiveDict::T)::AbstractObjective where T <: Dict
   if isempty(objectiveDict)
-  return NullObjectiveFunction()
+  return NullObjective()
   elseif "Q" in keys(objectiveDict) && "L" in keys(objectiveDict)
   return QuadraticObjective(Q=copy(objectiveDict["Q"]),L=copy(objectiveDict["L"]))
   elseif "L" in keys(objectiveDict)
   return LinearObjective(L=copy(objectiveDict["L"]))
   else
     @error "Objective function type not understood"
-  return NullObjectiveFunction()
+  return NullObjective()
   end
 end
 
 
-function ConstraintSet(constraintsDict::Dict)::AbstractConstraintSet
+function ConstraintSet(constraintsDict::T)::AbstractConstraintSet where T <: Dict
   if isempty(constraintsDict)
     return NullConstraintSet()
   elseif "A" in keys(constraintsDict) && "loBs" in keys(constraintsDict) && "upBs" in keys(constraintsDict)
@@ -47,12 +47,17 @@ function ConstraintSet(constraintsDict::Dict)::AbstractConstraintSet
   end
 end
 
-function VariableSet(variableDict::Dict)::AbstractVariableSet
+function VariableSet(variableDict::T)::AbstractVariableSet where T <: Dict
 
   if isempty(variableDict)
     return NullVariableSet()
   else
 
+    if "vals" in keys(variableDict)
+      vals = copy(variableDict["vals"])
+    else
+      vals = Float64[]
+    end
     if "dscIndices" in keys(variableDict)
       dscIndices = copy(variableDict["dscIndices"])
     else
@@ -68,14 +73,14 @@ function VariableSet(variableDict::Dict)::AbstractVariableSet
     else
       pseudoCosts = Array{Float64,2}(undef,0,2)
     end
-    return VariableSet(loBs=copy(variableDict["loBs"]),upBs=copy(variableDict["upBs"]),vals=copy(variableDict["vals"]),
+    return VariableSet(loBs=copy(variableDict["loBs"]),upBs=copy(variableDict["upBs"]),vals=vals,
                               dscIndices=dscIndices,sos1Groups=sos1Groups,pseudoCosts=pseudoCosts)
   end
 end
 
 
 
-function Problem(problemDict::Dict)::Problem
+function Problem(problemDict::T)::Problem where T <: Dict
   if isempty(problemDict)
     return NullProblem()
   else
@@ -89,7 +94,7 @@ end
 ######################## setup ########################
 
 # setup a globalWorkspace
-function setup(subsolver::String,problemDict::Dict,bbSettingsDict::Dict,ssSettingsDict::Dict)::Nothing
+function setup(subsolver::String,problemDict::T1,bbSettingsDict::T2,ssSettingsDict::T3)::Nothing where T1 <: Dict where T2 <: Dict where T3 <: Dict
 
   # manage settings for BB algorithm
   bb_settings = BBsettings()
@@ -146,6 +151,11 @@ function get_settings()::Dict{String,Any}
     out[String(field)] = getfield(tmp,field)
   end
   return out
+end
+
+# ...
+function get_subsolver_name()::String
+  return get_solver_name(globalWorkspace.subsolverWS)
 end
 
 # ...
@@ -342,10 +352,10 @@ end
 
 ######################## update problem ########################
 
-function append_constraints_b(constraintsDict::Dict,
+function append_constraints_b(constraintsDict::T,
                               suppressWarnings::Bool=false,
                               suppressUpdate::Bool=false,
-                              localOnly::Bool=false)::Nothing
+                              localOnly::Bool=false)::Nothing where T <: Dict
   if globalWorkspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
@@ -355,10 +365,10 @@ function append_constraints_b(constraintsDict::Dict,
                                     localOnly=localOnly)
 end
 
-function insert_constraints_b(constraintsDict::Dict,index::Int,
+function insert_constraints_b(constraintsDict::T,index::Int,
                               suppressWarnings::Bool=false,
                               suppressUpdate::Bool=false,
-                              localOnly::Bool=false)::Nothing
+                              localOnly::Bool=false)::Nothing where T <: Dict
   if globalWorkspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
@@ -396,10 +406,10 @@ function permute_constraints_b(permutation::Array{Int,1},
                                      localOnly=localOnly)
 end
 
-function update_bounds_b(boundsDict::Dict,
+function update_bounds_b(boundsDict::T,
                          suppressWarnings::Bool=false,
                          suppressUpdate::Bool=false,
-                         localOnly::Bool=false)::Nothing
+                         localOnly::Bool=false)::Nothing where T <: Dict
   if globalWorkspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
@@ -415,10 +425,33 @@ function update_bounds_b(boundsDict::Dict,
 end
 
 
-function append_problem_b(problemDict::Dict,
+function set_objective_b(newObjectiveDict::T,
+                         suppressWarnings::Bool=false,
+                         suppressUpdate::Bool=false,
+                         localOnly::Bool=false)::Nothing where T <: Dict
+  set_objective!(globalWorkspace,ObjectiveFunction(newObjectiveDict),
+                                   suppressWarnings=suppressWarnings,
+                                   suppressUpdate=suppressUpdate,
+                                   localOnly=localOnly)
+  return
+end
+
+function set_constraintSet_b(newConstraintSetDict::T,
+                           suppressWarnings::Bool=false,
+                           suppressUpdate::Bool=false,
+                           localOnly::Bool=false)::Nothing where T <: Dict
+  set_constraintSet!(globalWorkspace,ConstraintSet(newConstraintSetDict),
+                                   suppressWarnings=suppressWarnings,
+                                   suppressUpdate=suppressUpdate,
+                                   localOnly=localOnly)
+  return
+end
+
+
+function append_problem_b(problemDict::T,
                           suppressWarnings::Bool=false,
                           suppressUpdate::Bool=false,
-                          localOnly::Bool=false)::Nothing
+                          localOnly::Bool=false)::Nothing where T <: Dict
   if globalWorkspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
@@ -446,6 +479,7 @@ function integralize_variables_b(newDscIndices::Array{Int,1},
                                 localOnly=localOnly)
 end
 
+######################## update settings ########################
 function update_objectiveCutoff_b(newCutoff::Float64,
                                   suppressWarnings::Bool=false,
                                   suppressUpdate::Bool=false,

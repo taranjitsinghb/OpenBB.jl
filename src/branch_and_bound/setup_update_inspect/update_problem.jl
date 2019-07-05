@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T00:19:21+02:00
+# @Last modified time: 2019-07-05T17:21:20+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -122,11 +122,11 @@ function remove_constraints!(workspace::BBworkspace{T1,T2},indices::Array{Int,1}
         for i in 1:length(workspace.unactivePool)
             deleteat!(workspace.unactivePool[i].cnsDual,indices)
         end
-    end
 
-    # update the workspace
-    if !suppressUpdate
-        update!(workspace,localOnly=localOnly)
+        # update the workspace
+        if !suppressUpdate
+            update!(workspace,localOnly=true)
+        end
     end
 
     return
@@ -146,6 +146,7 @@ function permute_constraints!(workspace::BBworkspace{T1,T2},permutation::Array{I
                                                                               suppressWarnings=$suppressWarnings,
                                                                               suppressUpdate=true,localOnly=true)))
         end
+
         # call the local version of the function on the main process
         permute_constraints!(workspace,permutation,
                              suppressWarnings=suppressWarnings,
@@ -175,7 +176,7 @@ function permute_constraints!(workspace::BBworkspace{T1,T2},permutation::Array{I
 
         # update the subsolver workspace only
         if !suppressUpdate
-            update!(workspace.subsolverWS)
+            update!(workspace.subsolverWS,localOnly=true)
         end
     end
 
@@ -238,6 +239,7 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
                                                                         suppressWarnings=$suppressWarnings,
                                                                         suppressUpdate=true,localOnly=true)))
         end
+
         # call the local version of the function on the main process
         update_bounds!(workspace,
                        cnsLoBs=cnsLoBs,cnsUpBs=cnsUpBs,
@@ -249,11 +251,111 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
         # propagate the changes to the nodes solver
         update_bounds!(workspace.subsolverWS,cnsLoBs,cnsUpBs,varLoBs,varUpBs,suppressUpdate=true)
 
+        # adapt the workspace to the changes
+        if !suppressUpdate
+            update!(workspace,localOnly=true)
+        end
     end
 
-    # adapt the workspace to the changes
-    if !suppressUpdate
-        update!(workspace,localOnly=localOnly)
+    return
+end
+
+# ...
+function set_objective!(workspace::BBworkspace{T1,T2},newObjective::T3;
+                        suppressWarnings::Bool=false,
+                        suppressUpdate::Bool=false,
+                        localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory where T3 <: AbstractObjective
+
+    # check if it is possible to make changes
+    if !suppressWarnings
+        if workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
+            @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
+        else
+            # warn the user about the potential dangers
+            @warn "changing the objective after some iterations is potentially destructive, please be sure that the new objective is always greater or equal to the old one"
+        end
+    end
+
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
+        # call the local version of the function on the remote workers
+        for p in 2:workspace.settings.numProcesses
+            @async remotecall_fetch(Main.eval,p,:(OpenBB.set_objective!(workspace,$newObjective,
+                                                                         suppressWarnings=true,
+                                                                         suppressUpdate=true,localOnly=true)))
+        end
+
+        # call the local version of the function on the main process
+        set_objective!(workspace,newObjective,
+                        suppressWarnings=true,
+                        suppressUpdate=true,localOnly=true)
+    else
+
+        # propagate the change to the subsolver
+        set_objective!(workspace.subsolverWS,newObjective,suppressUpdate=true)
+
+        # update the workspace
+        if !suppressUpdate
+            update!(workspace,localOnly=true)
+        end
+    end
+
+    return
+end
+
+#...
+function set_constraintSet!(workspace::BBworkspace{T1,T2},newConstraintSet::T3;
+                           suppressWarnings::Bool=false,
+                           suppressUpdate::Bool=false,
+                           localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory where T3 <: AbstractConstraintSet
+
+    # check if it is possible to make changes
+    if !suppressWarnings
+        if workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
+            @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
+        else
+            # warn the user about the potential dangers
+            @warn "changing the constraintSet after some iterations is potentially destructive, please be sure that the new constraint set is more restrictive than the old"
+        end
+    end
+
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
+        # call the local version of the function on the remote workers
+        for p in 2:workspace.settings.numProcesses
+            @async remotecall_fetch(Main.eval,p,:(OpenBB.set_constraintSet!(workspace,$newConstraintSet,
+                                                                            suppressWarnings=true,
+                                                                            suppressUpdate=true,localOnly=true)))
+        end
+
+        # call the local version of the function on the main process
+        set_constraintSet!(workspace,newConstraintSet,
+                           suppressWarnings=true,
+                           suppressUpdate=true,localOnly=true)
+    else
+
+        # reset the constraints dual
+        if length(workspace.activeQueue)>0
+            for i in 1:length(workspace.activeQueue)
+                workspace.activeQueue[i].cnsDual = zeros(get_numConstraints(newConstraintSet))
+            end
+        end
+        if length(workspace.unactivePool)>0
+            for i in 1:length(workspace.unactivePool)
+                workspace.unactivePool[i].cnsDual = zeros(get_numConstraints(newConstraintSet))
+            end
+        end
+        if length(workspace.solutionPool)>0
+            for i in 1:length(workspace.solutionPool)
+                workspace.solutionPool[i].cnsDual = zeros(get_numConstraints(newConstraintSet))
+            end
+        end
+
+        # propagate the change to the subsolver
+        set_constraintSet!(workspace.subsolverWS,newConstraintSet,suppressUpdate=true)
+
+        # update the workspace
+        if !suppressUpdate
+            update!(workspace,localOnly=true)
+        end
     end
 
     return
@@ -333,11 +435,11 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
         append!(workspace.sos1Groups,@. problem.varSet.sos1Groups + maximum(workspace.sos1Groups) + 1)
         workspace.pseudoCosts = (vcat(workspace.pseudoCosts[1],problem.varSet.pseudoCosts),
                                  vcat(workspace.pseudoCosts[2],repeat([0 0],length(problem.varSet.dscIndices),1)))
-    end
 
-    # adapt the workspace to the changes
-    if !suppressUpdate
-        update!(workspace,localOnly=localOnly)
+         # adapt the workspace to the changes
+         if !suppressUpdate
+             update!(workspace,localOnly=true)
+         end
     end
 
     return
@@ -411,11 +513,10 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
             permute!(workspace.solutionPool[k].branchUpBs,tmpPerm)
         end
 
-    end
-
-    # adapt the workspace to the changes
-    if !suppressUpdate
-        update!(workspace,localOnly=localOnly)
+        # adapt the workspace to the changes
+        if !suppressUpdate
+            update!(workspace,localOnly=true)
+        end
     end
 
     return

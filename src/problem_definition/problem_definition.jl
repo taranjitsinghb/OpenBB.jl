@@ -20,13 +20,13 @@ abstract type AbstractProblem end
 struct NullProblem <: AbstractProblem end
 
 # concrete problem
-struct Problem{T1<:AbstractObjectiveFunction,T2<:AbstractConstraintSet}
+struct Problem{T1<:AbstractObjective,T2<:AbstractConstraintSet}
     objFun::T1
     cnsSet::T2
     varSet::VariableSet
 end
 
-function Problem(;objFun::AbstractObjectiveFunction,cnsSet::AbstractConstraintSet,varSet::VariableSet)::Problem
+function Problem(;objFun::AbstractObjective,cnsSet::AbstractConstraintSet,varSet::VariableSet)::Problem
     return Problem(objFun,cnsSet,varSet)
 end
 

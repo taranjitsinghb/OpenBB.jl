@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T15:24:40+02:00
+# @Last modified time: 2019-07-01T18:35:25+02:00
 # @License: LGPL-3.0
 
 
@@ -26,7 +26,7 @@ problem["varSet"]["vals"] = [.5,0,1,0,.5]
 problem["varSet"]["dscIndices"] = [2,3,4]
 problem["varSet"]["sos1Groups"] = [1,1,1]
 
-bbSettings = Dict("verbose"=>true,"numProcesses"=>1,"dynamicMode"=>true)
+bbSettings = Dict("verbose"=>false,"numProcesses"=>1,"dynamicMode"=>true)
 ssSettings = Dict()
 
 

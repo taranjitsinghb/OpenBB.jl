@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: branching_priority_functions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T12:51:00+02:00
+# @Last modified time: 2019-07-04T08:20:28+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -64,10 +64,9 @@ function pseudoIncrements_geomean(dscValues::Array{Float64,1},pseudoCosts::Tuple
     scores = zeros(length(dscValues))
     bestIndex = 1
     for k in 1:length(dscValues)
-        deltaMinus = dscValues[k] - floor(dscValues[k])
-        deltaMinus = pseudoCosts[1][k,1]*deltaMinus*(deltaMinus>primalTolerance)
-        deltaPlus  = ceil(dscValues[k]) - dscValues[k]
-        deltaPlus  = pseudoCosts[1][k,2]*deltaPlus*(deltaPlus>primalTolerance)
+        deltaMinus = threshold(dscValues[k] - floor(dscValues[k]),primalTolerance)*pseudoCosts[1][k,1]
+        deltaPlus  = threshold(ceil(dscValues[k]) - dscValues[k],primalTolerance)*pseudoCosts[1][k,2]
+        # println(deltaMinus," ",deltaPlus," ", pseudoCosts[1][k,:])
 
         if deltaMinus <= deltaPlus
             scores[k] = deltaMinus^gainOfMin*deltaPlus^gainOfMax

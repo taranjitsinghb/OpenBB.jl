@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T17:01:43+02:00
+# @Last modified time: 2019-07-05T10:36:10+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -148,6 +148,58 @@ function append_problem!(workspace::QPALMworkspace,
 
     return reliableObjLoBs
 end
+
+
+# ...
+function set_objective!(workspace::QPALMworkspace,newObjective::T;suppressUpdate::Bool=false)::Nothing where T <: AbstractObjective
+
+    if newObjective isa NullObjective
+        @. workspace.Q = 0.
+        @. workspace.L = 0.
+    elseif newObjective isa LinearObjective
+        @. workspace.Q = 0.
+        @. workspace.L = newObjective.L
+    elseif newObjective isa QuadraticObjective
+        @. workspace.Q = newObjective.Q
+        @. workspace.L = newObjective.L
+    else
+        @error "QPALM cannot deal with the given objective function"
+    end
+
+    # update the qpalm workspace
+    if !suppressUpdate
+        update!(workspace)
+    end
+
+    return
+end
+
+
+# ...
+function set_constraintSet!(workspace::QPALMworkspace,newConstraintSet::T;suppressUpdate::Bool=false)::Nothing where T <: AbstractConstraintSet
+
+    if newConstraintSet isa NullConstraintSet
+        numVariables = get_numVariables(workspace)
+        @. workspace.A = zeros(0,numVariables)
+        @. workspace.cnsLoBs = Float64[]
+        @. workspace.cnsUpBs = Float64[]
+    elseif newConstraintSet isa LinearConstraintSet
+        @assert get_numVariables(newObjectiveTerm,2) == get_numVariables(workspace)
+        @. workspace.A = newConstraintSet.A
+        @. workspace.cnsLoBs = newConstraintSet.upBs
+        @. workspace.cnsUpBs = newConstraintSet.loBs
+    else
+        @error "QPALM cannot deal with the given constraint set"
+    end
+
+    # update the gurobi workspace
+    if !suppressUpdate
+        update!(workspace)
+    end
+
+    return
+end
+
 
 #
 function append_problem!(workspace::QPALMworkspace,

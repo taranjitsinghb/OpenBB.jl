@@ -7,10 +7,10 @@
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
-obj = Array{OpenBB.AbstractObjectiveFunction,1}(undef,3)
+obj = Array{OpenBB.AbstractObjective,1}(undef,3)
 obj[1] = OpenBB.QuadraticObjective(Q=Matrix(1.0I,4,4,),L=ones(4))
 obj[2] = OpenBB.LinearObjective(L=ones(4))
-obj[3] = OpenBB.NullObjectiveFunction()
+obj[3] = OpenBB.NullObjective()
 
 
 cns = Array{OpenBB.AbstractConstraintSet,1}(undef,2)

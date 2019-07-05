@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-18T17:35:29+02:00
+# @Last modified time: 2019-07-04T19:21:21+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -83,14 +83,13 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
           end
         end
 
-
         # stopping conditions
         if length(workspace.activeQueue) == 0 || # no more nodes in the queue
            workspace.status.objLoB > workspace.settings.objectiveCutoff || # no solutions within the cutoff possible
            workspace.status.totalTime >= workspace.settings.timeLimit || # time is up
            workspace.settings.customStoppingRule(workspace) || # custom stopping rule triggered
-           workspace.status.absoluteGap <= workspace.settings.absoluteGapTolerance || # reached required absolute gap
-           workspace.status.relativeGap <= workspace.settings.relativeGapTolerance || # reached required relative gap
+           workspace.status.absoluteGap < workspace.settings.absoluteGapTolerance || # reached required absolute gap
+           workspace.status.relativeGap < workspace.settings.relativeGapTolerance || # reached required relative gap
            (workspace.settings.numSolutionsLimit > 0 && workspace.status.numSolutions >= workspace.settings.numSolutionsLimit) # the required number of solutions has been found
 
            # set the algorithm in idle state
@@ -112,8 +111,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                     push!(workspace.unactivePool,node)
                 end
 
-            elseif !(workspace.sharedMemory isa NullSharedMemory) && # we are multiprocessing
-                   timeToShareNodes # it is time to send a child to the next process
+            elseif !(workspace.sharedMemory isa NullSharedMemory) && timeToShareNodes # we are multiprocessing and it is time to send a child to the next process
                    # !isready(workspace.sharedMemory.outputChannel) # the channel is free
 
                 # send the new node to the neighbouring process
@@ -269,35 +267,14 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
 
             # comunicate the current local lower bound
             workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB
-        end
-    end
 
-    ############################## termination ##############################
-
-    if workspace.status.absoluteGap < workspace.settings.absoluteGapTolerance ||
-       workspace.status.relativeGap < workspace.settings.relativeGapTolerance
-
-        workspace.status.description = "optimalSolutionFound"
-        if workspace.settings.verbose && processId == 1
-            print_status(workspace)
-            println(" Exit: Optimal Solution Found")
-        end
-
-    elseif workspace.status.objLoB > workspace.settings.objectiveCutoff ||
-           (length(workspace.activeQueue) == 0 && workspace.status.objUpB == Inf)
-
-
-        workspace.status.description = "infeasible"
-        if workspace.settings.verbose && processId == 1
-            print_status(workspace)
-            println(" Exit: Infeasibilty Detected")
-        end
-
-    else
-        workspace.status.description = "interrupted"
-        if workspace.settings.verbose && processId == 1
-            print_status(workspace)
-            println(" Exit: Interrupted")
+            # recompute optimality gaps
+            if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+            else
+                workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
+            end
         end
     end
 

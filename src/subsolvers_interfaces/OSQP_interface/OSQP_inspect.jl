@@ -3,11 +3,14 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T15:15:37+02:00
+# @Last modified time: 2019-07-01T13:04:43+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
-
+# ...
+function get_solver_name(workspace::OSQPworkspace)::String
+    return "OSQP"
+end
 
 # this function returns the sparsity pattern of the constraint set
 function get_constraints_sparsity(workspace::OSQPworkspace)::Tuple{Array{Int,1},Array{Int,1}}

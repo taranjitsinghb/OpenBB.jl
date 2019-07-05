@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: Gurobi_setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T21:41:52+02:00
+# @Last modified time: 2019-07-01T18:45:35+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -32,7 +32,7 @@ function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Flo
 
 
     # check the objective function
-    if problem.objFun isa NullObjectiveFunction
+    if problem.objFun isa NullObjective
         Q = spzeros(nVars,nVars)
         L = zeros(nVars)
 
@@ -66,7 +66,6 @@ function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Flo
     # create the subsolver OSQPworkspace
     env = Gurobi.Env()
     Gurobi.setparams!(env;settings_dict...)
-
 
     return GUROBIworkspace(copy(Q),copy(L),
                      copy(A),copy(cnsLoBs),copy(cnsUpBs),

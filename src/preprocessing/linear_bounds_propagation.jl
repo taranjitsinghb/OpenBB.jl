@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: linear_bounds_propagation.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-14T11:45:59+02:00
+# @Last modified time: 2019-07-05T17:16:11+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -48,13 +48,6 @@ function bounds_propagation!(cns::SparseVector{Float64,Int},
                   newLoB = (-(sum(maxArray[1:i-1]) + sum(maxArray[i+1:end])) + cnsLoB)/coeffs[i]
                   newUpB = (-(sum(minArray[1:i-1]) + sum(minArray[i+1:end])) + cnsUpB)/coeffs[i]
             end
-
-
-            if newLoB > newUpB
-                  println(varLoBs,varUpBs)
-                  stop
-            end
-
 
             # perform changes
             if varLoBs[indices[i]] < newLoB

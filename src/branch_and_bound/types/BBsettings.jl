@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T15:27:43+02:00
+# @Last modified time: 2019-07-04T19:16:36+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 

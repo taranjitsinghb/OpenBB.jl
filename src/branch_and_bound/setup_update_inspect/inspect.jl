@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T18:57:00+02:00
+# @Last modified time: 2019-07-03T17:57:07+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -150,12 +150,12 @@ function get_numConstraints(workspace::BBworkspace{T1,T2})::Int where T1<:Abstra
 end
 
 # ...
-function get_constraints(workspace::BBworkspace)::AbstractConstraintSet
+function get_constraints(workspace::BBworkspace{T1,T2})::AbstractConstraintSet where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_constraints(workspace.subsolverWS)
 end
 
 # ...
-function get_objective(workspace::BBworkspace)::AbstractObjectiveFunction
+function get_objective(workspace::BBworkspace{T1,T2})::AbstractObjective where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_objective(workspace.subsolverWS)
 end
 
@@ -205,8 +205,8 @@ function get_status(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::BBstat
                 status.relativeGap = status.absoluteGap/(1e-10 + abs(status.objUpB))
             end
 
-            status.totalTime += tmpStatus.totalTime
-            status.waitingTime += tmpStatus.waitingTime
+            status.totalTime = max(status.totalTime,tmpStatus.totalTime)
+            status.waitingTime = max(status.waitingTime,tmpStatus.waitingTime)
             status.numSolutions += tmpStatus.numSolutions
             status.numRelaxationsSolved += tmpStatus.numRelaxationsSolved
         end
@@ -216,11 +216,11 @@ function get_status(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::BBstat
 end
 
 # ...
-function get_settings(workspace::BBworkspace)::BBsettings
+function get_settings(workspace::BBworkspace{T1,T2})::BBsettings where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return workspace.settings
 end
 
 # ...
-function get_subsover_settings(workspace::BBworkspace)::AbstractSettings
+function get_subsover_settings(workspace::BBworkspace{T1,T2})::AbstractSettings where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
     return get_settings(workspace.subsolverWS)
 end

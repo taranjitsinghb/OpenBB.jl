@@ -3,17 +3,17 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T00:32:45+02:00
+# @Last modified time: 2019-07-04T19:20:36+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BBnode,1} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # create a list of children
-    if node.avgAbsFrac != 0.0
-        children, branchIndices = branch!(node,workspace)
-    else
+    if node.avgAbsFrac == 0.0 || isnan(node.objective)
         children, branchIndices = [deepcopy(node)], [0]
+    else
+        children, branchIndices = branch!(node,workspace)
     end
 
 
@@ -26,7 +26,7 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BB
 
 
             # compute objective and primal variation
-            deltaObjective = children[k].objective-node.objective
+            deltaObjective = max(children[k].objective-node.objective,workspace.settings.primalTolerance) # the max filters out small numerical errors
             deltaVariable = children[k].primal[workspace.dscIndices[branchIndices[k]]] - node.primal[workspace.dscIndices[branchIndices[k]]]
 
             if deltaVariable < -workspace.settings.primalTolerance
@@ -58,7 +58,6 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Tuple{Array{BBnode
                                                        node.primal[workspace.dscIndices],workspace.pseudoCosts,
                                                        workspace.settings.primalTolerance)
     @assert tmpIndex > 0; branchIndex = workspace.dscIndices[tmpIndex]
-
 
 
     # check if the selected variable belongs to a sos1 group

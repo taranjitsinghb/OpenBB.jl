@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T15:36:37+02:00
+# @Last modified time: 2019-07-05T10:31:21+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -107,6 +107,57 @@ function update_bounds!(workspace::OSQPworkspace,
     # propagate the changes to the OSQP solver
     if !suppressUpdate
         OSQP.update!(workspace.model;l=vcat(workspace.varLoBs,workspace.cnsLoBs),u=vcat(workspace.varUpBs,workspace.cnsLoBs))
+    end
+
+    return
+end
+
+
+# ...
+function set_objective!(workspace::OSQPworkspace,newObjective::T;suppressUpdate::Bool=false)::Nothing where T <: AbstractObjective
+
+    if newObjective isa NullObjective
+        @. workspace.Q = 0.
+        @. workspace.L = 0.
+    elseif newObjective isa LinearObjective
+        @. workspace.Q = 0.
+        @. workspace.L = newObjective.L
+    elseif newObjective isa QuadraticObjective
+        @. workspace.Q = newObjective.Q
+        @. workspace.L = newObjective.L
+    else
+        @error "OSQP cannot deal with the given objective function"
+    end
+
+    # update the osqp workspace
+    if !suppressUpdate
+        update!(workspace)
+    end
+
+    return
+end
+
+
+# ...
+function set_constraintSet!(workspace::OSQPworkspace,newConstraintSet::T;suppressUpdate::Bool=false)::Nothing where T <: AbstractConstraintSet
+
+    if newConstraintSet isa NullConstraintSet
+        numVariables = get_numVariables(workspace)
+        @. workspace.A = zeros(0,numVariables)
+        @. workspace.cnsLoBs = Float64[]
+        @. workspace.cnsUpBs = Float64[]
+    elseif newConstraintSet isa LinearConstraintSet
+        @assert get_numVariables(newObjectiveTerm,2) == get_numVariables(workspace)
+        @. workspace.A = newConstraintSet.A
+        @. workspace.cnsLoBs = newConstraintSet.upBs
+        @. workspace.cnsUpBs = newConstraintSet.loBs
+    else
+        @error "OSQP cannot deal with the given constraint set"
+    end
+
+    # update the gurobi workspace
+    if !suppressUpdate
+        update!(workspace)
     end
 
     return

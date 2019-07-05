@@ -117,9 +117,9 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 end
 
 function setup(problem::NullProblem,bbSettings::BBsettings, ssSettings::AbstractSettings=NullSettings())::BBworkspace
-    return setup(Problem(NullObjectiveFunction(),NullConstraintSet(),EmptyVarSet()),bbSettings,ssSettings)
+    return setup(Problem(NullObjective(),NullConstraintSet(),EmptyVarSet()),bbSettings,ssSettings)
 end
 
 function setup(bbSettings::BBsettings, ssSettings::AbstractSettings=NullSettings())::BBworkspace
-    return setup(Problem(NullObjectiveFunction(),NullConstraintSet(),EmptyVarSet()),bbSettings,ssSettings)
+    return setup(Problem(NullObjective(),NullConstraintSet(),EmptyVarSet()),bbSettings,ssSettings)
 end
