@@ -157,7 +157,7 @@ function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:A
     end
 
     # count how many subproblems we have solved
-    workspace.status.numRelaxationsSolved = workspace.status.numRelaxationsSolved + 1
+    workspace.status.numExploredNodes = workspace.status.numExploredNodes + 1
 
     # compute node average fractionality and pseudo_cost
     absoluteFractionality = @. abs(node.primal[workspace.dscIndices] - round(node.primal[workspace.dscIndices]))

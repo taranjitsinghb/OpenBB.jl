@@ -16,16 +16,16 @@ mutable struct BBstatus
     totalTime::Float64
     waitingTime::Float64
     numSolutions::Int
-    numRelaxationsSolved::Int64
+    numExploredNodes::Int64
     description::String
 end
 
 function BBstatus(; objLoB::Float64=-Inf,objUpB::Float64=Inf,
                     absoluteGap::Float64= Inf,relativeGap::Float64=Inf,
                     totalTime::Float64=0.0,waitingTime::Float64=0.0,
-                    numSolutions::Int=0,numRelaxationsSolved::Int=0,
+                    numSolutions::Int=0,numExploredNodes::Int=0,
                     description::String="new")::BBstatus
-    return BBstatus(objLoB,objUpB,absoluteGap,relativeGap,totalTime,waitingTime,numSolutions,numRelaxationsSolved,description)
+    return BBstatus(objLoB,objUpB,absoluteGap,relativeGap,totalTime,waitingTime,numSolutions,numExploredNodes,description)
 end
 
 
@@ -33,6 +33,6 @@ function BBstatus(status::BBstatus)::BBstatus
     return BBstatus(status.objLoB,status.objUpB,
                     status.absoluteGap,status.relativeGap,
                     status.totalTime,status.waitingTime,
-                    status.numSolutions,status.numRelaxationsSolved,
+                    status.numSolutions,status.numExploredNodes,
                     status.description)
 end

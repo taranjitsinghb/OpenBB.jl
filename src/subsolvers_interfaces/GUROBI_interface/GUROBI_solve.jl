@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBIsolve.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-04T16:11:09+02:00
+# @Last modified time: 2019-07-10T18:19:47+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -46,7 +46,6 @@ function solve!(workspace::GUROBIworkspace,
         info_bndDual = NaNs(nVars)
         info_cnsDual = NaNs(nCnss)
         info_obj = Inf
-        println("Subsover error, status: "*string(Gurobi.get_status(model))*" (code: "*string(info_status)*")")
 
     elseif info_status in [7,8,10,11,13]
         status = 2 # "unreliable"

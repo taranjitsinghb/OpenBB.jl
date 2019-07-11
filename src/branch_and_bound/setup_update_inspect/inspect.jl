@@ -208,7 +208,7 @@ function get_status(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::BBstat
             status.totalTime = max(status.totalTime,tmpStatus.totalTime)
             status.waitingTime = max(status.waitingTime,tmpStatus.waitingTime)
             status.numSolutions += tmpStatus.numSolutions
-            status.numRelaxationsSolved += tmpStatus.numRelaxationsSolved
+            status.numExploredNodes += tmpStatus.numExploredNodes
         end
     end
 

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-04T19:21:21+02:00
+# @Last modified time: 2019-07-11T15:36:32+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -93,17 +93,53 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
            (workspace.settings.numSolutionsLimit > 0 && workspace.status.numSolutions >= workspace.settings.numSolutionsLimit) # the required number of solutions has been found
 
            # set the algorithm in idle state
-           idle = true
+           if workspace.sharedMemory isa NullSharedMemory || !isready(workspace.sharedMemory.outputChannel)
+               idle = true
+           end
 
        else # continue with branch and bound
 
-            # apply rounding heuristics (#TODO  rewrite it!)
-            # if node.avgAbsFrac <= workspace.settings.roundingHeuristicsThreshold
-            #     push!(workspace.activeQueue,simple_rounding_heuristics(node,workspace))
-            # end
+           # apply rounding heuristics
+           if workspace.activeQueue[end].avgAbsFrac > 0 &&
+              workspace.activeQueue[end].avgAbsFrac < workspace.settings.roundingHeuristicsThreshold &&
+              (workspace.activeQueue[end].objective-workspace.status.objLoB)/(1e-10 + workspace.activeQueue[end].objective) < workspace.settings.roundingHeuristicsThreshold
 
-            # pick a node to process from the activeQueue
-            node = pop!(workspace.activeQueue)
+               node = simple_rounding_heuristics(workspace.activeQueue[end],workspace)
+               solve!(node,workspace)
+
+               # new solution?
+               if node.reliable &&
+                  node.objective < min(workspace.status.objUpB,workspace.settings.objectiveCutoff) - workspace.settings.primalTolerance
+
+                   # insert new solution into the solutionPool
+                   push!(workspace.solutionPool,node)
+
+                   # update the number of solutions found
+                   workspace.status.numSolutions += 1
+                   # update the objective upper bound
+                   workspace.status.objUpB = node.objective
+
+                   # update the global objective upper bound and the number of solutions found
+                   if !(workspace.sharedMemory isa NullSharedMemory)
+                       workspace.sharedMemory.stats[1] +=1
+                       if workspace.status.objUpB < workspace.sharedMemory.objectiveBounds[end]
+                           workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
+                       end
+                   end
+
+                   # recompute optimality gaps
+                   if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                       workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+                   else
+                       workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                       workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
+                   end
+               end
+           end
+
+           # pick a node to process from the activeQueue
+           node = pop!(workspace.activeQueue)
+
 
             # check if node is already suboptimal (the upper-bound might have changed)
             if node.objective > min(workspace.status.objUpB,workspace.settings.objectiveCutoff) - workspace.settings.primalTolerance
@@ -180,7 +216,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
             end
 
             # recompute the objective lower bound
-            if workspace.status.objLoB == -Inf || node.objective == workspace.status.objLoB
+            if workspace.status.objLoB == -Inf || node.objective == workspace.status.objLoB || length(workspace.activeQueue) == 0
                 # compute the new lower-bound
                 newObjLoB = workspace.status.objUpB
                 for i in length(workspace.activeQueue):-1:1
@@ -223,8 +259,6 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 # wait for a message to arrive in the inputChannel
                 while !isready(workspace.sharedMemory.inputChannel) &&
                       !all(@. workspace.sharedMemory.arrestable)
-                    # pause for some time
-                    pause(1e-3)
                 end
 
                 # keep track of the time spent in waiting

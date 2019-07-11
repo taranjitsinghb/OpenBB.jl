@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-20T00:43:03+02:00
+# @Last modified time: 2019-07-08T13:47:26+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,6 +28,11 @@ function withGUROBI()::Bool
 end
 function withQPALM()::Bool
     return false
+end
+
+# use or not the MPC addon (the folder containing the mpc toolbox should be placed beside the one containing OpenBB)
+function withMPCaddon()
+    return true
 end
 
 
