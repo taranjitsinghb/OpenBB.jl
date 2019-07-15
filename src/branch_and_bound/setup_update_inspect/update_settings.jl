@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_settings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-18T17:29:04+02:00
+# @Last modified time: 2019-07-12T21:58:51+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -26,7 +26,9 @@ function update_objectiveCutoff!(workspace::BBworkspace{T1,T2},newCutoff::Float6
         update_objectiveCutoff!(workspace,newCutoff,
                                 suppressWarnings=suppressWarnings,
                                 suppressUpdate=true,localOnly=true)
-        # update the global info
+
+        # update the information shared among the processes
+        reset_global_info!(workspace)
         workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
     else
         # check the correctness of the input
@@ -43,6 +45,7 @@ function update_objectiveCutoff!(workspace::BBworkspace{T1,T2},newCutoff::Float6
             if workspace.status.description == "optimalSolutionFound"
                 workspace.status.description = "interrupted"
             end
+            
             append!(workspace.unactivePool,workspace.solutionPool)
             deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
         else

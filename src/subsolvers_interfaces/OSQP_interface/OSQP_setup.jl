@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-05T10:33:08+02:00
+# @Last modified time: 2019-07-15T12:29:15+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -37,6 +37,7 @@ function setup(problem::Problem,settings::OSQPsettings;bb_primalTolerance::Float
         Q = spzeros(nVars,nVars)
         L = zeros(nVars)
 
+
     elseif problem.objFun isa LinearObjective
         Q = spzeros(nVars,nVars)
         L = problem.objFun.L
@@ -49,7 +50,8 @@ function setup(problem::Problem,settings::OSQPsettings;bb_primalTolerance::Float
 
     # check the constraint set
     if problem.cnsSet isa NullConstraintSet
-        A = spzeros((0,length(problem.varSet.loBs)))
+        println(problem.cnsSet)
+        A = spzeros(0,length(problem.varSet.loBs))
         cnsLoBs = Float64[]
         cnsUpBs = Float64[]
 

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-08T14:01:14+02:00
+# @Last modified time: 2019-07-15T12:46:21+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -359,7 +359,7 @@ function append_constraints_b(constraintsDict::T,
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
-  return append_constraints!(workspace,constraintsDict["A"],constraintsDict["loBs"],constraintsDict["upBs"],
+  return append_constraints!(workspace,ConstraintSet(constraintsDict),
                                     suppressWarnings=suppressWarnings,
                                     suppressUpdate=suppressUpdate,
                                     localOnly=localOnly)

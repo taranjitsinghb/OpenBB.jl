@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: async_example.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T16:11:41+02:00
+# @Last modified time: 2019-07-15T12:22:11+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,7 +28,7 @@ end
 
 
 # setup the BB process
-workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,customStoppingRule=stopBB),OpenBB.OSQPsettings())
+workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,customStoppingRule=stopBB,numProcesses=1),OpenBB.OSQPsettings())
 
 
 # start the BB a first time and then stop it

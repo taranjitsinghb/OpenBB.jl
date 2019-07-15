@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-11T15:36:32+02:00
+# @Last modified time: 2019-07-12T21:46:42+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -64,6 +64,13 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
     # keep in memory how many nodes the algorithm has explored since the last time
     # it has sent a node to the neighbouring process
     timeToShareNodes = false
+
+    # communicate the initial objective lower-bound to the other nodes
+    if !(workspace.sharedMemory isa NullSharedMemory)
+        # communicate the current local lower bound
+        workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB
+    end 
+
 
     # main loop
     while !idle
@@ -299,7 +306,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
             workspace.status.objLoB = min(workspace.status.objLoB,workspace.status.objUpB)
             workspace.status.numSolutions = workspace.sharedMemory.stats[1]
 
-            # comunicate the current local lower bound
+            # communicate the current local lower bound
             workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB
 
             # recompute optimality gaps

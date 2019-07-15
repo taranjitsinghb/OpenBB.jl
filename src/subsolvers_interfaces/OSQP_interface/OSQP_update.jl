@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-05T10:31:21+02:00
+# @Last modified time: 2019-07-15T12:41:27+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -31,22 +31,24 @@ end
 
 #
 function insert_constraints!(workspace::OSQPworkspace,
-                            A::Union{Array{Float64,2},SparseMatrixCSC{Float64}},
-                            cnsLoBs::Array{Float64,1},
-                            cnsUpBs::Array{Float64,1},
-                            index::Int;
-                            suppressUpdate::Bool=false)::Nothing
+                            constraintSet::T,index::Int;
+                            suppressUpdate::Bool=false)::Nothing where T <: Union{NullConstraintSet,LinearConstraintSet}
 
+
+    # if a null workspace was given as input nothing has to be done
+    if constraintSet isa NullConstraintSet
+        return
+    end
 
     # check correctness of the input
-    @assert size(A,2) == size(workspace.A,2)
-    @assert size(A,1) == length(cnsLoBs)
-    @assert size(A,1) == length(cnsUpBs)
+    @assert size(constraintSet.A,2) == size(workspace.A,2)
+    @assert size(constraintSet.A,1) == length(constraintSet.loBs)
+    @assert size(constraintSet.A,1) == length(constraintSet.upBs)
 
     # perform the insertion
-    workspace.A = vcat(workspace.A[1:index-1,:],A,workspace.A[index:end,:])
-    splice!(workspace.cnsLoBs,index:index-1,cnsLoBs)
-    splice!(workspace.cnsUpBs,index:index-1,cnsUpBs)
+    workspace.A = vcat(workspace.A[1:index-1,:],constraintSet.A,workspace.A[index:end,:])
+    splice!(workspace.cnsLoBs,index:index-1,constraintSet.loBs)
+    splice!(workspace.cnsUpBs,index:index-1,constraintSet.upBs)
 
     # update the osqp workspace
     if !suppressUpdate

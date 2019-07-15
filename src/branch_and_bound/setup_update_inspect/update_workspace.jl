@@ -3,9 +3,22 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-02T16:19:36+02:00
+# @Last modified time: 2019-07-15T17:33:13+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
+
+
+# ...
+function reset_global_info!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+
+	# reset the global info
+	workspace.sharedMemory.objectiveBounds[end] = Inf
+	@. workspace.sharedMemory.objectiveBounds[1:end-1] = -Inf
+	@. workspace.sharedMemory.stats = 0
+	@. workspace.sharedMemory.arrestable = false
+
+	return
+end
 
 
 #
@@ -21,10 +34,8 @@ function reset_explored_nodes!(workspace::BBworkspace{T1,T2};localOnly::Bool=fal
         # call the local version of the function on the main process
         reset_explored_nodes!(workspace,localOnly=true)
 
-        # reset the global info
-        workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0
-		@. workspace.sharedMemory.arrestable = false
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
 
     else
 
@@ -39,6 +50,7 @@ function reset_explored_nodes!(workspace::BBworkspace{T1,T2};localOnly::Bool=fal
         deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
 
         # adapt the status to the changes
+		workspace.status.numSolutions = 0
         workspace.status.objUpB = Inf
         workspace.status.absoluteGap = Inf
         workspace.status.relativeGap = Inf
@@ -50,10 +62,10 @@ function reset_explored_nodes!(workspace::BBworkspace{T1,T2};localOnly::Bool=fal
 end
 
 
-
 #
 function update_sharedMemory!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
+	# update the communtication Channels
 	if workspace.sharedMemory isa BBsharedMemory{BBnodeChannel}
 		numVars = get_numVariables(workspace)
 		numCnss = get_numConstraints(workspace)
@@ -96,35 +108,8 @@ function update!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing w
 		# adapt the shared memory to the new problem
 		update_sharedMemory!(workspace)
 
-        # reset the global info
-        workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0
-		@. workspace.sharedMemory.arrestable = false
-
-
-        # update the communication channels (if needed)
-		if workspace.sharedMemory.inputChannel isa BBnodeChannel
-
-			workersList = workers()
-	        communicationChannels = Array{BBnodeChannel,1}(undef,workspace.settings.numProcesses)
-			for k in 1:workspace.settings.numProcesses
-				communicationChannels[k] = BBnodeChannel(flat_size(get_numVariables(workspace),
-																   get_numDiscreteVariables(workspace),
-																   get_numConstraints(workspace)))
-			end
-			workspace.sharedMemory.inputChannel = communicationChannels[1]
-			workspace.sharedMemory.outputChannel = communicationChannels[2]
-			@sync for k in 2:workspace.settings.numProcesses
-				if k < workspace.settings.numProcesses
-					@async remotecall_fetch(Main.eval,workersList[k-1],:(workspace.sharedMemory.inputChannel = $(communicationChannels[k]);
-																	     workspace.sharedMemory.outputChannel = $(communicationChannels[k+1])))
-				else
-					@async remotecall_fetch(Main.eval,workersList[k-1],:(workspace.sharedMemory.inputChannel = $(communicationChannels[k]);
-																	     workspace.sharedMemory.outputChannel = $(communicationChannels[1])))
-				end
-			end
-		end
-
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
 
     else
 
@@ -152,11 +137,8 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
         # call the local version of the function on the main process
         reset!(workspace,localOnly=true)
 
-        # reset the global info
-        @. workspace.sharedMemory.objectiveBounds[1:end-1] = -Inf
-        workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0
-		@. workspace.sharedMemory.arrestable = false
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
 
     else
 		# collect some data for the BBworkspace
@@ -168,7 +150,7 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
         clear!(workspace,localOnly=true)
 
 		# build the root node
-		rootNode = BBnode(-Infs(numDscVars),Infs(numDscVars),zeros(numVars),
+		rootNode = BBnode(-Infs(numVars),Infs(numVars),zeros(numVars),
 						  zeros(numVars),zeros(numCnss),NaN,NaN,NaN,false)
 
         push!(workspace.activeQueue,rootNode)
@@ -192,11 +174,8 @@ function clear!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
         # call function on the main process
         clear!(workspace,localOnly=true)
 
-        # update the global info
-        @. workspace.sharedMemory.objectiveBounds[1:end-1] = Inf
-        workspace.sharedMemory.objectiveBounds[end] = Inf
-        @. workspace.sharedMemory.stats = 0
-		@. workspace.sharedMemory.arrestable = false
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
 
     else
         deleteat!(workspace.activeQueue, 1:length(workspace.activeQueue))
@@ -208,6 +187,7 @@ function clear!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
             setfield!(workspace.status,field,getfield(defaultStatus,field))
         end
 		workspace.status.objLoB = -Inf
+		workspace.status.description = "empty"
     end
 
     return

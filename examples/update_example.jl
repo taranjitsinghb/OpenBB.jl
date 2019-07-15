@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename:
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T16:11:13+02:00
+# @Last modified time: 2019-07-15T12:39:14+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -19,7 +19,6 @@ subsolverSettings = OpenBB.OSQPsettings()
 
 
 
-
 println("---------------------------------------------------------------------------------------------------------------------")
 println("First run")
 println("---------------------------------------------------------------------------------------------------------------------")
@@ -28,10 +27,7 @@ problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(2.0I,4,4,),L=
                          cnsSet=OpenBB.LinearConstraintSet(A=ones(0,4),loBs=Float64[],upBs=Float64[]),
                          varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],vals=zeros(4),dscIndices=[1]))
 
-
-workspace = OpenBB.setup(OpenBB.BBsettings(verbose=true,dynamicMode=true),subsolverSettings)
-OpenBB.append_problem!(workspace,problem)
-
+workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,dynamicMode=true,numProcesses=1),subsolverSettings)
 result = OpenBB.solve!(workspace)
 
 
@@ -40,7 +36,7 @@ println("-----------------------------------------------------------------------
 println("Add constraints")
 println("---------------------------------------------------------------------------------------------------------------------")
 # add some linear contraints
-OpenBB.append_constraints!(workspace,ones(1,4),[1.],[1.])
+OpenBB.append_constraints!(workspace,OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.]))
 result2 = OpenBB.solve!(workspace)
 
 

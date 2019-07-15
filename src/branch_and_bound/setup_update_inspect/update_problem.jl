@@ -3,20 +3,18 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-08T14:00:47+02:00
+# @Last modified time: 2019-07-15T17:02:19+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 #
 function append_constraints!(workspace::BBworkspace{T1,T2},
-                             A::Union{Array{Float64,2},SparseMatrixCSC{Float64}},
-                             cnsLoBs::Array{Float64,1},
-                             cnsUpBs::Array{Float64,1};
+    						 constraintSet::T3;
                              suppressWarnings::Bool=false,
                              suppressUpdate::Bool=false,
-                             localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+                             localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory where T3 <: AbstractConstraintSet
 
-    return insert_constraints!(workspace,A,cnsLoBs,cnsUpBs,
+    return insert_constraints!(workspace,constraintSet,
                                get_numConstraints(workspace)+1,
                                suppressWarnings=suppressWarnings,
                                suppressUpdate=suppressUpdate,
@@ -25,13 +23,10 @@ end
 
 #
 function insert_constraints!(workspace::BBworkspace{T1,T2},
-                             A::Union{Array{Float64,2},SparseMatrixCSC{Float64}},
-                             cnsLoBs::Array{Float64,1},
-                             cnsUpBs::Array{Float64,1},
-                             index::Int;
+                             constraintSet::T3,index::Int;
                              suppressWarnings::Bool=false,
                              suppressUpdate::Bool=false,
-                             localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+                             localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory where T3 <: AbstractConstraintSet
 
     # check if it is possible to make changes
     if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
@@ -42,35 +37,39 @@ function insert_constraints!(workspace::BBworkspace{T1,T2},
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
-            @async remotecall_fetch(Main.eval,p,:(OpenBB.insert_constraints!(workspace,$A,$cnsLoBs,$cnsUpBs,$index,
+            @async remotecall_fetch(Main.eval,p,:(OpenBB.insert_constraints!(workspace,$constraintSet,$index,
                                                                              suppressWarnings=$suppressWarnings,
-                                                                             suppressUpdate=true,localOnly=true)))
+                                                                             suppressUpdate=$suppressUpdate,localOnly=true)))
         end
 
         # call the local version of the function on the current process
-        insert_constraints!(workspace,A,cnsLoBs,cnsUpBs,index,
+        insert_constraints!(workspace,constraintSet,index,
                             suppressWarnings=suppressWarnings,
-                            suppressUpdate=true,localOnly=true)
+                            suppressUpdate=suppressUpdate,localOnly=true)
+
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
 
     else
 
         # propagate the changes to the subsolver
-        insert_constraints!(workspace.subsolverWS,A,cnsLoBs,cnsUpBs,index,suppressUpdate=true)
+        insert_constraints!(workspace.subsolverWS,constraintSet,index,suppressUpdate=true)
 
         # update all the problems in the activeQueue
+		numConstraints = get_numConstraints(constraintSet)
         if length(workspace.activeQueue)>0
             for i in 1:length(workspace.activeQueue)
-                splice!(workspace.activeQueue[i].cnsDual,index:index-1,zeros(size(A,1)))
+                splice!(workspace.activeQueue[i].cnsDual,index:index-1,zeros(numConstraints))
             end
         end
         if length(workspace.unactivePool)>0
             for i in  1:length(workspace.unactivePool)
-                splice!(workspace.unactivePool[i].cnsDual,index:index-1,zeros(size(A,1)))
+                splice!(workspace.unactivePool[i].cnsDual,index:index-1,zeros(numConstraints))
             end
         end
         if length(workspace.solutionPool)>0
             for i in  1:length(workspace.solutionPool)
-                splice!(workspace.solutionPool[i].cnsDual,index:index-1,zeros(size(A,1)))
+                splice!(workspace.solutionPool[i].cnsDual,index:index-1,zeros(numConstraints))
             end
         end
 
@@ -99,13 +98,21 @@ function remove_constraints!(workspace::BBworkspace{T1,T2},indices::Array{Int,1}
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.remove_constraints!(workspace,$indices,
-                                                                             suppressWarnings=$suppressWarnings,
-                                                                             suppressUpdate=true,localOnly=true)))
+                                                                             suppressWarnings=true,
+                                                                             suppressUpdate=$suppressUpdate,
+																			 localOnly=true)))
         end
+
         # call the local version of the function on the main process
         remove_constraints!(workspace,indices,
-                            suppressWarnings=suppressWarnings,
-                            suppressUpdate=true,localOnly=true)
+                            suppressWarnings=true,
+                            suppressUpdate=suppressUpdate,
+							localOnly=true)
+
+
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
+
     else
         # propagate the changes to the nodes solver
         remove_constraints!(workspace.subsolverWS,indices,suppressUpdate=true)
@@ -143,14 +150,19 @@ function permute_constraints!(workspace::BBworkspace{T1,T2},permutation::Array{I
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.permute_constraints!(workspace,$permutation,
-                                                                              suppressWarnings=$suppressWarnings,
-                                                                              suppressUpdate=true,localOnly=true)))
+                                                                              suppressWarnings=true,
+                                                                              suppressUpdate=$suppressUpdate,
+																			  localOnly=true)))
         end
 
         # call the local version of the function on the main process
         permute_constraints!(workspace,permutation,
-                             suppressWarnings=suppressWarnings,
-                             suppressUpdate=true,localOnly=true)
+                             suppressWarnings=true,
+                             suppressUpdate=suppressUpdate,
+							 localOnly=true)
+
+ 		# reset the information shared among the processes
+ 		reset_global_info!(workspace)
 
     else
 
@@ -236,16 +248,22 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
             @async remotecall_fetch(Main.eval,p,:(OpenBB.update_bounds!(workspace,
                                                                         cnsLoBs=$cnsLoBs,cnsUpBs=$cnsUpBs,
                                                                         varLoBs=$varLoBs,varUpBs=$varUpBs,
-                                                                        suppressWarnings=$suppressWarnings,
-                                                                        suppressUpdate=true,localOnly=true)))
+                                                                        suppressWarnings=true,
+                                                                        suppressUpdate=$suppressUpdate,
+																		localOnly=true)))
         end
 
         # call the local version of the function on the main process
         update_bounds!(workspace,
                        cnsLoBs=cnsLoBs,cnsUpBs=cnsUpBs,
                        varLoBs=varLoBs,varUpBs=varUpBs,
-                       suppressWarnings=suppressWarnings,
-                       suppressUpdate=true,localOnly=true)
+                       suppressWarnings=true,
+                       suppressUpdate=suppressUpdate,
+					   localOnly=true)
+
+
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
     else
 
         # propagate the changes to the nodes solver
@@ -259,6 +277,7 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
 
     return
 end
+
 
 # ...
 function set_objective!(workspace::BBworkspace{T1,T2},newObjective::T3;
@@ -281,13 +300,18 @@ function set_objective!(workspace::BBworkspace{T1,T2},newObjective::T3;
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.set_objective!(workspace,$newObjective,
                                                                          suppressWarnings=true,
-                                                                         suppressUpdate=true,localOnly=true)))
+                                                                         suppressUpdate=$suppressUpdate,
+																		 localOnly=true)))
         end
 
         # call the local version of the function on the main process
         set_objective!(workspace,newObjective,
                         suppressWarnings=true,
-                        suppressUpdate=true,localOnly=true)
+                        suppressUpdate=suppressUpdate,
+						localOnly=true)
+
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
     else
 
         # propagate the change to the subsolver
@@ -323,13 +347,19 @@ function set_constraintSet!(workspace::BBworkspace{T1,T2},newConstraintSet::T3;
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.set_constraintSet!(workspace,$newConstraintSet,
                                                                             suppressWarnings=true,
-                                                                            suppressUpdate=true,localOnly=true)))
+                                                                            suppressUpdate=$suppressUpdate,
+																			localOnly=true)))
         end
 
         # call the local version of the function on the main process
         set_constraintSet!(workspace,newConstraintSet,
                            suppressWarnings=true,
-                           suppressUpdate=true,localOnly=true)
+						   suppressUpdate=suppressUpdate,
+						   localOnly=true)
+
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
+
     else
 
         # reset the constraints dual
@@ -377,19 +407,25 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.append_problem!(workspace,$problem,
                                                                          suppressWarnings=$suppressWarnings,
-                                                                         suppressUpdate=true,localOnly=true)))
+                                                                         suppressUpdate=$suppressUpdate,localOnly=true)))
         end
         # call the local version of the function on the main process
         append_problem!(workspace,problem,
                         suppressWarnings=suppressWarnings,
-                        suppressUpdate=true,localOnly=true)
+                        suppressUpdate=suppressUpdate,localOnly=true)
+
+		# adapt the shared memory to the new problem
+		update_sharedMemory!(workspace)
+
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
     else
         # collect info on the problem
         nVars1 = length(workspace.subsolverWS.varLoBs)
         nVars2 = length(problem.varSet.loBs)
         nCnss1 = length(workspace.subsolverWS.cnsLoBs)
         nCnss2 = length(problem.cnsSet.loBs)
-        # propagate the changes to the nodes solver
+        # propagate the changes to the subsolver
         reliableObjLoBs = append_problem!(workspace.subsolverWS,problem,suppressUpdate=true)
         # update all the sub-problems
         newPrimal = problem.varSet.vals
@@ -397,8 +433,8 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
             # mark all the problems as unreliable if necessary
             workspace.activeQueue[i].reliable = reliableObjLoBs && workspace.activeQueue[i].reliable
             # extend branching bounds
-            append!(workspace.activeQueue[i].branchLoBs,-Infs(length(problem.varSet.dscIndices)))
-            append!(workspace.activeQueue[i].branchUpBs, Infs(length(problem.varSet.dscIndices)))
+            append!(workspace.activeQueue[i].branchLoBs,-Infs(length(problem.varSet.loBs)))
+            append!(workspace.activeQueue[i].branchUpBs, Infs(length(problem.varSet.loBS)))
             # extend primal and dual optimization results
             append!(workspace.activeQueue[i].primal,copy(newPrimal))
             append!(workspace.activeQueue[i].bndDual,zeros(nVars2))
@@ -408,8 +444,8 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
             # mark all the problems as unreliable if necessary
             workspace.solutionPool[i].reliable = reliableObjLoBs && workspace.solutionPool[i].reliable
             # extend branching bounds
-            append!(workspace.solutionPool[i].branchLoBs,-Infs(length(problem.varSet.dscIndices)))
-            append!(workspace.solutionPool[i].branchUpBs, Infs(length(problem.varSet.dscIndices)))
+            append!(workspace.solutionPool[i].branchLoBs,-Infs(length(problem.varSet.loBs)))
+            append!(workspace.solutionPool[i].branchUpBs, Infs(length(problem.varSet.loBs)))
             # extend primal and dual optimization results
             append!(workspace.solutionPool[i].primal,copy(newPrimal))
             append!(workspace.solutionPool[i].bndDual,zeros(nVars2))
@@ -419,8 +455,8 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
             # mark all the problems as unreliable if necessary
             workspace.unactivePool[i].reliable = reliableObjLoBs && workspace.unactivePool[i].reliable
             # extend branching bounds
-            append!(workspace.unactivePool[i].branchLoBs,-Infs(length(problem.varSet.dscIndices)))
-            append!(workspace.unactivePool[i].branchUpBs, Infs(length(problem.varSet.dscIndices)))
+            append!(workspace.unactivePool[i].branchLoBs,-Infs(length(problem.varSet.loBs)))
+            append!(workspace.unactivePool[i].branchUpBs, Infs(length(problem.varSet.loBs)))
             # extend primal and dual optimization results
             append!(workspace.unactivePool[i].primal,copy(newPrimal))
             append!(workspace.unactivePool[i].bndDual,zeros(nVars2))
@@ -462,14 +498,23 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
         for p in 2:workspace.settings.numProcesses
             @async remotecall_fetch(Main.eval,p,:(OpenBB.integralize_variables!(workspace,$newDscIndices,
                                                                                 newSos1Groups=$newSos1Groups,
-                                                                                suppressWarnings=$suppressUpdate,
-                                                                                suppressUpdate=true,localOnly=true)))
+                                                                                suppressWarnings=true,
+                                                                                suppressUpdate=$suppressUpdate,
+																				localOnly=true)))
         end
         # call the local version of the function on the main process
         integralize_variables!(workspace,newDscIndices,
                                newSos1Groups=newSos1Groups,
-                               suppressWarnings=suppressUpdate,
-                               suppressUpdate=true,localOnly=true)
+                               suppressWarnings=true,
+                               suppressUpdate=suppressUpdate,
+							   localOnly=true)
+
+	    # adapt the shared memory to the new problem
+		update_sharedMemory!(workspace)
+
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
+
     else
         # check if it is possible to make changes
         if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
@@ -495,22 +540,16 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
 
         # propagate the change to the nodes
         for k in 1:length(workspace.activeQueue)
-            append!(workspace.activeQueue[k].branchLoBs,-Inf)
-            append!(workspace.activeQueue[k].branchUpBs, Inf)
-            permute!(workspace.activeQueue[k].branchLoBs,tmpPerm)
-            permute!(workspace.activeQueue[k].branchUpBs,tmpPerm)
+			@. workspace.activeQueue[k].branchLoBs =  ceil(workspace.activeQueue[k].branchLoBs-workspace.settings.primalTolerance)
+			@. workspace.activeQueue[k].branchUpBs = floor(workspace.activeQueue[k].branchUpBs+workspace.settings.primalTolerance)
         end
         for k in 1:length(workspace.unactivePool)
-            append!(workspace.unactivePool[k].branchLoBs,-Inf)
-            append!(workspace.unactivePool[k].branchUpBs, Inf)
-            permute!(workspace.unactivePool[k].branchLoBs,tmpPerm)
-            permute!(workspace.unactivePool[k].branchUpBs,tmpPerm)
+			@. workspace.unactivePool[k].branchLoBs =  ceil(workspace.unactivePool[k].branchLoBs-workspace.settings.primalTolerance)
+			@. workspace.unactivePool[k].branchUpBs = floor(workspace.unactivePool[k].branchUpBs+workspace.settings.primalTolerance)
         end
         for k in 1:length(workspace.solutionPool)
-            append!(workspace.solutionPool[k].branchLoBs,-Inf)
-            append!(workspace.solutionPool[k].branchUpBs, Inf)
-            permute!(workspace.solutionPool[k].branchLoBs,tmpPerm)
-            permute!(workspace.solutionPool[k].branchUpBs,tmpPerm)
+			@. workspace.solutionPool[k].branchLoBs =  ceil(workspace.solutionPool[k].branchLoBs-workspace.settings.primalTolerance)
+			@. workspace.solutionPool[k].branchUpBs = floor(workspace.solutionPool[k].branchUpBs+workspace.settings.primalTolerance)
         end
 
         # adapt the workspace to the changes

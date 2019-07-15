@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_QP.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-01T18:40:57+02:00
+# @Last modified time: 2019-07-15T12:43:53+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,7 +28,7 @@ function test_QP_subsolver(subsolver)
 
     print("2...")
     # add some linear contraints
-    OpenBB.append_constraints!(workspace,ones(1,4),[1.],[1.])
+    OpenBB.append_constraints!(workspace,OpenBB.LinearConstraintSet(ones(1,4),[1.],[1.]))
     result1 = OpenBB.solve!(workspace)
 
     print("3...")

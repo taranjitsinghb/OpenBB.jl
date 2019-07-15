@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: numerical_utilities.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-04T08:19:14+02:00
+# @Last modified time: 2019-07-12T19:10:57+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -48,5 +48,13 @@ function threshold(number::T1,threshold::T2)::T1 where T1 <: Real where T2 <: Re
         return number
     else
         return T2(0)
+    end
+end
+
+function clip(number::T1,threshold::T2)::T1 where T1 <: Real where T2 <: Real
+    if number <= threshold
+        return number
+    else
+        return threshold
     end
 end

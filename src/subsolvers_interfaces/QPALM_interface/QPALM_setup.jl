@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-05T10:34:18+02:00
+# @Last modified time: 2019-07-15T12:25:52+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -48,7 +48,7 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
 
     # check the constraint set
     if problem.cnsSet isa NullConstraintSet
-        A = spzeros((0,length(problem.varSet.loBs)))
+        A = spzeros(0,length(problem.varSet.loBs))
         cnsLoBs = Float64[]
         cnsUpBs = Float64[]
 

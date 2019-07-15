@@ -3,28 +3,23 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-11T19:44:41+02:00
+# @Last modified time: 2019-07-15T16:53:20+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 
 # this function returns the size of a flat representation of a node
-function flat_size(numVars::Int,numDscVars::Int,numCnss::Int)::Int
-    return 4 + 4 +        # header + (average fractionality + objective + pseudo-objective + reliable)
-           2*numDscVars + # branching bounds
+function flat_size(numVars::Int,numCnss::Int)::Int
+    return 3 + 4 +        # header + (average fractionality + objective + pseudo-objective + reliable)
+           2*numVars + # branching bounds
            2*numVars +    # primal + bound_dual
            numCnss        # cns_dual
 end
 
 
 function flat_size(node::BBnode)::Int
-
-    numVars = length(node.primal)
-    numDscVars = length(node.branchLoBs)
-    numCnss = length(node.cnsDual)
-
-    return flat_size(numVars,numDscVars,numCnss)
+    return flat_size(length(node.primal),length(node.cnsDual))
 end
 
 function flat_size(node::NullBBnode)::Int
@@ -40,17 +35,15 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
 
 
     numVars = length(node.primal)
-    numDscVars = length(node.branchLoBs)
     numCnss = length(node.cnsDual)
 
-    @assert length(destinationArray) >= flat_size(numVars,numDscVars,numCnss) + offset
+    @assert length(destinationArray) >= flat_size(numVars,numVars,numCnss) + offset
 
     # header
     destinationArray[offset+1] = 1. # type of node
-    destinationArray[offset+2] = numDscVars
-    destinationArray[offset+3] = numVars
-    destinationArray[offset+4] = numCnss
-    offset += 4
+    destinationArray[offset+2] = numVars
+    destinationArray[offset+3] = numCnss
+    offset += 3
 
     # numeric values
     destinationArray[offset+1] = node.avgAbsFrac
@@ -60,10 +53,10 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     offset += 4
 
     # bounds
-    @. destinationArray[offset+1:offset+numDscVars] = node.branchLoBs
-    offset+=numDscVars
-    @. destinationArray[offset+1:offset+numDscVars] = node.branchUpBs
-    offset+=numDscVars
+    @. destinationArray[offset+1:offset+numVars] = node.branchLoBs
+    offset+=numVars
+    @. destinationArray[offset+1:offset+numVars] = node.branchUpBs
+    offset+=numVars
 
     # primal
     @. destinationArray[offset+1:offset+numVars] = node.primal
@@ -118,10 +111,9 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
     elseif flatRepresentation[offset+1] == 1.0
 
         # rest of header
-        numDscVars = Int(flatRepresentation[offset+2])
-        numVars    = Int(flatRepresentation[offset+3])
-        numCnss    = Int(flatRepresentation[offset+4])
-        offset += 4
+        numVars = Int(flatRepresentation[offset+2])
+        numCnss = Int(flatRepresentation[offset+3])
+        offset += 3
 
         # numeric values
         avgAbsFrac      = flatRepresentation[offset+1]
@@ -131,12 +123,12 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         offset += 4
 
         # bounds
-        branchLoBs = Array{Float64,1}(undef,numDscVars)
-        @. branchLoBs = flatRepresentation[offset+1:offset+numDscVars]
-        offset += numDscVars
-        branchUpBs = Array{Float64,1}(undef,numDscVars)
-        @. branchUpBs = flatRepresentation[offset+1:offset+numDscVars]
-        offset += numDscVars
+        branchLoBs = Array{Float64,1}(undef,numVars)
+        @. branchLoBs = flatRepresentation[offset+1:offset+numVars]
+        offset += numVars
+        branchUpBs = Array{Float64,1}(undef,numVars)
+        @. branchUpBs = flatRepresentation[offset+1:offset+numVars]
+        offset += numVars
 
         # primal
         primal = Array{Float64,1}(undef,numVars)

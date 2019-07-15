@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: Gurobi_setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-01T18:45:35+02:00
+# @Last modified time: 2019-07-15T12:25:31+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -49,7 +49,7 @@ function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Flo
     # check the constraint set
     if problem.cnsSet isa NullConstraintSet
         # adapt the constraint set to accomodate for variables bounds
-        A = spzeros((0,length(problem.varSet.loBs)))
+        A = spzeros(0,length(problem.varSet.loBs))
         cnsLoBs = Float64[]
         cnsUpBs = Float64[]
 
