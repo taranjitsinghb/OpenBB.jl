@@ -32,7 +32,7 @@ end
 
 # use or not the MPC addon (the folder containing the mpc toolbox should be placed beside the one containing OpenBB)
 function withMPCaddon()
-    return true
+    return false
 end
 
 
