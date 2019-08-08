@@ -11,14 +11,18 @@ end
 
 mutable struct MOSEKworkspace <: AbstractWorkspace
     #objectives
-    C::Array{Float64,1}
+    Q::SparseMatrixCSC{Float64}
+    L::Array{Float64,1}
 
     #constraints
     A::SparseMatrixCSC{Float64}
-    b::Array{Float64,1}
+    cnsLoBs::Array{Float64,1}
+    cnsUpBs::Array{Float64,1}
 
     #variables
-    X::Array{Float64,1}
+    varLoBs::Array{Float64,1}
+    varUpBs::Array{Float64,1}
+    #X::Array{Float64,1}
 
     #workspace
     model::JUMP_MOSEK.Model
