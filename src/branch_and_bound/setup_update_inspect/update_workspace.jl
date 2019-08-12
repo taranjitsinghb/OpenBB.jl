@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T17:33:13+02:00
+# @Last modified time: 2019-08-12T14:37:25+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -149,12 +149,16 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
         # eliminate all the generated nodes and reinsert the root of the BB tree
         clear!(workspace,localOnly=true)
 
-		# build the root node
-		rootNode = BBnode(-Infs(numVars),Infs(numVars),zeros(numVars),
-						  zeros(numVars),zeros(numCnss),NaN,NaN,NaN,false)
-
-        push!(workspace.activeQueue,rootNode)
+		# mark the workspace as new
 		workspace.status.description = "new"
+		
+		if my_id() == 1
+			# build the root node
+			rootNode = BBnode(-Infs(numVars),Infs(numVars),zeros(numVars),
+							  zeros(numVars),zeros(numCnss),NaN,NaN,NaN,false)
+			# insert the root node into the queue
+	        push!(workspace.activeQueue,rootNode)
+		end
     end
 
     return
