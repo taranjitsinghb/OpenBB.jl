@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T17:02:19+02:00
+# @Last modified time: 2019-08-12T15:09:15+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -559,10 +559,4 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
     end
 
     return
-end
-
-
-if withMPCaddon()
-    include(Base.source_path()*"../../../../../../MPCforOpenBB/src/mpc_shift.jl")
-    include(Base.source_path()*"../../../../../../MPCforOpenBB/src/oc_constraint_manipulation.jl")
 end

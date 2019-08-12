@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-08T13:47:26+02:00
+# @Last modified time: 2019-08-12T15:14:21+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -64,5 +64,13 @@ include("./heuristics/heuristics.jl")
 
 # include the flat interface
 include("./alternative_interfaces/flat_interface/flat_interface.jl")
+
+# load the mpc addon
+if withMPCaddon()
+  include(Base.source_path()*"../../../../MPCforOpenBB/src/mpc_addon.jl")
+end
+
+
+
 
 end # module

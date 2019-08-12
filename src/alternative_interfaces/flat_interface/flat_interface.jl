@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T12:46:21+02:00
+# @Last modified time: 2019-08-12T15:09:38+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -491,10 +491,4 @@ function update_objectiveCutoff_b(newCutoff::Float64,
                                  suppressWarnings=suppressWarnings,
                                  suppressUpdate=suppressUpdate,
                                  localOnly=localOnly)
-end
-
-
-
-if withMPCaddon()
-  include(Base.source_path()*"../../../../../../MPCforOpenBB/src/flat_interface.jl")
 end
