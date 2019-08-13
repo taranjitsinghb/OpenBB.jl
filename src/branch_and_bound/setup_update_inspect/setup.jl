@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T17:33:03+02:00
+# @Last modified time: 2019-08-13T15:23:26+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -47,8 +47,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		workersList = workers()[1:bbSettings.numProcesses-1]
 
 		# build the root node
-		rootNode = BBnode(-Infs(numVars),Infs(numVars),problem.varSet.vals,
-						  zeros(numVars),zeros(numCnss),NaN,NaN,NaN,false)
+		rootNode = BBroot(numVars,numCnss)
 
 		# construct the communication channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,bbSettings.numProcesses)
@@ -99,8 +98,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 	else # only one process: no communication channels needed
 
 		# build the root node
-		rootNode = BBnode(-Infs(numVars),Infs(numVars),problem.varSet.vals,
-						  zeros(numVars),zeros(numCnss),NaN,NaN,NaN,false)
+		rootNode = BBroot(numVars,numCnss)
 
 		# construct the master BBworkspace
 		workspace = BBworkspace(setup(problem,ssSettings,

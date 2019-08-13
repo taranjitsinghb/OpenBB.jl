@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-12T21:51:51+02:00
+# @Last modified time: 2019-08-13T15:24:00+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -156,8 +156,7 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
 
 		if myid() == 1
 			# build the root node
-			rootNode = BBnode(-Infs(numVars),Infs(numVars),zeros(numVars),
-							  zeros(numVars),zeros(numCnss),NaN,NaN,NaN,false)
+			rootNode = BBroot(numVars,numCnss)
 			# insert the root node into the queue
 	        push!(workspace.activeQueue,rootNode)
 		end
