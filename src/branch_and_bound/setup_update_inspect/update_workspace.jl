@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-12T15:56:04+02:00
+# @Last modified time: 2019-08-12T21:51:51+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -50,10 +50,12 @@ function reset_explored_nodes!(workspace::BBworkspace{T1,T2};localOnly::Bool=fal
         deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
 
         # adapt the status to the changes
-		workspace.status.numSolutions = 0
         workspace.status.objUpB = Inf
         workspace.status.absoluteGap = Inf
         workspace.status.relativeGap = Inf
+		workspace.status.numSolutions = 0
+		workspace.status.reliable = true
+		workspace.status.cutoffActive = false
         workspace.status.description = "interrupted"
 
     end
@@ -186,10 +188,7 @@ function clear!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
         deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
         deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
         # reset the status
-        defaultStatus = BBstatus()
-        for field in fieldnames(BBstatus)
-            setfield!(workspace.status,field,getfield(defaultStatus,field))
-        end
+        workspace.status = BBstatus()
 		workspace.status.objLoB = -Inf
 		workspace.status.description = "empty"
     end

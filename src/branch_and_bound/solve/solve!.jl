@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-03T17:59:32+02:00
+# @Last modified time: 2019-08-12T21:58:00+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -62,9 +62,16 @@ function solve!(workspace::BBworkspace)::Nothing
             println(" Exit: Optimal Solution Found")
         end
 
-    elseif status.objLoB > workspace.settings.objectiveCutoff ||
-           (length(workspace.activeQueue) == 0 && status.objUpB == Inf)
+	elseif status.cutoffActive
 
+		status.description = "cutoffInfeasible"
+        if workspace.settings.verbose && processId == 1
+            print_status(workspace)
+            println(" Exit: Infeasibilty Due to Cutoff")
+        end
+
+
+    elseif length(workspace.activeQueue) == 0 && status.objUpB == Inf
 
         status.description = "infeasible"
         if workspace.settings.verbose && processId == 1
@@ -79,6 +86,14 @@ function solve!(workspace::BBworkspace)::Nothing
             println(" Exit: Interrupted")
         end
     end
+
+	# propagate the reliability status
+	workspace.status.reliable = status.reliable
+	@sync if workspace.settings.numProcesses > 1
+		for k in 2:workspace.settings.numProcesses
+			@async remotecall_fetch(Main.eval,k,:(workspace.status.reliable = $status.reliable))
+		end
+	end
 
 	# propagate the status description
 	workspace.status.description = status.description

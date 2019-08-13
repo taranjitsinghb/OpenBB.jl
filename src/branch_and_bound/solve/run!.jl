@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-12T21:46:42+02:00
+# @Last modified time: 2019-08-12T22:05:13+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -69,7 +69,7 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
     if !(workspace.sharedMemory isa NullSharedMemory)
         # communicate the current local lower bound
         workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB
-    end 
+    end
 
 
     # main loop
@@ -149,8 +149,20 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
 
 
             # check if node is already suboptimal (the upper-bound might have changed)
-            if node.objective > min(workspace.status.objUpB,workspace.settings.objectiveCutoff) - workspace.settings.primalTolerance
-                if workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes are stored
+            if node.objective > workspace.status.objUpB - workspace.settings.primalTolerance
+
+                # in dynamic mode the suboptimal nodes are stored
+                if workspace.settings.dynamicMode
+                    push!(workspace.unactivePool,node)
+                end
+
+            elseif node.objective > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance
+
+                # declare the cutoff active
+                workspace.status.cutoffActive = true
+
+                # in dynamic mode the suboptimal nodes are stored
+                if workspace.settings.dynamicMode
                     push!(workspace.unactivePool,node)
                 end
 
@@ -177,14 +189,29 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 # handle the rest of the children
                 for child in children
 
-                    if min(workspace.status.objUpB,workspace.settings.objectiveCutoff) < child.objective + workspace.settings.primalTolerance # the child is suboptimal
-                        if workspace.settings.dynamicMode # in dynamic mode the suboptimal nodes are stored
+                    if child.objective > workspace.status.objUpB - workspace.settings.primalTolerance # the child is suboptimal
+
+                        # in dynamic mode the suboptimal nodes are stored
+                        if workspace.settings.dynamicMode
+                            push!(workspace.unactivePool,child)
+                        end
+
+                    elseif child.objective > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance # the child objective is greater than the cutoff
+
+                        # declare the cutoff active
+                        workspace.status.cutoffActive = true
+
+                        # in dynamic mode the suboptimal nodes are stored
+                        if workspace.settings.dynamicMode
                             push!(workspace.unactivePool,child)
                         end
 
                     elseif child.avgAbsFrac == 0.0 # a new solution has been found
 
                         if child.reliable # the solution is reliable
+
+                            # declare the cutoff inactive
+                            workspace.status.cutoffActive = false
 
                             # insert new solution into the solutionPool
                             push!(workspace.solutionPool,child)
@@ -211,6 +238,10 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                             end
 
                         else # the solution is not reliable
+
+                            # the unreliability of the node cannot be solved... duly noted!
+                            workspace.status.reliable = false
+
                             # store the unreliable solution in the unactivePool
                             push!(workspace.unactivePool,child)
                         end
@@ -305,6 +336,12 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
             workspace.status.objUpB = workspace.sharedMemory.objectiveBounds[end]
             workspace.status.objLoB = min(workspace.status.objLoB,workspace.status.objUpB)
             workspace.status.numSolutions = workspace.sharedMemory.stats[1]
+
+            # check if the new objective upper bound is lower that the user-defined cutoff
+            if workspace.status.objUpB <= workspace.settings.objectiveCutoff
+                # declare the cutoff inactive
+                workspace.status.cutoffActive = false
+            end
 
             # communicate the current local lower bound
             workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB

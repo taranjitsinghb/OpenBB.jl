@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-03T17:57:07+02:00
+# @Last modified time: 2019-08-12T21:56:05+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -197,18 +197,24 @@ function get_status(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::BBstat
             status.objLoB = min(status.objLoB,tmpStatus.objLoB)
             status.objUpB = min(status.objUpB,tmpStatus.objUpB)
 
-            # compute optimality gaps
-            if status.objUpB == Inf || status.objLoB == -Inf
-                status.absoluteGap = status.relativeGap = Inf
-            else
-                status.absoluteGap = status.objUpB - status.objLoB
-                status.relativeGap = status.absoluteGap/(1e-10 + abs(status.objUpB))
-            end
+            # collect reliability status
+            status.reliable = status.reliable && tmpStatus.reliable
 
+            # collect timings
             status.totalTime = max(status.totalTime,tmpStatus.totalTime)
             status.waitingTime = max(status.waitingTime,tmpStatus.waitingTime)
+
+            # collect results statistics
             status.numSolutions += tmpStatus.numSolutions
             status.numExploredNodes += tmpStatus.numExploredNodes
+        end
+
+        # re-compute optimality gaps
+        if status.objUpB == Inf || status.objLoB == -Inf
+            status.absoluteGap = status.relativeGap = Inf
+        else
+            status.absoluteGap = status.objUpB - status.objLoB
+            status.relativeGap = status.absoluteGap/(1e-10 + abs(status.objUpB))
         end
     end
 
