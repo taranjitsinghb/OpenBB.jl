@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T16:53:20+02:00
+# @Last modified time: 2019-08-14T11:55:08+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -37,7 +37,7 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     numVars = length(node.primal)
     numCnss = length(node.cnsDual)
 
-    @assert length(destinationArray) >= flat_size(numVars,numVars,numCnss) + offset
+    @assert length(destinationArray) >= flat_size(numVars,numCnss) + offset
 
     # header
     destinationArray[offset+1] = 1. # type of node

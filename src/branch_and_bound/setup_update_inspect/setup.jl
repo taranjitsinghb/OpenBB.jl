@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-13T15:23:26+02:00
+# @Last modified time: 2019-08-14T11:53:16+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -52,7 +52,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		# construct the communication channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,bbSettings.numProcesses)
 		for k in 1:bbSettings.numProcesses
-			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numDscVars,numCnss))
+			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numCnss))
 		end
 		# communicationChannels = Array{RemoteChannel,1}(undef,bbSettings.numProcesses)
 		# @sync for k in 1:bbSettings.numProcesses
