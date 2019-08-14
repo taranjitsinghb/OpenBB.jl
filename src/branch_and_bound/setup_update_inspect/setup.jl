@@ -47,7 +47,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		workersList = workers()[1:bbSettings.numProcesses-1]
 
 		# build the root node
-		rootNode = BBroot(numVars,numCnss)
+		rootNode = BBroot(numVars,numCnss,problem.varSet.vals)
 
 		# construct the communication channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,bbSettings.numProcesses)
@@ -98,7 +98,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 	else # only one process: no communication channels needed
 
 		# build the root node
-		rootNode = BBroot(numVars,numCnss)
+		rootNode = BBroot(numVars,numCnss,problem.varSet.vals)
 
 		# construct the master BBworkspace
 		workspace = BBworkspace(setup(problem,ssSettings,

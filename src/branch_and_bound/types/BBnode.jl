@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBnode.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-13T15:24:25+02:00
+# @Last modified time: 2019-08-13T20:28:28+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -29,13 +29,19 @@ end
 function BBnode(branchLoBs::Array{Float64,1},branchUpBs::Array{Float64,1},
                 primal::Array{Float64,1},bndDual::Array{Float64,1},cnsDual::Array{Float64,1})::BBnode
 
-    return BBnode(branchLoBs,branchUpBs,primal,bndDual,cnsDual,NaN,NaN,NaN,true)
+    return BBnode(branchLoBs,branchUpBs,primal,bndDual,cnsDual,NaN,NaN,NaN,false)
 end
 
-# construct the root node for a problem of  the given dimensions
+# construct the root node for a problem of the given dimensions
 function BBroot(numVars::Int,numCnss::Int)::BBnode
-    return BBnode(-Infs(numVars),Infs(numVars),problem.varSet.vals,zeros(numVars),zeros(numCnss))
+    return BBnode(-Infs(numVars),Infs(numVars),zeros(numVars),zeros(numVars),zeros(numCnss))
 end
+
+# construct the root node for a problem of the given dimensions (with primal initialization)
+function BBroot(numVars::Int,numCnss::Int,primal::Array{Float64,1})::BBnode
+    return BBnode(-Infs(numVars),Infs(numVars),primal,zeros(numVars),zeros(numCnss))
+end
+
 
 
 # this node is used to arrest the branch and bound process

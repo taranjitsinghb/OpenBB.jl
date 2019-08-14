@@ -4,13 +4,14 @@
 # @Project: OpenBB
 # @Filename: solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-12T21:58:00+02:00
+# @Last modified time: 2019-08-13T19:59:11+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 # include referred code
 include("./branch_and_solve!.jl")
+include("./insert_node.jl")
 include("./run!.jl")
 
 
@@ -47,7 +48,6 @@ function solve!(workspace::BBworkspace)::Nothing
 
 
     ############################## termination ##############################
-	status = get_status(workspace)
 	# id of the current process
     processId = myid()
 	# global status

@@ -4,43 +4,9 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-12T22:05:13+02:00
+# @Last modified time: 2019-08-14T12:47:11+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
-
-
-# insert a list of equivalent nodes into a queue
-function insert_node!(queue::Array{BBnode,1},node::BBnode,
-                       priorityRule::Tuple,status::BBstatus;
-                       unreliablePriority::Int=0)::Nothing
-
-    if node.reliable || unreliablePriority == 0
-    # normal queue insertion
-        insertionPoint = 1
-        for i in length(queue):-1:1
-            if expansion_priority_rule(priorityRule,node,queue[i],status)
-                insertionPoint = i+1
-                break
-            end
-        end
-        insert!(queue,insertionPoint,node)
-
-    elseif unreliablePriority == -1
-        # put the new unreliable nodes at the bottom of the activeQueue to deal with them later
-        insert!(workspace.activeQueue,0,node)
-
-    elseif unreliablePriority == 1
-        # put the new unreliable nodes at the top of the activeQueue to try to fastly get rid of them
-        append!(workspace.activeQueue,node)
-    else
-        @error "wrong priority setting for unreliable nodes"
-    end
-
-    return
-end
-
-
-
 
 
 # branch and bound algorithm
@@ -186,70 +152,9 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 # remove the infeasible children
                 filter!((child)->child.objective<Inf,children)
 
-                # handle the rest of the children
+                # insert the rest of the children in the BBtree (checking for solutions and suboptimals)
                 for child in children
-
-                    if child.objective > workspace.status.objUpB - workspace.settings.primalTolerance # the child is suboptimal
-
-                        # in dynamic mode the suboptimal nodes are stored
-                        if workspace.settings.dynamicMode
-                            push!(workspace.unactivePool,child)
-                        end
-
-                    elseif child.objective > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance # the child objective is greater than the cutoff
-
-                        # declare the cutoff active
-                        workspace.status.cutoffActive = true
-
-                        # in dynamic mode the suboptimal nodes are stored
-                        if workspace.settings.dynamicMode
-                            push!(workspace.unactivePool,child)
-                        end
-
-                    elseif child.avgAbsFrac == 0.0 # a new solution has been found
-
-                        if child.reliable # the solution is reliable
-
-                            # declare the cutoff inactive
-                            workspace.status.cutoffActive = false
-
-                            # insert new solution into the solutionPool
-                            push!(workspace.solutionPool,child)
-
-                            # update the number of solutions found
-                            workspace.status.numSolutions += 1
-                            # update the objective upper bound
-                            workspace.status.objUpB = child.objective
-
-                            # update the global objective upper bound and the number of solutions found
-                            if !(workspace.sharedMemory isa NullSharedMemory)
-                                workspace.sharedMemory.stats[1] +=1
-                                if workspace.status.objUpB < workspace.sharedMemory.objectiveBounds[end]
-                                    workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
-                                end
-                            end
-
-                            # recompute optimality gaps
-                            if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
-                                workspace.status.absoluteGap = workspace.status.relativeGap = Inf
-                            else
-                                workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-                                workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
-                            end
-
-                        else # the solution is not reliable
-
-                            # the unreliability of the node cannot be solved... duly noted!
-                            workspace.status.reliable = false
-
-                            # store the unreliable solution in the unactivePool
-                            push!(workspace.unactivePool,child)
-                        end
-                    else # insert the child in the local queue
-                        # insert the child in the queue
-                        insert_node!(workspace.activeQueue,child,workspace.settings.expansionPriorityRule,
-                                     workspace.status,unreliablePriority=workspace.settings.unreliableSubproblemsPriority)
-                    end
+                    insert_node!(workspace,child)
                 end
             end
 
@@ -314,9 +219,8 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 # take a new node from the input channel
                 newNode = take!(workspace.sharedMemory.inputChannel)
 
-                # insert the new node in the queue
-                insert_node!(workspace.activeQueue,newNode,workspace.settings.expansionPriorityRule,
-                             workspace.status,unreliablePriority=workspace.settings.unreliableSubproblemsPriority)
+                # insert the new node in the active queue
+                insert_node!(workspace.activeQueue,node,workspace.settings,workspace.status)
 
                 # update the objective lower bound
                 if newNode.objective < workspace.status.objLoB

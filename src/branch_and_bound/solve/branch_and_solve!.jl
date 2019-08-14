@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T17:15:41+02:00
+# @Last modified time: 2019-08-13T20:23:58+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -84,14 +84,12 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Tuple{Array{BBnode
         children = Array{BBnode}(undef,2)
 
         # first child
-        children[1] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),
-                             copy(node.bndDual),copy(node.cnsDual),NaN,NaN,NaN,false)
+        children[1] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
         @. children[1].branchLoBs[workspace.dscIndices[sos1Group[1:2:end]]] = 0.
         @. children[1].branchUpBs[workspace.dscIndices[sos1Group[1:2:end]]] = 0.
 
         # second child
-        children[2] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),
-                             copy(node.bndDual),copy(node.cnsDual),NaN,NaN,NaN,false)
+        children[2] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
         @. children[2].branchLoBs[workspace.dscIndices[sos1Group[2:2:end]]] = 0.
         @. children[2].branchUpBs[workspace.dscIndices[sos1Group[2:2:end]]] = 0.
 
@@ -109,13 +107,11 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Tuple{Array{BBnode
         children = Array{BBnode}(undef,2)
 
         # first child
-        children[1] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),
-                             copy(node.bndDual),copy(node.cnsDual),NaN,NaN,NaN,false)
+        children[1] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
         children[1].branchLoBs[branchIndex] = ceil(node.primal[branchIndex]-get_primalTolerance(workspace.subsolverWS))
 
         # second child
-        children[2] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),
-                             copy(node.bndDual),copy(node.cnsDual),NaN,NaN,NaN,false)
+        children[2] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
         children[2].branchUpBs[branchIndex] = floor(node.primal[branchIndex]+get_primalTolerance(workspace.subsolverWS))
 
         return children, [branchIndex_dsc,branchIndex_dsc]

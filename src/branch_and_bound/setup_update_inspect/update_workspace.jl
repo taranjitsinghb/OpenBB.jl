@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-13T15:24:00+02:00
+# @Last modified time: 2019-08-13T16:42:14+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -126,6 +126,37 @@ function update!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing w
 end
 
 
+# eliminates all the generated nodes from the workspace
+function clear!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
+
+        # call function on the remote workers
+        for p in 2:workspace.settings.numProcesses
+            @async remotecall_fetch(Main.eval,p,:(OpenBB.clear!(workspace,localOnly=true)))
+        end
+
+        # call function on the main process
+        clear!(workspace,localOnly=true)
+
+		# reset the information shared among the processes
+		reset_global_info!(workspace)
+
+    else
+        deleteat!(workspace.activeQueue, 1:length(workspace.activeQueue))
+        deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
+        deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
+        # reset the status
+        workspace.status = BBstatus()
+		workspace.status.objLoB = Inf
+		workspace.status.description = "empty"
+    end
+
+    return
+end
+
+
+
 # return the workspace to the initial state
 function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
@@ -151,6 +182,8 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
         # eliminate all the generated nodes and reinsert the root of the BB tree
         clear!(workspace,localOnly=true)
 
+		# set the objective lowerbound to minus infinity to allow BB to work
+		workspace.status.objLoB = -Inf
 		# mark the workspace as new
 		workspace.status.description = "new"
 
@@ -160,36 +193,6 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
 			# insert the root node into the queue
 	        push!(workspace.activeQueue,rootNode)
 		end
-    end
-
-    return
-end
-
-
-# eliminates all the generated nodes from the workspace
-function clear!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
-
-    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
-
-        # call function on the remote workers
-        for p in 2:workspace.settings.numProcesses
-            @async remotecall_fetch(Main.eval,p,:(OpenBB.clear!(workspace,localOnly=true)))
-        end
-
-        # call function on the main process
-        clear!(workspace,localOnly=true)
-
-		# reset the information shared among the processes
-		reset_global_info!(workspace)
-
-    else
-        deleteat!(workspace.activeQueue, 1:length(workspace.activeQueue))
-        deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
-        deleteat!(workspace.unactivePool,1:length(workspace.unactivePool))
-        # reset the status
-        workspace.status = BBstatus()
-		workspace.status.objLoB = -Inf
-		workspace.status.description = "empty"
     end
 
     return
