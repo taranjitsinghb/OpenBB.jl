@@ -3,12 +3,13 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQPlackOfConvergence.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T16:10:52+02:00
+# @Last modified time: 2019-08-22T19:24:46+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 using MAT
 using OpenBB
+using SparseArrays
 
 
 # open the problem info file
@@ -86,17 +87,30 @@ problem = OpenBB.Problem(objFun=objf,cnsSet=cnss,varSet=vars)
 if OpenBB.withGUROBI()
     println("solving with gurobi-QP")
     workspace1 = OpenBB.setup(problem,
-                              OpenBB.BBsettings(verbose=false,dynamicMode=true,statusInfoPeriod=1),
+                              OpenBB.BBsettings(verbose=false,dynamicMode=true,numProcesses=1),
                               OpenBB.GUROBIsettings())
 
     OpenBB.solve!(workspace1)
     println(" - solved!")
 end
 
-println("solving with OSQP")
-workspace2 = OpenBB.setup(problem,
-                         OpenBB.BBsettings(verbose=false,dynamicMode=true,statusInfoPeriod=1),
-                         OpenBB.OSQPsettings())
+if OpenBB.withQPALM()
+    println("solving with QPALM")
+    workspace2 = OpenBB.setup(problem,
+                             OpenBB.BBsettings(verbose=false,dynamicMode=true,numProcesses=1),
+                             OpenBB.QPALMsettings())
 
-OpenBB.solve!(workspace2)
-println(" - solved!")
+    OpenBB.solve!(workspace2)
+    println(" - solved!")
+end
+
+
+if OpenBB.withOSQP()
+    println("solving with OSQP")
+    workspace2 = OpenBB.setup(problem,
+                             OpenBB.BBsettings(verbose=false,dynamicMode=true,numProcesses=1),
+                             OpenBB.OSQPsettings(adaptive_rho=false,rho=1e-3))
+
+    OpenBB.solve!(workspace2)
+    println(" - solved!")
+end
