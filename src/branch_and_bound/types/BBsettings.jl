@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-11T16:33:13+02:00
+# @Last modified time: 2019-08-22T16:55:55+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -25,7 +25,7 @@ mutable struct BBsettings <: AbstractSettings
     # priority rules
     expansionPriorityRule::Tuple            # ordering of the nodes in the activeQueue
     branchingPriorityRule::Tuple            # ordering of the discrete variables for branching
-    unreliableSubproblemsPriority::Int      # activeQueue insertion priority for unreliable nodes (-1->low, 0->normal, 1->high)
+    unreliablesPriority::Int      # activeQueue insertion priority for unreliable nodes (-1->low, 0->normal, 1->high)
     # pseudo-costs
     pseudoCostsInitialization::Tuple        # function returning the initialization of the pseudo-costs
     # stopping criteria
@@ -49,7 +49,7 @@ function BBsettings(;verbose::Bool=false,
                      objectiveCutoff::Float64=Inf,
                      expansionPriorityRule::Tuple=(lower_pseudoObjective,),
                      branchingPriorityRule::Tuple=(pseudoIncrements_geomean,),
-                     unreliableSubproblemsPriority::Int=0,
+                     unreliablesPriority::Int=0,
                      pseudoCostsInitialization::Tuple=(initialize_to_constant!,1e20),
                      customStoppingRule::Function=x->false,
                      timeLimit::Float64=Inf,
@@ -68,7 +68,7 @@ function BBsettings(;verbose::Bool=false,
 
     return BBsettings(verbose,statusInfoPeriod,numProcesses,stopAfterSolution,dynamicMode,
                       primalTolerance,objectiveCutoff,
-                      expansionPriorityRule,branchingPriorityRule,unreliableSubproblemsPriority,
+                      expansionPriorityRule,branchingPriorityRule,unreliablesPriority,
                       pseudoCostsInitialization,customStoppingRule,
                       timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,roundingHeuristicsThreshold)
 end

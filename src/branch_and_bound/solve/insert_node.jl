@@ -13,7 +13,7 @@
 function insert_node!(queue::Array{BBnode,1},node::BBnode,
                       settings::BBsettings,status::BBstatus)::Nothing
 
-    if node.reliable || settings.unreliablePriority == 0
+    if node.reliable || settings.unreliablesPriority == 0
     # normal queue insertion
         insertionPoint = 1
         for i in length(queue):-1:1
@@ -24,11 +24,11 @@ function insert_node!(queue::Array{BBnode,1},node::BBnode,
         end
         insert!(queue,insertionPoint,node)
 
-    elseif settings.unreliablePriority == -1
+    elseif settings.unreliablesPriority == -1
         # put the new unreliable nodes at the bottom of the activeQueue to deal with them later
         insert!(workspace.activeQueue,0,node)
 
-    elseif settings.unreliablePriority == 1
+    elseif settings.unreliablesPriority == 1
         # put the new unreliable nodes at the top of the activeQueue to try to fastly get rid of them
         append!(workspace.activeQueue,node)
     else
