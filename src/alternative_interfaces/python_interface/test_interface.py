@@ -34,7 +34,7 @@ problem["varSet"]["sos1Groups"] = [1,1,1]
 settings = {"subsolver":"osqp",
             "verbose":False,
             "numProcesses":1,
-            "dynamicMode":True
+            "interactiveMode":True
             }
 
 OpenBB.setup(problem,settings)

@@ -18,7 +18,7 @@ mutable struct BBsettings <: AbstractSettings
     statusInfoPeriod::Float64               # frequency of status info print
     numProcesses::Int                       # max number of processes to launch
     stopAfterSolution::Bool                 # stop workers after the solution for the current problem has been found
-    dynamicMode::Bool                       # store in memory suboptimal solutions and nodes to allow later updates
+    interactiveMode::Bool                       # store in memory suboptimal solutions and nodes to allow later updates
     # problem bounds
     primalTolerance::Float64                # constraint violation tolerance
     objectiveCutoff::Float64                # look only for solutions that are better than the provided upper bound
@@ -44,7 +44,7 @@ function BBsettings(;verbose::Bool=false,
                      statusInfoPeriod::Float64 = 1.,
                      numProcesses::Int=0,
                      stopAfterSolution::Bool = true,
-                     dynamicMode::Bool=false,
+                     interactiveMode::Bool=false,
                      primalTolerance::Float64=1e-4,
                      objectiveCutoff::Float64=Inf,
                      expansionPriorityRule::Tuple=(lower_pseudoObjective,),
@@ -66,7 +66,7 @@ function BBsettings(;verbose::Bool=false,
     	numProcesses = div(Sys.CPU_THREADS,2)
 	end
 
-    return BBsettings(verbose,statusInfoPeriod,numProcesses,stopAfterSolution,dynamicMode,
+    return BBsettings(verbose,statusInfoPeriod,numProcesses,stopAfterSolution,interactiveMode,
                       primalTolerance,objectiveCutoff,
                       expansionPriorityRule,branchingPriorityRule,unreliablesPriority,
                       pseudoCostsInitialization,customStoppingRule,

@@ -87,7 +87,7 @@ problem = OpenBB.Problem(objFun=objf,cnsSet=cnss,varSet=vars)
 if OpenBB.withGUROBI()
     println("solving with gurobi-QP")
     workspace1 = OpenBB.setup(problem,
-                              OpenBB.BBsettings(verbose=false,dynamicMode=true,numProcesses=1),
+                              OpenBB.BBsettings(verbose=false,interactiveMode=true,numProcesses=1),
                               OpenBB.GUROBIsettings())
 
     OpenBB.solve!(workspace1)
@@ -97,7 +97,7 @@ end
 if OpenBB.withQPALM()
     println("solving with QPALM")
     workspace2 = OpenBB.setup(problem,
-                             OpenBB.BBsettings(verbose=false,dynamicMode=true,numProcesses=1),
+                             OpenBB.BBsettings(verbose=false,interactiveMode=true,numProcesses=1),
                              OpenBB.QPALMsettings())
 
     OpenBB.solve!(workspace2)
@@ -108,7 +108,7 @@ end
 if OpenBB.withOSQP()
     println("solving with OSQP")
     workspace2 = OpenBB.setup(problem,
-                             OpenBB.BBsettings(verbose=false,dynamicMode=true,numProcesses=1),
+                             OpenBB.BBsettings(verbose=false,interactiveMode=true,numProcesses=1),
                              OpenBB.OSQPsettings(adaptive_rho=false,rho=1e-3))
 
     OpenBB.solve!(workspace2)

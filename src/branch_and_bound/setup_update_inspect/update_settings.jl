@@ -78,7 +78,7 @@ end
 #     @error "Not implemented yet"
 #
 #     # check if it is possible to make changes
-#     @assert workspace.settings.dynamicMode == true || workspace.status.description == "new"
+#     @assert workspace.settings.interactiveMode == true || workspace.status.description == "new"
 #
 #
 #     # update the BB settings
@@ -88,8 +88,8 @@ end
 #             # adapt the workspace to the new settings
 #
 #
-#             # pass from dynamic mode to static mode
-#             if workspace.dynamicMode == true && bb_settings.dynamicMode == false
+#             # pass from interactive mode to static mode
+#             if workspace.interactiveMode == true && bb_settings.interactiveMode == false
 #                 for k in length(workspace.solutionPool):-1:1
 #                     if workspace.solutionPool[k].reliable
 #                         deleteat!(workspace.solutionPool,k+1:length(workspace.solutionPool))

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-12T15:09:15+02:00
+# @Last modified time: 2019-08-23T17:57:13+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,11 +28,6 @@ function insert_constraints!(workspace::BBworkspace{T1,T2},
                              suppressUpdate::Bool=false,
                              localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory where T3 <: AbstractConstraintSet
 
-    # check if it is possible to make changes
-    if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
-        @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
-    end
-
     # call the same function on the other workers
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
@@ -51,6 +46,12 @@ function insert_constraints!(workspace::BBworkspace{T1,T2},
 		reset_global_info!(workspace)
 
     else
+
+		# check if it is possible to make changes
+		if myid() == 1 && !suppressWarnings && workspace.status.description != "new" && !workspace.settings.interactiveMode && myid() == 1
+			@warn "In order to correctly manipulate the problem formulation, OpenBB must be run in interactive mode"
+		end
+
 
         # propagate the changes to the subsolver
         insert_constraints!(workspace.subsolverWS,constraintSet,index,suppressUpdate=true)
@@ -89,10 +90,6 @@ function remove_constraints!(workspace::BBworkspace{T1,T2},indices::Array{Int,1}
                              suppressUpdate::Bool=true,
                              localOnly::Bool=true)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
-    ## check if it is possible to make changes
-    if !suppressWarnings && workspace.status.description != "new" && myid() == 1
-        @warn "Removing constraints will invalidate the results found in the last solution process"
-    end
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
@@ -114,6 +111,12 @@ function remove_constraints!(workspace::BBworkspace{T1,T2},indices::Array{Int,1}
 		reset_global_info!(workspace)
 
     else
+
+		## check if it is possible to make changes
+		if myid() == 1 && !suppressWarnings && workspace.status.description != "new"
+			@warn "Removing constraints after some iterations is potentially destructive, I hope you know what you are doing."
+		end
+
         # propagate the changes to the nodes solver
         remove_constraints!(workspace.subsolverWS,indices,suppressUpdate=true)
 
@@ -206,40 +209,29 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
                         suppressUpdate::Bool=false,
                         localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
-    # check the correctness of the input
-    @assert length(cnsLoBs)==0 || length(cnsLoBs)==length(workspace.subsolverWS.cnsLoBs)
-    @assert length(cnsUpBs)==0 || length(cnsUpBs)==length(workspace.subsolverWS.cnsUpBs)
-    @assert length(varLoBs)==0 || length(varLoBs)==length(workspace.subsolverWS.varLoBs)
-    @assert length(varUpBs)==0 || length(varUpBs)==length(workspace.subsolverWS.varUpBs)
 
-
-    # check if it is possible to make changes
-    if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
-        @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
-
-        # check if a bounds relaxation was requested
-        if (length(cnsLoBs) > 0 && any(@. cnsLoBs < workspace.subsolverWS.cnsLoBs)) ||
-           (length(cnsUpBs) > 0 && any(@. cnsUpBs > workspace.subsolverWS.cnsUpBs)) ||
-           (length(varLoBs) > 0 && any(@. varLoBs < workspace.subsolverWS.varLoBs)) ||
-           (length(varUpBs) > 0 && any(@. varUpBs > workspace.subsolverWS.varLoBs))
-
-            @warn "It is not possible to update the BB tree for a bound relaxation, a restart might be necessary"
-        end
-    end
-
-    # ensure consistency in the inputs
+    # ensure consistency of the input
     if length(varLoBs) == 0
-        varLoBs = copy(workspace.subsolverWS.varLoBs)
-    end
+		varLoBs = copy(workspace.subsolverWS.varLoBs)
+	else
+		@assert length(varLoBs)==length(workspace.subsolverWS.varLoBs)
+	end
     if length(varUpBs) == 0
-        varUpBs = copy(workspace.subsolverWS.varUpBs)
-    end
+		varUpBs = copy(workspace.subsolverWS.varUpBs)
+	else
+		@assert length(varUpBs)==length(workspace.subsolverWS.varUpBs)
+	end
     if length(cnsLoBs) == 0
-        cnsLoBs = copy(workspace.subsolverWS.cnsLoBs)
-    end
+		cnsLoBs = copy(workspace.subsolverWS.cnsLoBs)
+	else
+		@assert length(cnsLoBs)==length(workspace.subsolverWS.cnsLoBs)
+	end
     if length(cnsUpBs) == 0
-        cnsUpBs = copy(workspace.subsolverWS.cnsUpBs)
-    end
+		cnsUpBs = copy(workspace.subsolverWS.cnsUpBs)
+	else
+		@assert length(cnsUpBs)==length(workspace.subsolverWS.cnsUpBs)
+	end
+
 
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
@@ -266,6 +258,20 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
 		reset_global_info!(workspace)
     else
 
+		# check if it is possible to make changes
+		if myid() == 1 && !suppressWarnings && workspace.status.description != "new"
+			if !workspace.settings.interactiveMode
+				@warn "In order to correctly manipulate the problem formulation, OpenBB must be run in interactive mode"
+			# check if a bounds relaxation was requested
+			elseif (length(cnsLoBs) > 0 && any(@. cnsLoBs < workspace.subsolverWS.cnsLoBs)) ||
+			   	   (length(cnsUpBs) > 0 && any(@. cnsUpBs > workspace.subsolverWS.cnsUpBs)) ||
+			   	   (length(varLoBs) > 0 && any(@. varLoBs < workspace.subsolverWS.varLoBs)) ||
+			       (length(varUpBs) > 0 && any(@. varUpBs > workspace.subsolverWS.varLoBs))
+
+				@warn "Relaxing the variable bounds after some iterations is potentially destructive, please make sure that the new bound set is more restrictive than the old one."
+			end
+		end
+
         # propagate the changes to the nodes solver
         update_bounds!(workspace.subsolverWS,cnsLoBs,cnsUpBs,varLoBs,varUpBs,suppressUpdate=true)
 
@@ -284,16 +290,6 @@ function set_objective!(workspace::BBworkspace{T1,T2},newObjective::T3;
                         suppressWarnings::Bool=false,
                         suppressUpdate::Bool=false,
                         localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory where T3 <: AbstractObjective
-
-    # check if it is possible to make changes
-    if !suppressWarnings
-        if workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
-            @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
-        else
-            # warn the user about the potential dangers
-            @warn "changing the objective after some iterations is potentially destructive, please be sure that the new objective is always greater or equal to the old one"
-        end
-    end
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
@@ -314,6 +310,16 @@ function set_objective!(workspace::BBworkspace{T1,T2},newObjective::T3;
 		reset_global_info!(workspace)
     else
 
+
+		if myid() == 1 && !suppressWarnings && workspace.status.description != "new"
+			if !workspace.settings.interactiveMode
+				@warn "In order to correctly manipulate the problem formulation, OpenBB must be run in interactive mode"
+			else
+				# warn the user about the potential dangers
+				@warn "changing the objective after some iterations is potentially destructive, please be sure that the new objective is always greater or equal to the old one"
+			end
+		end
+
         # propagate the change to the subsolver
         set_objective!(workspace.subsolverWS,newObjective,suppressUpdate=true)
 
@@ -332,15 +338,6 @@ function set_constraintSet!(workspace::BBworkspace{T1,T2},newConstraintSet::T3;
                            suppressUpdate::Bool=false,
                            localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory where T3 <: AbstractConstraintSet
 
-    # check if it is possible to make changes
-    if !suppressWarnings
-        if workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
-            @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
-        else
-            # warn the user about the potential dangers
-            @warn "changing the constraintSet after some iterations is potentially destructive, please be sure that the new constraint set is more restrictive than the old"
-        end
-    end
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
@@ -361,6 +358,15 @@ function set_constraintSet!(workspace::BBworkspace{T1,T2},newConstraintSet::T3;
 		reset_global_info!(workspace)
 
     else
+		# check if it is possible to make changes
+		if myid() == 1 && !suppressWarnings && workspace.status.description != "new"
+			if !workspace.settings.interactiveMode
+				@warn "In order to correctly manipulate the problem formulation, OpenBB must be run in interactive mode"
+			else
+				# warn the user about the potential dangers
+				@warn "Changing the constraintSet after some iterations is potentially destructive, please be sure that the new constraint set is more restrictive than the old one"
+			end
+		end
 
         # reset the constraints dual
         if length(workspace.activeQueue)>0
@@ -397,10 +403,6 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
                          suppressUpdate::Bool=false,
                          localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
-    # check if it is possible to make changes
-    if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
-        @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
-    end
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
@@ -420,6 +422,12 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
 		# reset the information shared among the processes
 		reset_global_info!(workspace)
     else
+
+		# check if it is possible to make changes
+		if myid() == 1 && !suppressWarnings && workspace.status.description != "new" && !workspace.settings.interactiveMode && myid() == 1
+			@warn "In order to correctly manipulate the problem formulation, OpenBB must be run in interactive mode"
+		end
+
         # collect info on the problem
         nVars1 = length(workspace.subsolverWS.varLoBs)
         nVars2 = length(problem.varSet.loBs)
@@ -517,8 +525,8 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
 
     else
         # check if it is possible to make changes
-        if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.dynamicMode && myid() == 1
-            @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in dynamic mode"
+        if myid() == 1 && !suppressWarnings && workspace.status.description != "new" && !workspace.settings.interactiveMode && myid() == 1
+            @warn "In order to correctly manipulate the problem formulation, OpenBB must be run in interactive mode"
         end
         # check correctness of the inputs
         if length(newSos1Groups) == 0

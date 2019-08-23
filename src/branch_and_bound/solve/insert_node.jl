@@ -48,8 +48,8 @@ function insert_node!(workspace::BBworkspace,node::BBnode)::Nothing
 
     elseif node.objective > workspace.status.objUpB - workspace.settings.primalTolerance # the node is suboptimal
 
-        # in dynamic mode the suboptimal nodes are stored
-        if workspace.settings.dynamicMode
+        # in interactive mode the suboptimal nodes are stored
+        if workspace.settings.interactiveMode
             push!(workspace.unactivePool,node)
         end
 
@@ -58,8 +58,8 @@ function insert_node!(workspace::BBworkspace,node::BBnode)::Nothing
         # declare the cutoff active
         workspace.status.cutoffActive = true
 
-        # in dynamic mode the suboptimal nodes are stored
-        if workspace.settings.dynamicMode
+        # in interactive mode the suboptimal nodes are stored
+        if workspace.settings.interactiveMode
             push!(workspace.unactivePool,node)
         end
 

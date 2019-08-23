@@ -117,8 +117,8 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
             # check if node is already suboptimal (the upper-bound might have changed)
             if node.objective > workspace.status.objUpB - workspace.settings.primalTolerance
 
-                # in dynamic mode the suboptimal nodes are stored
-                if workspace.settings.dynamicMode
+                # in interactive mode the suboptimal nodes are stored
+                if workspace.settings.interactiveMode
                     push!(workspace.unactivePool,node)
                 end
 
@@ -127,8 +127,8 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 # declare the cutoff active
                 workspace.status.cutoffActive = true
 
-                # in dynamic mode the suboptimal nodes are stored
-                if workspace.settings.dynamicMode
+                # in interactive mode the suboptimal nodes are stored
+                if workspace.settings.interactiveMode
                     push!(workspace.unactivePool,node)
                 end
 

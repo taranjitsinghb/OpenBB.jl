@@ -26,7 +26,7 @@ problem["varSet"]["vals"] = [.5,0,1,0,.5]
 problem["varSet"]["dscIndices"] = [2,3,4]
 problem["varSet"]["sos1Groups"] = [1,1,1]
 
-bbSettings = Dict("verbose"=>false,"numProcesses"=>1,"dynamicMode"=>true)
+bbSettings = Dict("verbose"=>false,"numProcesses"=>1,"interactiveMode"=>true)
 ssSettings = Dict()
 
 

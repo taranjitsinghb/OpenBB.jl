@@ -27,7 +27,7 @@ problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(2.0I,4,4,),L=
                          cnsSet=OpenBB.LinearConstraintSet(A=ones(0,4),loBs=Float64[],upBs=Float64[]),
                          varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],vals=zeros(4),dscIndices=[1]))
 
-workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,dynamicMode=true,numProcesses=1),subsolverSettings)
+workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,interactiveMode=true,numProcesses=1),subsolverSettings)
 result = OpenBB.solve!(workspace)
 
 
