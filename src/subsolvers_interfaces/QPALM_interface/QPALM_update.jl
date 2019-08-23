@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T12:42:16+02:00
+# @Last modified time: 2019-08-22T17:58:29+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -31,11 +31,8 @@ end
 
 #
 function insert_constraints!(workspace::QPALMworkspace,
-                            A::Union{Array{Float64,2},SparseMatrixCSC{Float64}},
-                            cnsLoBs::Array{Float64,1},
-                            cnsUpBs::Array{Float64,1},
-                            index::Int;
-                            suppressUpdate::Bool=false)::Nothing
+                            constraintSet::T,index::Int;
+                            suppressUpdate::Bool=false)::Nothing where T <: Union{NullConstraintSet,LinearConstraintSet}
 
 
     # if a null workspace was given as input nothing has to be done
@@ -120,41 +117,6 @@ function update_bounds!(workspace::QPALMworkspace,
 end
 
 
-#
-function append_problem!(workspace::QPALMworkspace,
-                         problem::Problem{LinearObjective,LinearConstraintSet{T}};
-                         suppressUpdate::Bool=false)::Bool where T
-
-    # test the future validity of the already computed lower bounds
-    testWorkspace = setup(problem,workspace.settings)
-    testSolution = solve!(testWorkspace)
-    if testSolution[1] < -workspace.settings.eps_prim_inf
-        reliableObjLoBs = false
-    else
-        reliableObjLoBs = true
-    end
-
-
-    append!(workspace.L, problem.objFun.L)
-
-
-    workspace.A = vcat(hcat( workspace.A,                                         zeros(size(workspace.A,1),size(problem.cnsSet.A,2))    ),
-                       hcat( zeros(size(problem.cnsSet.A,1),size(workspace.A,2)), problem.cnsSet.A                                       ))
-    append!(workspace.cnsLoBs, problem.cnsSet.loBs)
-    append!(workspace.cnsUpBs, problem.cnsSet.upBs)
-
-    append!(workspace.varLoBs, problem.varSet.loBs)
-    append!(workspace.varUpBs, problem.varSet.upBs)
-
-    # update the osqp workspace
-    if !suppressUpdate
-        update!(workspace)
-    end
-
-    return reliableObjLoBs
-end
-
-
 # ...
 function set_objective!(workspace::QPALMworkspace,newObjective::T;suppressUpdate::Bool=false)::Nothing where T <: AbstractObjective
 
@@ -206,6 +168,42 @@ function set_constraintSet!(workspace::QPALMworkspace,newConstraintSet::T;suppre
 end
 
 
+
+#
+function append_problem!(workspace::QPALMworkspace,
+                         problem::Problem{LinearObjective,LinearConstraintSet{T}};
+                         suppressUpdate::Bool=false)::Bool where T
+
+    # test the future validity of the already computed lower bounds
+    testWorkspace = setup(problem,workspace.settings)
+    testSolution = solve!(testWorkspace)
+    if testSolution[1] < -workspace.settings.eps_prim_inf
+        reliableObjLoBs = false
+    else
+        reliableObjLoBs = true
+    end
+
+
+    append!(workspace.L, problem.objFun.L)
+
+
+    workspace.A = vcat(hcat( workspace.A,                                         zeros(size(workspace.A,1),size(problem.cnsSet.A,2))    ),
+                       hcat( zeros(size(problem.cnsSet.A,1),size(workspace.A,2)), problem.cnsSet.A                                       ))
+    append!(workspace.cnsLoBs, problem.cnsSet.loBs)
+    append!(workspace.cnsUpBs, problem.cnsSet.upBs)
+
+    append!(workspace.varLoBs, problem.varSet.loBs)
+    append!(workspace.varUpBs, problem.varSet.upBs)
+
+    # update the osqp workspace
+    if !suppressUpdate
+        update!(workspace)
+    end
+
+    return reliableObjLoBs
+end
+
+
 #
 function append_problem!(workspace::QPALMworkspace,
                          problem::Problem{QuadraticObjective{T1},LinearConstraintSet{T2}};
@@ -214,7 +212,7 @@ function append_problem!(workspace::QPALMworkspace,
     # test the future validity of the already computed lower bounds
     testWorkspace = setup(problem,workspace.settings)
     testSolution = solve!(testWorkspace)
-    if testSolution.objective < -workspace.settings.eps_prim_inf
+    if testSolution[1] < -workspace.settings.eps_prim_inf
         reliableObjLoBs = false
     else
         reliableObjLoBs = true

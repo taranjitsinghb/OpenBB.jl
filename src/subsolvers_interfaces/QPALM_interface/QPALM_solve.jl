@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T17:01:24+02:00
+# @Last modified time: 2019-08-23T15:31:29+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -26,6 +26,7 @@ function solve!(workspace::QPALMworkspace,
     # solve problem
     sol = QPALM.solve!(workspace.model)
 
+    # compute the objective value
     if sol.info.status_val in [1,2,3,4,-6,-2]
         obj_val = 1/2 * transpose(sol.x) * workspace.Q * sol.x + transpose(workspace.L) * sol.x
     else
@@ -40,7 +41,6 @@ function solve!(workspace::QPALMworkspace,
     elseif sol.info.status_val in [2,3,4,-6,-2]
         status = 2 # "unreliable"
         sol.x = @. min(max(sol.x,varLoBs),varUpBs)
-        obj_val = 0 # TODO
         @warn "Inaccuracy in node sol, message: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
     elseif sol.info.status_val in [-7,-10]
         status = 3 # "error"
@@ -54,7 +54,8 @@ function solve!(workspace::QPALMworkspace,
     @. primal = sol.x
     @. bndDual = sol.y[1:nVars]
     @. cnsDual = sol.y[nVars+1:end]
-    return (sol.info.obj_val, status, sol.info.run_time)
+
+    return (obj_val, status, sol.info.run_time)
 end
 
 
@@ -64,6 +65,7 @@ function solve!(workspace::QPALMworkspace)::Tuple{Float64,Int8,Float64}
     # solve problem
     sol = QPALM.solve!(workspace.model)
 
+    # compute the objective value
     if sol.info.status_val in [1,2,3,4,-6,-2]
         obj_val = 1/2 * transpose(sol.x) * workspace.Q * sol.x + transpose(workspace.L) * sol.x
     else
@@ -78,7 +80,6 @@ function solve!(workspace::QPALMworkspace)::Tuple{Float64,Int8,Float64}
     elseif sol.info.status_val in [2,3,4,-6,-2]
         status = 2 # "unreliable"
         sol.x = @. min(max(sol.x,varLoBs),varUpBs)
-        obj_val = 0 # TODO
         @warn "Inaccuracy in node sol, message: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
     elseif sol.info.status_val in [-7,-10]
         status = 3 # "error"
@@ -88,5 +89,5 @@ function solve!(workspace::QPALMworkspace)::Tuple{Float64,Int8,Float64}
     end
 
     #return solution
-    return (sol.info.obj_val, status, sol.info.run_time)
+    return (obj_val, status, sol.info.run_time)
 end
