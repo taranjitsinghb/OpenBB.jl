@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-12T15:14:21+02:00
+# @Last modified time: 2019-08-25T22:53:00+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -18,16 +18,25 @@ using Distributed
 using SparseArrays
 using LinearAlgebra
 using SharedArrays
+using Pkg: installed
 
 # select the subsolvers to use
 function withOSQP()::Bool
-    return true
+    return "OSQP" in keys(installed())
 end
 function withGUROBI()::Bool
-    return true
+    return "Gurobi" in keys(installed())
 end
 function withQPALM()::Bool
-    return false
+    return "QPALM" in keys(installed())
+end
+
+function get_available_subsolvers()::Array{String,1}
+    out = String[]
+    if withOSQP() push!(out,"OSQP") end
+    if withQPALM() push!(out,"QPALM") end
+    if withGUROBI() push!(out,"GUROBI") end
+    return out
 end
 
 # use or not the MPC addon (the folder containing the mpc toolbox should be placed beside the one containing OpenBB)
