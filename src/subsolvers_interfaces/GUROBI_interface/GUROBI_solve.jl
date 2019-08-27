@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBIsolve.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-24T14:47:31+02:00
+# @Last modified time: 2019-08-27T15:36:19+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -13,8 +13,8 @@ function solve!(subsolverWS::GUROBIworkspace,
                 primal::Array{Float64,1},bndDual::Array{Float64,1},cnsDual::Array{Float64,1})::Tuple{Float64,Int8,Float64}
 
     # update the gurobi model
-    nVars = get_numVariables(workspace)
-    nCnss = get_numConstraints(workspace)
+    nVars = get_numVariables(subsolverWS)
+    nCnss = get_numConstraints(subsolverWS)
 
     model = Gurobi.Model(subsolverWS.environment,"OpenBBsubsolver")
     if nVars > 0

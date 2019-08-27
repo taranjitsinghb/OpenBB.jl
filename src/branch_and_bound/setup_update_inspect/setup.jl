@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-23T19:38:28+02:00
+# @Last modified time: 2019-08-27T14:58:08+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -85,7 +85,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 																		bb_timeLimit=$(bbSettings.timeLimit)
 																		),
 														   copy($(problem.varSet.dscIndices)),copy($(problem.varSet.sos1Groups)),
-														   ($problem.varSet.pseudoCosts,Array{Int,2}(undef,size($problem.varSet.pseudoCosts))),
+														   deepcopy($problem.varSet.pseudoCosts),
 														   Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),
 														   OpenBB.BBstatus(objLoB=Inf,description="empty"),$sharedMemory,deepcopy($bbSettings)))
 	    end
@@ -100,7 +100,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
 								problem.varSet.dscIndices,problem.varSet.sos1Groups,
-								(problem.varSet.pseudoCosts,Array{Int,2}(undef,size(problem.varSet.pseudoCosts))),
+								deepcopy(problem.varSet.pseudoCosts),
 								Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),NullSharedMemory(),bbSettings)
 

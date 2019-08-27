@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-23T19:24:58+02:00
+# @Last modified time: 2019-08-27T15:34:12+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -100,11 +100,11 @@ function update_bounds!(workspace::OSQPworkspace,
                         varLoBs::Array{Float64,1},varUpBs::Array{Float64,1};
                         suppressUpdate::Bool=false)::Nothing
 
+    if length(varLoBs)>0 @. workspace.varLoBs = varLoBs end
+    if length(varUpBs)>0 @. workspace.varUpBs = varUpBs end
+    if length(cnsLoBs)>0 @. workspace.cnsLoBs = cnsLoBs end
+    if length(cnsUpBs)>0 @. workspace.cnsUpBs = cnsUpBs end
 
-    @. workspace.cnsLoBs = cnsLoBs
-    @. workspace.cnsUpBs = cnsUpBs
-    @. workspace.varLoBs = varLoBs
-    @. workspace.varUpBs = varUpBs
 
     # propagate the changes to the OSQP solver
     if !suppressUpdate
@@ -168,8 +168,8 @@ end
 
 #
 function append_problem!(workspace::OSQPworkspace,
-                         problem::Problem{LinearObjective,LinearConstraintSet{T}};
-                         suppressUpdate::Bool=false)::Bool where T
+                         problem::Problem{LinearObjective{T1},LinearConstraintSet{T2}};
+                         suppressUpdate::Bool=false)::Nothing where T1 where T2
 
 
     # update the subsolver data
@@ -189,13 +189,13 @@ function append_problem!(workspace::OSQPworkspace,
         update!(workspace)
     end
 
-    return reliableObjLoBs
+    return
 end
 
 #
 function append_problem!(workspace::OSQPworkspace,
-                         problem::Problem{QuadraticObjective{T1},LinearConstraintSet{T2}};
-                         suppressUpdate::Bool=false)::Bool where T1 where T2
+                         problem::Problem{QuadraticObjective{T1,T2},LinearConstraintSet{T3}};
+                         suppressUpdate::Bool=false)::Nothing where T1 where T2 where T3
 
     # update the subsolver data
     workspace.Q = vcat(hcat( workspace.Q,                                         zeros(size(workspace.Q,1),size(problem.objFun.Q,2))    ),
@@ -217,7 +217,7 @@ function append_problem!(workspace::OSQPworkspace,
         update!(workspace)
     end
 
-    return reliableObjLoBs
+    return
 end
 
 

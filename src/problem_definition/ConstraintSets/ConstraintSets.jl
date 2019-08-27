@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: ConstraintSets.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T12:11:20+02:00
+# @Last modified time: 2019-08-27T14:06:57+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -14,7 +14,7 @@ struct NullConstraintSet <: AbstractConstraintSet end
 
 
 # linear constraints set
-mutable struct LinearConstraintSet{T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}} <: AbstractConstraintSet
+mutable struct LinearConstraintSet{T} <: AbstractConstraintSet where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     A::T
     loBs::Array{Float64,1}
     upBs::Array{Float64,1}

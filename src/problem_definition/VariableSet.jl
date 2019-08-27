@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-19T19:59:32+02:00
+# @Last modified time: 2019-08-27T13:54:50+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -15,29 +15,34 @@ struct NullVariableSet <: AbstractVariableSet end
 
 
 # struct to store the variables data
-struct VariableSet <: AbstractVariableSet
+mutable struct VariableSet <: AbstractVariableSet
     loBs::Array{Float64,1}
     upBs::Array{Float64,1}
     vals::Array{Float64,1}
     dscIndices::Array{Int,1}
-    sos1Groups::Array{Int,1} # assume group -1 as no group
-    pseudoCosts::Array{Float64,2}
+    sos1Groups::Array{Int,1} # assume group 0 as no group
+    pseudoCosts::Tuple{Array{Float64,2},Array{Int,2}}
 end
 
+# named constructor
 function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},vals::Array{Float64,1}=Float64[],
-                      dscIndices::Array{Int,1}=Int[],sos1Groups::Array{Int,1}=Int[],pseudoCosts=Array{Float64,2}(undef,0,2))::VariableSet
+                      dscIndices::Array{Int,1}=Int[],sos1Groups::Array{Int,1}=Int[],pseudoCosts::Tuple{Array{Float64,2},Array{Int,2}}=(NaNs(0,2),Int.(zeros(0,2))))::VariableSet
 
     # check the correctness of inputs
     if length(sos1Groups) == 0
-        sos1Groups = repeat([-1],length(dscIndices))
+        sos1Groups = repeat([0],length(dscIndices))
     elseif length(sos1Groups) != length(dscIndices)
         @error "sos1Groups should either be empty or have the same length of dscIndices"
     end
 
-    if size(pseudoCosts,1) == 0
-        pseudoCosts = 1e-4*ones(length(dscIndices),2)
-    elseif size(pseudoCosts,1) != length(dscIndices) || size(pseudoCosts,2) != 2
-        @error "pseudoCosts should either be empty or have size: length(dscIndices) x 2 "
+    if size(pseudoCosts[1],1) == 0
+        pseudoCosts = (1e-4*ones(length(dscIndices),2),pseudoCosts[2])
+    end
+    if size(pseudoCosts[2],1) == 0
+        pseudoCosts = (pseudoCosts[1],Int.(zeros(length(dscIndices),2)))
+    end
+    if !(size(pseudoCosts[1],1) == size(pseudoCosts[2],1) == length(dscIndices)) || size(pseudoCosts[1],2) != 2 || size(pseudoCosts[2],2) != 2
+        @error "pseudoCosts should either be empty or have size: (length(dscIndices) x 2, length(dscIndices) x 2) "
     end
 
     if length(vals) == 0
@@ -62,16 +67,115 @@ function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},vals::Array{
     return VariableSet(loBs,upBs,vals,dscIndices,sos1Groups,pseudoCosts)
 end
 
-function EmptyVarSet()::VariableSet
-    return VariableSet(Float64[],Float64[],Float64[],Int[],Int[],Array{Float64,2}(undef,0,0))
+# type conversion
+function VariableSet(variableSet::VariableSet)::VariableSet
+    return variableSet
 end
 
 
+# copy functions (Fundamental. These are used in Branch and Bound)
+import Base.copy
+function copy(variableSet::VariableSet)::VariableSet
+    return VariableSet(variableSet.loBs,variableSet.upBs,variableSet.vals,
+                       variableSet.dscIndices,variableSet.sos1Groups,variableSet.pseudoCosts)
+end
+import Base.deepcopy
+function deepcopy(variableSet::VariableSet)::VariableSet
+    return VariableSet(copy(variableSet.loBs),copy(variableSet.upBs),copy(variableSet.vals),
+                       copy(variableSet.dscIndices),copy(variableSet.sos1Groups),deepcopy(variableSet.pseudoCosts))
+end
 
-function get_numVariables(variableSet::VariableSet)::Int
+
+# inspect functions (Fundamental. These are used in Branch and Bound)
+function get_size(variableSet::VariableSet)::Int
     return length(variableSet.loBs)
 end
 
-function get_numDiscreteVariables(variableSet::VariableSet)::Int
+function get_numDiscrete(variableSet::VariableSet)::Int
     return length(variableSet.dscIndices)
+end
+
+function get_bounds(variableSet::VariableSet)::Tuple{Array{Float64,1},Array{Float64,1}}
+    return (variableSet.loBs,variableSet.upBs)
+end
+
+function get_discreteIndices(variableSet::VariableSet)::Array{Int,1}
+    return variableSet.dscIndices
+end
+
+function get_sos1Groups(variableSet::VariableSet)::Array{Int,1}
+    return variableSet.sos1Groups
+end
+
+function get_pseudoCosts(variableSet::VariableSet)::Tuple{Array{Float64,2},Array{Int,2}}
+    return variableSet.pseudoCosts
+end
+
+
+# update functions (Not fundamental. These are used only during problem update)
+function remove_variables!(variableSet::VariableSet,indices::Array{Int,1})::Nothing
+    # collect info
+    varToKeep = filter(x->!(x in indices), collect(1:get_size(variableSet)))
+    dscToKeep = [i for i in 1:length(variableSet.dscIndices) if !(variableSet.dscIndices[i] in indices)]
+    dscMask = Array{Bool,1}(undef,get_size(variableSet));
+    @. dscMask = false; @. dscMask[variableSet.dscIndices] = true
+    # eliminate the variables
+    variableSet.loBs = variableSet.loBs[varToKeep]
+    variableSet.upBs = variableSet.upBs[varToKeep]
+    variableSet.vals = variableSet.vals[varToKeep]
+    variableSet.dscIndices = findall(dscMask[varToKeep])
+    variableSet.sos1Groups = variableSet.sos1Groups[dscToKeep]
+    variableSet.pseudoCosts = (variableSet.pseudoCosts[1][dscToKeep,:],
+                               variableSet.pseudoCosts[2][dscToKeep,:])
+
+    return
+end
+
+
+function insert_variables!(variableSet1::VariableSet,variableSet2::AbstractVariableSet,insertionPoint::Int)::Nothing
+    if variableSet2 isa NullVariableSet
+        return
+    else
+        # collect info
+        dscInsertionPoint = findfirst(variableSet1.dscIndices .>=insertionPoint)
+        if isnothing(dscInsertionPoint)
+            dscInsertionPoint = length(variableSet1.dscIndices)+1
+        end
+        numNewVariables = length(variableSet2.loBs)
+        numNewDiscreteVariables = length(variableSet2.dscIndices)
+        sos1Offset = maximum(variableSet1.sos1Groups)
+
+        # append variables
+        splice!(variableSet1.loBs,insertionPoint:insertionPoint-1,copy(variableSet2.loBs))
+        splice!(variableSet1.upBs,insertionPoint:insertionPoint-1,copy(variableSet2.upBs))
+        splice!(variableSet1.vals,insertionPoint:insertionPoint-1,copy(variableSet2.vals))
+
+        splice!(variableSet1.dscIndices,dscInsertionPoint:dscInsertionPoint-1,copy(variableSet2.dscIndices))
+        @. variableSet1.dscIndices[dscInsertionPoint:dscInsertionPoint+numNewDiscreteVariables-1] += insertionPoint - 1
+        @. variableSet1.dscIndices[dscInsertionPoint+numNewDiscreteVariables:end] += numNewVariables
+        splice!(variableSet1.sos1Groups,dscInsertionPoint:dscInsertionPoint-1,@. variableSet2.sos1Groups + sos1Offset*(variableSet2.sos1Groups!=0))
+        variableSet1.pseudoCosts = (vcat(variableSet1.pseudoCosts[1][1:dscInsertionPoint-1,:],variableSet2.pseudoCosts[1],variableSet1.pseudoCosts[1][dscInsertionPoint:end,:]),
+                                    vcat(variableSet1.pseudoCosts[2][1:dscInsertionPoint-1,:],variableSet2.pseudoCosts[2],variableSet1.pseudoCosts[2][dscInsertionPoint:end,:]))
+        return
+    end
+end
+
+
+function append_variables!(variableSet1::VariableSet,variableSet2::AbstractVariableSet)::Nothing
+    if variableSet2 isa NullVariableSet
+        return
+    else
+        # collect info
+        indicesOffset = get_size(variableSet1)
+        sos1Offset = maximum(variableSet1.sos1Groups)
+        # append variables
+        variableSet1.loBs = vcat(variableSet1.loBs,variableSet2.loBs)
+        variableSet1.upBs = vcat(variableSet1.upBs,variableSet2.upBs)
+        variableSet1.vals = vcat(variableSet1.vals,variableSet2.vals)
+        variableSet1.dscIndices = vcat(variableSet1.dscIndices,@. variableSet2.dscIndices + indicesOffset)
+        variableSet1.sos1Groups = vcat(variableSet1.sos1Groups,@. variableSet2.sos1Groups + sos1Offset*(variableSet2.sos1Groups!=0))
+        variableSet1.pseudoCosts = (vcat(variableSet1.pseudoCosts[1],variableSet2.pseudoCosts[1]),
+                                    vcat(variableSet1.pseudoCosts[2],variableSet2.pseudoCosts[2]))
+        return
+    end
 end

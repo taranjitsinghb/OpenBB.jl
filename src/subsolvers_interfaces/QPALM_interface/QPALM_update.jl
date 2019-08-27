@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-24T13:46:15+02:00
+# @Last modified time: 2019-08-27T15:34:38+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -101,10 +101,10 @@ function update_bounds!(workspace::QPALMworkspace,
                         suppressUpdate::Bool=false)::Nothing
 
 
-    @. workspace.cnsLoBs = cnsLoBs
-    @. workspace.cnsUpBs = cnsUpBs
-    @. workspace.varLoBs = varLoBs
-    @. workspace.varUpBs = varUpBs
+    if length(varLoBs)>0 @. workspace.varLoBs = varLoBs end
+    if length(varUpBs)>0 @. workspace.varUpBs = varUpBs end
+    if length(cnsLoBs)>0 @. workspace.cnsLoBs = cnsLoBs end
+    if length(cnsUpBs)>0 @. workspace.cnsUpBs = cnsUpBs end
 
     # propagate the changes to the QPALM solver
     if !suppressUpdate
@@ -171,8 +171,8 @@ end
 
 #
 function append_problem!(workspace::QPALMworkspace,
-                         problem::Problem{LinearObjective,LinearConstraintSet{T}};
-                         suppressUpdate::Bool=false)::Bool where T
+                         problem::Problem{LinearObjective{T1},LinearConstraintSet{T2}};
+                         suppressUpdate::Bool=false)::Nothing where T1 where T2
 
     # update the subsolver data
     append!(workspace.L, problem.objFun.L)
@@ -191,14 +191,14 @@ function append_problem!(workspace::QPALMworkspace,
         update!(workspace)
     end
 
-    return reliableObjLoBs
+    return
 end
 
 
 #
 function append_problem!(workspace::QPALMworkspace,
-                         problem::Problem{QuadraticObjective{T1},LinearConstraintSet{T2}};
-                         suppressUpdate::Bool=false)::Bool where T1 where T2
+                         problem::Problem{QuadraticObjective{T1,T2},LinearConstraintSet{T3}};
+                         suppressUpdate::Bool=false)::Nothing where T1 where T2 where T3
 
     # update the subsolver data
     workspace.Q = vcat(hcat( workspace.Q,                                         zeros(size(workspace.Q,1),size(problem.objFun.Q,2))    ),
@@ -220,7 +220,7 @@ function append_problem!(workspace::QPALMworkspace,
         update!(workspace)
     end
 
-    return reliableObjLoBs
+    return
 end
 
 
