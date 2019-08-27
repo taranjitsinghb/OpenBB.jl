@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_problem_definitions_fundamentals.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T14:02:01+02:00
+# @Last modified time: 2019-08-27T14:26:43+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -36,8 +36,8 @@ end
 
 for c in cns
     tmp = copy(deepcopy(c))
+    typeof(tmp)(tmp)
     tmp = sparse(tmp)
-    #typeof(tmp)(tmp)
     @assert OpenBB.get_size(tmp) == 1
     @assert OpenBB.get_numVariables(tmp) == 4
     @assert OpenBB.get_bounds(tmp) ==  ([1.],[1.])
@@ -48,6 +48,7 @@ end
 
 for o in obj
     tmp = copy(deepcopy(o))
+    typeof(tmp)(tmp)
     tmp = sparse(tmp)
     @assert OpenBB.get_numVariables(tmp) == 4
     if tmp isa OpenBB.LinearObjective

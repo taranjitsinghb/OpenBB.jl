@@ -3,23 +3,23 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T13:58:07+02:00
+# @Last modified time: 2019-08-27T14:22:11+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 # constructors and copy functions (Fundamental. These are used in Branch and Bound)
 # named constructor
-function LinearObjective(;L::Array{Float64,1})::LinearObjective
+function LinearObjective(;L::T)::LinearObjective where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return LinearObjective(L)
 end
 
 # type conversions
-function LinearObjective(objective::LinearObjective)::LinearObjective
+function LinearObjective{T}(objective::LinearObjective{T})::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return objective
 end
 
-function LinearObjective(objective::QuadraticObjective)::LinearObjective
+function LinearObjective{T1}(objective::QuadraticObjective{T1,T2})::LinearObjective{T1} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}} where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     @assert all(objective.Q .== 0)
     return LinearObjective(objective.L)
 end

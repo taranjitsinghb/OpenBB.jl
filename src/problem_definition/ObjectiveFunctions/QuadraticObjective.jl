@@ -3,23 +3,23 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QuadraticObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T13:57:47+02:00
+# @Last modified time: 2019-08-27T14:25:40+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 # constructors and copy functions (Fundamental. These are used in Branch and Bound)
 # named constructor
-function QuadraticObjective(;Q::T1,L::T2)::QuadraticObjective where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+function QuadraticObjective(;Q::T1,L::T2)::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return QuadraticObjective(Q,L)
 end
 
 # type conversions
-function QuadraticObjective(objective::LinearObjective)::QuadraticObjective
+function QuadraticObjective{T1,T2}(objective::LinearObjective{T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return QuadraticObjective(sparse(zeros(length(objective.L),length(objective.L))),objective.L)
 end
 
-function QuadraticObjective(objective::QuadraticObjective)::QuadraticObjective
+function QuadraticObjective{T1,T2}(objective::QuadraticObjective{T1,T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return objective
 end
 
