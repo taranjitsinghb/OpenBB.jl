@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-13T20:23:58+02:00
+# @Last modified time: 2019-08-26T18:16:57+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -64,12 +64,12 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Tuple{Array{BBnode
 
     # check if the selected variable belongs to a sos1 group
     sos1Branching = false
-    if length(workspace.sos1Groups)>0 && workspace.sos1Groups[branchIndex_dsc] != -1
+    if length(workspace.sos1Groups)>0 && workspace.sos1Groups[branchIndex_dsc] != 0
 
         # collect all the variables belonging to the same sos1 groups
         sos1Group = [i for i in 1:length(workspace.dscIndices)
                           if workspace.sos1Groups[i] == workspace.sos1Groups[branchIndex_dsc] &&
-                          node.branchLoBs[workspace.dscIndices[i]] != node.branchUpBs[workspace.dscIndices[i]]]
+                          node.varLoBs[workspace.dscIndices[i]] != node.varUpBs[workspace.dscIndices[i]]]
 
         sos1Branching = true
     end
@@ -84,14 +84,16 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Tuple{Array{BBnode
         children = Array{BBnode}(undef,2)
 
         # first child
-        children[1] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
-        @. children[1].branchLoBs[workspace.dscIndices[sos1Group[1:2:end]]] = 0.
-        @. children[1].branchUpBs[workspace.dscIndices[sos1Group[1:2:end]]] = 0.
+        children[1] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
+        @. children[1].varLoBs[workspace.dscIndices[sos1Group[1:2:end]]] = 0.
+        @. children[1].varUpBs[workspace.dscIndices[sos1Group[1:2:end]]] = 0.
+        @. children[1].primal[workspace.dscIndices[sos1Group[1:2:end]]] = 0.
 
         # second child
-        children[2] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
-        @. children[2].branchLoBs[workspace.dscIndices[sos1Group[2:2:end]]] = 0.
-        @. children[2].branchUpBs[workspace.dscIndices[sos1Group[2:2:end]]] = 0.
+        children[2] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
+        @. children[2].varLoBs[workspace.dscIndices[sos1Group[2:2:end]]] = 0.
+        @. children[2].varUpBs[workspace.dscIndices[sos1Group[2:2:end]]] = 0.
+        @. children[2].primal[workspace.dscIndices[sos1Group[2:2:end]]] = 0.
 
         if length(sos1Group) == 3
             return children, [0,sos1Group[2]]
@@ -107,12 +109,14 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Tuple{Array{BBnode
         children = Array{BBnode}(undef,2)
 
         # first child
-        children[1] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
-        children[1].branchLoBs[branchIndex] = ceil(node.primal[branchIndex]-get_primalTolerance(workspace.subsolverWS))
+        children[1] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
+        children[1].primal[branchIndex] = ceil(node.primal[branchIndex]-get_primalTolerance(workspace.subsolverWS))
+        children[1].varLoBs[branchIndex] = children[1].primal[branchIndex]
 
         # second child
-        children[2] = BBnode(copy(node.branchLoBs),copy(node.branchUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
-        children[2].branchUpBs[branchIndex] = floor(node.primal[branchIndex]+get_primalTolerance(workspace.subsolverWS))
+        children[2] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
+        children[2].primal[branchIndex] = floor(node.primal[branchIndex]+get_primalTolerance(workspace.subsolverWS))
+        children[2].varUpBs[branchIndex] = children[2].primal[branchIndex]
 
         return children, [branchIndex_dsc,branchIndex_dsc]
 
@@ -122,24 +126,19 @@ end
 
 function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
-
-    # set the node bounds (considering that the general bounds might have changed)
-    globalLoBs, globalUpBs = get_variableBounds(workspace)
-    varLoBs = copy(globalLoBs)
-    varUpBs = copy(globalUpBs)
-    @. varLoBs = max(varLoBs,node.branchLoBs)
-    @. varUpBs = min(varUpBs,node.branchUpBs)
-
     # solve the node
     # node status guide:
     # 0 -> solved
     # 1 -> infeasible
     # 2 -> unreliable
     # 3 -> error
-    if any(@. varLoBs > varUpBs + workspace.settings.primalTolerance)
+    if any(@. node.varLoBs > node.varUpBs + workspace.settings.primalTolerance) ||
+       any(@. node.cnsLoBs > node.cnsUpBs + workspace.settings.primalTolerance)
         ssStatus = 1
     else
-        (objective,ssStatus,~) = solve!(workspace.subsolverWS,varLoBs,varUpBs,node.primal,node.bndDual,node.cnsDual)
+        (objective,ssStatus,~) = solve!(workspace.subsolverWS,
+                                        node.varLoBs,node.varUpBs,node.cnsLoBs,node.cnsUpBs,
+                                        node.primal,node.bndDual,node.cnsDual)
     end
 
 

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-14T11:53:16+02:00
+# @Last modified time: 2019-08-23T19:38:28+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -46,9 +46,6 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		@everywhere Main.eval(:(using OpenBB))
 		workersList = workers()[1:bbSettings.numProcesses-1]
 
-		# build the root node
-		rootNode = BBroot(numVars,numCnss,problem.varSet.vals)
-
 		# construct the communication channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,bbSettings.numProcesses)
 		for k in 1:bbSettings.numProcesses
@@ -70,9 +67,10 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 									  bb_timeLimit=bbSettings.timeLimit),
 								problem.varSet.dscIndices,problem.varSet.sos1Groups,
 								(problem.varSet.pseudoCosts,Array{Int,2}(undef,size(problem.varSet.pseudoCosts))),
-								[rootNode],Array{BBnode,1}(),Array{BBnode,1}(),
+								Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats,arrestable),bbSettings)
-
+		# construct the root node
+		push!(workspace.activeQueue,BBroot(workspace))
 
 		# construct the remote workspaces
 		expressions = Array{Expr,1}(undef,length(workersList))
@@ -97,17 +95,17 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 
 	else # only one process: no communication channels needed
 
-		# build the root node
-		rootNode = BBroot(numVars,numCnss,problem.varSet.vals)
-
 		# construct the master BBworkspace
 		workspace = BBworkspace(setup(problem,ssSettings,
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
 								problem.varSet.dscIndices,problem.varSet.sos1Groups,
 								(problem.varSet.pseudoCosts,Array{Int,2}(undef,size(problem.varSet.pseudoCosts))),
-								[rootNode],Array{BBnode,1}(),Array{BBnode,1}(),
+								Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),NullSharedMemory(),bbSettings)
+
+		# build the root node
+		push!(workspace.activeQueue,BBroot(workspace))
 	end
 
     return workspace

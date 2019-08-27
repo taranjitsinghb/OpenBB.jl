@@ -3,28 +3,21 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: ConstraintSets.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-23T18:56:26+02:00
+# @Last modified time: 2019-08-27T12:11:20+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 # abstract and null types
 abstract type AbstractConstraintSet end
-
-
 struct NullConstraintSet <: AbstractConstraintSet end
 
-function get_numConstraints(constraintSet::NullConstraintSet)::Int
-    return 0
-end
 
-import SparseArrays.sparse
-function sparse(constraintSet::NullConstraintSet)::LinearConstraintSet
-    return constraintSet
-end
-
-function get_sparsity(constraintSet::NullConstraintSet)::Tuple{Array{Int,1},Array{Int,1}}
-    return (Int[],Int[])
+# linear constraints set
+mutable struct LinearConstraintSet{T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}} <: AbstractConstraintSet
+    A::T
+    loBs::Array{Float64,1}
+    upBs::Array{Float64,1}
 end
 
 include("./LinearConstraintSet.jl")

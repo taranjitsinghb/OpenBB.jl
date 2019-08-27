@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-23T17:57:13+02:00
+# @Last modified time: 2019-08-26T18:16:11+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -58,19 +58,26 @@ function insert_constraints!(workspace::BBworkspace{T1,T2},
 
         # update all the problems in the activeQueue
 		numConstraints = get_numConstraints(constraintSet)
+		newBounds = get_bounds(constraintSet)
         if length(workspace.activeQueue)>0
             for i in 1:length(workspace.activeQueue)
                 splice!(workspace.activeQueue[i].cnsDual,index:index-1,zeros(numConstraints))
+                splice!(workspace.activeQueue[i].cnsLoBs,index:index-1,newBounds[1])
+				splice!(workspace.activeQueue[i].cnsUpBs,index:index-1,newBounds[2])
             end
         end
         if length(workspace.unactivePool)>0
             for i in  1:length(workspace.unactivePool)
                 splice!(workspace.unactivePool[i].cnsDual,index:index-1,zeros(numConstraints))
+				splice!(workspace.activeQueue[i].cnsLoBs,index:index-1,newBounds[1])
+				splice!(workspace.activeQueue[i].cnsUpBs,index:index-1,newBounds[2])
             end
         end
         if length(workspace.solutionPool)>0
             for i in  1:length(workspace.solutionPool)
                 splice!(workspace.solutionPool[i].cnsDual,index:index-1,zeros(numConstraints))
+				splice!(workspace.activeQueue[i].cnsLoBs,index:index-1,newBounds[1])
+				splice!(workspace.activeQueue[i].cnsUpBs,index:index-1,newBounds[2])
             end
         end
 
@@ -123,14 +130,20 @@ function remove_constraints!(workspace::BBworkspace{T1,T2},indices::Array{Int,1}
         # update all the problems in the activeQueue
         for i in 1:length(workspace.activeQueue)
             deleteat!(workspace.activeQueue[i].cnsDual,indices)
+			deleteat!(workspace.activeQueue[i].cnsLoBs,indices)
+			deleteat!(workspace.activeQueue[i].cnsUpBs,indices)
         end
         # update all the problems in the solutionPool
         for i in 1:length(workspace.solutionPool)
             deleteat!(workspace.solutionPool[i].cnsDual,indices)
+			deleteat!(workspace.activeQueue[i].cnsLoBs,indices)
+			deleteat!(workspace.activeQueue[i].cnsUpBs,indices)
         end
         # update all the problems in the activeQueue
         for i in 1:length(workspace.unactivePool)
             deleteat!(workspace.unactivePool[i].cnsDual,indices)
+			deleteat!(workspace.activeQueue[i].cnsLoBs,indices)
+			deleteat!(workspace.activeQueue[i].cnsUpBs,indices)
         end
 
         # update the workspace
@@ -176,16 +189,22 @@ function permute_constraints!(workspace::BBworkspace{T1,T2},permutation::Array{I
         if length(workspace.activeQueue)>0
             for i in 1:length(workspace.activeQueue)
                 permute!(workspace.activeQueue[i].cnsDual,permutation)
+				permute!(workspace.activeQueue[i].cnsLoBs,permutation)
+				permute!(workspace.activeQueue[i].cnsUpBs,permutation)
             end
         end
         if length(workspace.unactivePool)>0
             for i in 1:length(workspace.unactivePool)
                 permute!(workspace.unactivePool[i].cnsDual,permutation)
+				permute!(workspace.activeQueue[i].cnsLoBs,permutation)
+				permute!(workspace.activeQueue[i].cnsUpBs,permutation)
             end
         end
         if length(workspace.solutionPool)>0
             for i in 1:length(workspace.solutionPool)
                 permute!(workspace.solutionPool[i].cnsDual,permutation)
+				permute!(workspace.activeQueue[i].cnsLoBs,permutation)
+				permute!(workspace.activeQueue[i].cnsUpBs,permutation)
             end
         end
 
@@ -201,37 +220,20 @@ end
 
 #
 function update_bounds!(workspace::BBworkspace{T1,T2};
-                        cnsLoBs::Array{Float64,1}=Float64[],
-                        cnsUpBs::Array{Float64,1}=Float64[],
-                        varLoBs::Array{Float64,1}=Float64[],
-                        varUpBs::Array{Float64,1}=Float64[],
+						varLoBs::Array{Float64,1}=Array{Float64,1}(),
+						varUpBs::Array{Float64,1}=Array{Float64,1}(),
+                        cnsLoBs::Array{Float64,1}=Array{Float64,1}(),
+                        cnsUpBs::Array{Float64,1}=Array{Float64,1}(),
                         suppressWarnings::Bool=false,
                         suppressUpdate::Bool=false,
                         localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
 
-    # ensure consistency of the input
-    if length(varLoBs) == 0
-		varLoBs = copy(workspace.subsolverWS.varLoBs)
-	else
-		@assert length(varLoBs)==length(workspace.subsolverWS.varLoBs)
-	end
-    if length(varUpBs) == 0
-		varUpBs = copy(workspace.subsolverWS.varUpBs)
-	else
-		@assert length(varUpBs)==length(workspace.subsolverWS.varUpBs)
-	end
-    if length(cnsLoBs) == 0
-		cnsLoBs = copy(workspace.subsolverWS.cnsLoBs)
-	else
-		@assert length(cnsLoBs)==length(workspace.subsolverWS.cnsLoBs)
-	end
-    if length(cnsUpBs) == 0
-		cnsUpBs = copy(workspace.subsolverWS.cnsUpBs)
-	else
-		@assert length(cnsUpBs)==length(workspace.subsolverWS.cnsUpBs)
-	end
-
+    # ensure the correctness of the input
+	@assert length(varLoBs)==length(workspace.subsolverWS.varLoBs) || length(varLoBs)==0
+	@assert length(varUpBs)==length(workspace.subsolverWS.varUpBs) || length(varUpBs)==0
+	@assert length(cnsLoBs)==length(workspace.subsolverWS.cnsLoBs) || length(cnsLoBs)==0
+	@assert length(cnsUpBs)==length(workspace.subsolverWS.cnsUpBs) || length(cnsUpBs)==0
 
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
@@ -271,6 +273,33 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
 				@warn "Relaxing the variable bounds after some iterations is potentially destructive, please make sure that the new bound set is more restrictive than the old one."
 			end
 		end
+
+
+        # update the bounds into the BB tree
+        if length(workspace.activeQueue)>0
+            for i in 1:length(workspace.activeQueue)
+				if length(varLoBs)>0 @. workspace.activeQueue[i].varLoBs = max(workspace.activeQueue[i].varLoBs,varLoBs) end
+				if length(varUpBs)>0 @. workspace.activeQueue[i].varUpBs = min(workspace.activeQueue[i].varUpBs,varUpBs) end
+				if length(cnsLoBs)>0 @. workspace.activeQueue[i].cnsLoBs = max(workspace.activeQueue[i].cnsLoBs,cnsLoBs) end
+				if length(cnsUpBs)>0 @. workspace.activeQueue[i].cnsUpBs = min(workspace.activeQueue[i].cnsUpBs,cnsUpBs) end
+            end
+        end
+        if length(workspace.unactivePool)>0
+            for i in 1:length(workspace.unactivePool)
+				if length(varLoBs)>0 @. workspace.unactivePool[i].varLoBs = max(workspace.unactivePool[i].varLoBs,varLoBs) end
+				if length(varUpBs)>0 @. workspace.unactivePool[i].varUpBs = min(workspace.unactivePool[i].varUpBs,varUpBs) end
+				if length(cnsLoBs)>0 @. workspace.unactivePool[i].cnsLoBs = max(workspace.unactivePool[i].cnsLoBs,cnsLoBs) end
+				if length(cnsUpBs)>0 @. workspace.unactivePool[i].cnsUpBs = min(workspace.unactivePool[i].cnsUpBs,cnsUpBs) end
+            end
+        end
+        if length(workspace.solutionPool)>0
+            for i in 1:length(workspace.solutionPool)
+				if length(varLoBs)>0 @. workspace.solutionPool[i].varLoBs = max(workspace.solutionPool[i].varLoBs,varLoBs) end
+				if length(varUpBs)>0 @. workspace.solutionPool[i].varUpBs = min(workspace.solutionPool[i].varUpBs,varUpBs) end
+				if length(cnsLoBs)>0 @. workspace.solutionPool[i].cnsLoBs = max(workspace.solutionPool[i].cnsLoBs,cnsLoBs) end
+				if length(cnsUpBs)>0 @. workspace.solutionPool[i].cnsUpBs = min(workspace.solutionPool[i].cnsUpBs,cnsUpBs) end
+            end
+        end
 
         # propagate the changes to the nodes solver
         update_bounds!(workspace.subsolverWS,cnsLoBs,cnsUpBs,varLoBs,varUpBs,suppressUpdate=true)
@@ -368,20 +397,27 @@ function set_constraintSet!(workspace::BBworkspace{T1,T2},newConstraintSet::T3;
 			end
 		end
 
-        # reset the constraints dual
+        # reset the constraints dual and bounds
+		newBounds = get_bounds(newConstraintSet)
         if length(workspace.activeQueue)>0
             for i in 1:length(workspace.activeQueue)
                 workspace.activeQueue[i].cnsDual = zeros(get_numConstraints(newConstraintSet))
+				workspace.activeQueue[i].cnsLoBs = copy(newBounds[1])
+				workspace.activeQueue[i].cnsUpBs = copy(newBounds[2])
             end
         end
         if length(workspace.unactivePool)>0
             for i in 1:length(workspace.unactivePool)
                 workspace.unactivePool[i].cnsDual = zeros(get_numConstraints(newConstraintSet))
+				workspace.unactivePool[i].cnsLoBs = copy(newBounds[1])
+				workspace.unactivePool[i].cnsUpBs = copy(newBounds[2])
             end
         end
         if length(workspace.solutionPool)>0
             for i in 1:length(workspace.solutionPool)
                 workspace.solutionPool[i].cnsDual = zeros(get_numConstraints(newConstraintSet))
+				workspace.solutionPool[i].cnsLoBs = copy(newBounds[1])
+				workspace.solutionPool[i].cnsUpBs = copy(newBounds[2])
             end
         end
 
@@ -437,14 +473,18 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
         reliableObjLoBs = append_problem!(workspace.subsolverWS,problem,suppressUpdate=true)
         # update all the sub-problems
         newPrimal = problem.varSet.vals
+		newVarBounds = get_bounds(problem.varSet)
+		newCnsBounds = get_bounds(problem.cnsSet)
         for i in  1:length(workspace.activeQueue)
             # mark all the problems as unreliable if necessary
             workspace.activeQueue[i].reliable = reliableObjLoBs && workspace.activeQueue[i].reliable
             # extend branching bounds
-            append!(workspace.activeQueue[i].branchLoBs,-Infs(length(problem.varSet.loBs)))
-            append!(workspace.activeQueue[i].branchUpBs, Infs(length(problem.varSet.loBS)))
+            append!(workspace.activeQueue[i].varLoBs,newVarBounds[1])
+            append!(workspace.activeQueue[i].varUpBs,newVarBounds[2])
+			append!(workspace.activeQueue[i].cnsLoBs,newCnsBounds[1])
+            append!(workspace.activeQueue[i].cnsUpBs,newCnsBounds[2])
             # extend primal and dual optimization results
-            append!(workspace.activeQueue[i].primal,copy(newPrimal))
+            append!(workspace.activeQueue[i].primal,newPrimal)
             append!(workspace.activeQueue[i].bndDual,zeros(nVars2))
             append!(workspace.activeQueue[i].cnsDual,zeros(nCnss2))
         end
@@ -452,10 +492,12 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
             # mark all the problems as unreliable if necessary
             workspace.solutionPool[i].reliable = reliableObjLoBs && workspace.solutionPool[i].reliable
             # extend branching bounds
-            append!(workspace.solutionPool[i].branchLoBs,-Infs(length(problem.varSet.loBs)))
-            append!(workspace.solutionPool[i].branchUpBs, Infs(length(problem.varSet.loBs)))
+			append!(workspace.solutionPool[i].varLoBs,newVarBounds[1])
+            append!(workspace.solutionPool[i].varUpBs,newVarBounds[2])
+			append!(workspace.solutionPool[i].cnsLoBs,newCnsBounds[1])
+            append!(workspace.solutionPool[i].cnsUpBs,newCnsBounds[2])
             # extend primal and dual optimization results
-            append!(workspace.solutionPool[i].primal,copy(newPrimal))
+            append!(workspace.solutionPool[i].primal,newPrimal)
             append!(workspace.solutionPool[i].bndDual,zeros(nVars2))
             append!(workspace.solutionPool[i].cnsDual,zeros(nCnss2))
         end
@@ -463,10 +505,12 @@ function append_problem!(workspace::BBworkspace{T1,T2},problem::Problem;
             # mark all the problems as unreliable if necessary
             workspace.unactivePool[i].reliable = reliableObjLoBs && workspace.unactivePool[i].reliable
             # extend branching bounds
-            append!(workspace.unactivePool[i].branchLoBs,-Infs(length(problem.varSet.loBs)))
-            append!(workspace.unactivePool[i].branchUpBs, Infs(length(problem.varSet.loBs)))
+			append!(workspace.unactivePool[i].varLoBs,newVarBounds[1])
+            append!(workspace.unactivePool[i].varUpBs,newVarBounds[2])
+			append!(workspace.unactivePool[i].cnsLoBs,newCnsBounds[1])
+            append!(workspace.unactivePool[i].cnsUpBs,newCnsBounds[2])
             # extend primal and dual optimization results
-            append!(workspace.unactivePool[i].primal,copy(newPrimal))
+            append!(workspace.unactivePool[i].primal,newPrimal)
             append!(workspace.unactivePool[i].bndDual,zeros(nVars2))
             append!(workspace.unactivePool[i].cnsDual,zeros(nCnss2))
         end
@@ -530,7 +574,7 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
         end
         # check correctness of the inputs
         if length(newSos1Groups) == 0
-            newSos1Groups = repeat([-1],length(newDscIndices))
+            newSos1Groups = repeat([0],length(newDscIndices))
         elseif length(newSos1Groups) != length(newDscIndices)
             @error "newSos1Groups should either be empty or have the same dimension than newDscIndices"
         end
@@ -548,16 +592,16 @@ function integralize_variables!(workspace::BBworkspace{T1,T2},newDscIndices::Arr
 
         # propagate the change to the nodes
         for k in 1:length(workspace.activeQueue)
-			@. workspace.activeQueue[k].branchLoBs =  ceil(workspace.activeQueue[k].branchLoBs-workspace.settings.primalTolerance)
-			@. workspace.activeQueue[k].branchUpBs = floor(workspace.activeQueue[k].branchUpBs+workspace.settings.primalTolerance)
+			@. workspace.activeQueue[k].varLoBs =  ceil(workspace.activeQueue[k].varLoBs-workspace.settings.primalTolerance)
+			@. workspace.activeQueue[k].varUpBs = floor(workspace.activeQueue[k].varUpBs+workspace.settings.primalTolerance)
         end
         for k in 1:length(workspace.unactivePool)
-			@. workspace.unactivePool[k].branchLoBs =  ceil(workspace.unactivePool[k].branchLoBs-workspace.settings.primalTolerance)
-			@. workspace.unactivePool[k].branchUpBs = floor(workspace.unactivePool[k].branchUpBs+workspace.settings.primalTolerance)
+			@. workspace.unactivePool[k].varLoBs =  ceil(workspace.unactivePool[k].varLoBs-workspace.settings.primalTolerance)
+			@. workspace.unactivePool[k].varUpBs = floor(workspace.unactivePool[k].varUpBs+workspace.settings.primalTolerance)
         end
         for k in 1:length(workspace.solutionPool)
-			@. workspace.solutionPool[k].branchLoBs =  ceil(workspace.solutionPool[k].branchLoBs-workspace.settings.primalTolerance)
-			@. workspace.solutionPool[k].branchUpBs = floor(workspace.solutionPool[k].branchUpBs+workspace.settings.primalTolerance)
+			@. workspace.solutionPool[k].varLoBs =  ceil(workspace.solutionPool[k].varLoBs-workspace.settings.primalTolerance)
+			@. workspace.solutionPool[k].varUpBs = floor(workspace.solutionPool[k].varUpBs+workspace.settings.primalTolerance)
         end
 
         # adapt the workspace to the changes

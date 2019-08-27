@@ -3,9 +3,13 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_QP.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T12:43:53+02:00
+# @Last modified time: 2019-08-26T17:26:58+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
+
+using OpenBB
+using LinearAlgebra
+using SparseArrays
 
 function test_QP_subsolver(subsolver)
 
@@ -45,11 +49,6 @@ function test_QP_subsolver(subsolver)
     print("4...")
     OpenBB.update_bounds!(workspace;varLoBs=[1.,0.,0.,0.,1.,0.,0.,0.])
     result3 = OpenBB.solve!(workspace)
-
-
-    OpenBB.get_constraints_sparsity(workspace.subsolverWS)
-    OpenBB.get_objective_sparsity(workspace.subsolverWS)
-
     println(subsolver,": setup + solve + update, ok")
 end
 

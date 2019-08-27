@@ -3,12 +3,14 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-01T18:35:25+02:00
+# @Last modified time: 2019-08-26T17:26:31+02:00
 # @License: LGPL-3.0
 
-
 using OpenBB
+using LinearAlgebra
 using SparseArrays
+using OpenBB
+
 
 problem = Dict("objFun"=>Dict(),"cnsSet"=>Dict(),"varSet"=>Dict())
 

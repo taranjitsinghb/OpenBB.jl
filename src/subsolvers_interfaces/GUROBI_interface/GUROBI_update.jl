@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBI_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T12:41:53+02:00
+# @Last modified time: 2019-08-23T19:24:09+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -156,17 +156,7 @@ function append_problem!(workspace::GUROBIworkspace,
                          problem::Problem{LinearObjective,LinearConstraintSet{T}};
                          suppressUpdate::Bool=false)::Bool where T
 
-
-    # test the future validity of the already computed lower bounds
-    testWorkspace = setup(problem,workspace.settings)
-    testSolution = solve!(testWorkspace)
-    if testSolution.objective < -workspace.settings.FeasibilityTol
-        reliableObjLoBs = false
-    else
-        reliableObjLoBs = true
-    end
-
-
+    # update the subsolver data
     append!(workspace.L, problem.objFun.L)
 
     workspace.A = vcat(hcat( workspace.A,                                         zeros(size(workspace.A,1),size(problem.cnsSet.A,2))    ),
@@ -191,18 +181,7 @@ function append_problem!(workspace::GUROBIworkspace,
                          problem::Problem{QuadraticObjective{T1},LinearConstraintSet{T2}};
                          suppressUpdate::Bool=false)::Bool where T1 where T2
 
-
-    # test the future validity of the already computed lower bounds
-    testWorkspace = setup(problem,workspace.settings)
-    testSolution = solve!(testWorkspace)
-    if testSolution[1] < -workspace.settings.FeasibilityTol
-        reliableObjLoBs = false
-    else
-        reliableObjLoBs = true
-    end
-
-
-    # update the node data
+    # update the subsolver data
     workspace.Q = vcat(hcat( workspace.Q,                                         zeros(size(workspace.Q,1),size(problem.objFun.Q,2))    ),
                        hcat( zeros(size(problem.objFun.Q,1),size(workspace.Q,2)), problem.objFun.Q                                       ))
 

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-13T19:59:11+02:00
+# @Last modified time: 2019-08-24T13:57:36+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -19,10 +19,14 @@ include("./run!.jl")
 function solve!(workspace::BBworkspace)::Nothing
 
 	@sync if true
-		# solve the root node
+
+		# initialization phase
 		@sync if workspace.status.description == "new"
+
+			# solve the root node
 			solve!(workspace.activeQueue[1],workspace)
 			workspace.status.objLoB = workspace.activeQueue[1].objective
+
 			# initialize the pseudo costs
 			initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.pseudoCosts,workspace.activeQueue[1])
 			if workspace.settings.numProcesses > 1
@@ -31,15 +35,16 @@ function solve!(workspace::BBworkspace)::Nothing
 					@async remotecall_fetch(Main.eval,k,:(workspace.pseudoCosts[1] .= $(workspace.pseudoCosts[1]);workspace.pseudoCosts[2] .= $(workspace.pseudoCosts[2])))
 				end
 			end
+
 		end
 
-
+		# start the remote branch and bound processes
 		if workspace.settings.numProcesses > 1
-			# start the remote branch and bound processes
 			for k in 2:workspace.settings.numProcesses
 				@async remotecall_fetch(Main.eval,k,:(OpenBB.run!(workspace)))
 			end
 		end
+
 		# start the local BB process
 		run!(workspace)
  	end

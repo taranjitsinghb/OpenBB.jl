@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQPlackOfConvergence.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-22T19:24:46+02:00
+# @Last modified time: 2019-08-26T18:13:16+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -22,7 +22,7 @@ cnsUpBs_ = read(file, "ubg")[:]
 varLoBs_ = read(file, "lbv")[:]
 varUpBs_ = read(file, "ubv")[:]
 dscIndices_ = convert(Array{Int64, 1},read(file, "discrete_idx")[:]) # Discrete indices (0 or 1)
-sos1Groups_ = repeat([-1],length(dscIndices_))
+sos1Groups_ = repeat([0],length(dscIndices_))
 
 # problem info
 numStates = 18
@@ -59,7 +59,7 @@ sos1Groups_ = sos1Groups_[dscToKeep]
 # discrete variables for the full horizon
 for s in 2:horizonLen
     append!(dscIndices,@. dscIndices_ + (s-1)*numStates + (s-1)*numControls)
-    append!(sos1Groups,@. sos1Groups_ + (s-1)*(sos1Groups_>-1))
+    append!(sos1Groups,@. sos1Groups_ + (s-1)*(sos1Groups_>0))
 end
 vars = OpenBB.VariableSet(loBs=varLoBs,upBs=varUpBs,vals=varVals,dscIndices=dscIndices)
 
