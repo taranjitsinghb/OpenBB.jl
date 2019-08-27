@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T14:27:34+02:00
+# @Last modified time: 2019-08-27T14:30:15+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -29,6 +29,11 @@ function LinearConstraintSet{T}(constraintSet::LinearConstraintSet{T})::LinearCo
     return constraintSet
 end
 
+import SparseArrays.sparse
+function sparse(constraintSet::LinearConstraintSet{T})::LinearConstraintSet{SparseMatrixCSC{Float64,Int}} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+    return LinearConstraintSet{SparseMatrixCSC{Float64,Int}}(sparse(constraintSet.A),constraintSet.loBs,constraintSet.upBs)
+end
+
 
 # inspect functions (Fundamental. Those are used in Branch and Bound)
 function get_numVariables(constraintSet::LinearConstraintSet)::Int
@@ -44,7 +49,6 @@ function get_bounds(constraintSet::LinearConstraintSet)::Tuple{Array{Float64,1},
 end
 
 
-# inspect functions (Not fundamental. Those are used only in updating the problem))
 function get_sparsity(constraintSet::LinearConstraintSet)::Tuple{Array{Int,1},Array{Int,1}}
     return findnz(constraintSet.A)[1:2]
 end
@@ -54,12 +58,6 @@ function get_sparsity(constraintSet::LinearConstraintSet,index::Int)::Array{Int,
 end
 
 # update functions (Not fundamental. Those are used only in updating the problem)
-import SparseArrays.sparse
-function sparse(constraintSet::LinearConstraintSet{T})::LinearConstraintSet{SparseMatrixCSC{Float64,Int}} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
-    return LinearConstraintSet{SparseMatrixCSC{Float64,Int}}(sparse(constraintSet.A),constraintSet.loBs,constraintSet.upBs)
-end
-
-
 function update_bounds!(constraintSet::LinearConstraintSet,loBs::Array{Float64,1},upBs::Array{Float64,1})::Nothing
     @assert length(loBs) == length(upBs) == length(constraintSet.loBs) == length(constraintSet.upBs)
     constraintSet.loBs = loBs

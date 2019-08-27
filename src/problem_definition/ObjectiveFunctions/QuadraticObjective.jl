@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QuadraticObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T14:25:40+02:00
+# @Last modified time: 2019-08-27T14:29:41+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -33,23 +33,23 @@ function deepcopy(objective::QuadraticObjective)::QuadraticObjective
     return QuadraticObjective(deepcopy(objective.Q),deepcopy(objective.L))
 end
 
+import SparseArrays.sparse
+function sparse(objective::QuadraticObjective)::QuadraticObjective
+    return QuadraticObjective(sparse(objective.Q),sparse(objective.L))
+end
+
+
 # inspect functions  (Fundamental. These are used in Branch and Bound)
 function get_numVariables(objective::QuadraticObjective)::Int
     return size(objective.Q,1)
 end
 
-# inspect functions (Not fundamental These are used only for problem update)
 function get_sparsity(objective::QuadraticObjective)::Tuple{Tuple{Array{Int,1},Array{Int,1}},Array{Int,1}}
     return (findnz(objective.Q)[1:2],findnz(objective.L)[1])
 end
 
 
 # update functions (Not fundamental These are used only for problem update)
-import SparseArrays.sparse
-function sparse(objective::QuadraticObjective)::QuadraticObjective
-    return QuadraticObjective(sparse(objective.Q),sparse(objective.L))
-end
-
 function insert_variables!(objective::QuadraticObjective,numVariables::Int,insertionPoint::Int)::Nothing
     objective.Q = vcat(hcat(objective.Q[1:insertionPoint-1,1:insertionPoint-1],zeros(insertionPoint-1,numVariables),objective.Q[1:insertionPoint-1,insertionPoint:end]),
                        zeros(numVariables,numVariables+get_numVariables(objective)),

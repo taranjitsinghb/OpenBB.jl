@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T14:22:11+02:00
+# @Last modified time: 2019-08-27T14:29:10+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -34,26 +34,22 @@ function deepcopy(objective::LinearObjective)::LinearObjective
     return LinearObjective(deepcopy(objective.L))
 end
 
+import SparseArrays.sparse
+function sparse(objective::LinearObjective)::LinearObjective
+    return LinearObjective(sparse(objective.L))
+end
 
 # inspect functions (Fundamental. These are used in Branch and Bound)
 function get_numVariables(objective::LinearObjective)::Int
     return size(objective.L,1)
 end
 
-
-# inspect functions (Not fundamental These are used only for problem update)
 function get_sparsity(objective::LinearObjective)::Array{Int,1}
     return findnz(objective.L)[1]
 end
 
 
 # update functions (Not Fundamental. These are used only during problem update)
-import SparseArrays.sparse
-function sparse(objective::LinearObjective)::LinearObjective
-    return LinearObjective(sparse(objective.L))
-end
-
-
 function insert_variables!(objective::LinearObjective,numVariables::Int,insertionPoint::Int)::Nothing
     splice!(objective.L,insertionPoint:insertionPoint-1,zeros(numVariables,1))
     return
