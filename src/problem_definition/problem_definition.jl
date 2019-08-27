@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: problem_definitions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T14:00:01+02:00
+# @Last modified time: 2019-08-27T14:32:35+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -73,18 +73,14 @@ function get_pseudoCosts(problem::Problem)::Tuple{Array{Float64,2},Array{Int,2}}
     return get_pseudoCosts(problem.varSet)
 end
 
-
 function get_numConstraints(problem::Problem)::Int
     return get_size(problem.cnsSet)
 end
-
 
 function get_constraintBounds(problem::Problem)::Tuple{Array{Float64,1},Array{Float64,1}}
     return get_bounds(problem.cnsSet)
 end
 
-
-# inspect funcitons (Not Fundamental. These are used only during problem updates)
 function get_objective_sparsity(problem::Problem)::Any
     return get_sparsity(problem.objFun)
 end
@@ -96,3 +92,6 @@ end
 function get_constraint_sparsity(problem::Problem,index::Int)::Any
     return get_sparsity(problem.cnsSet,index)
 end
+
+
+# update functions (Not Fundamental. These are used only during problem update)
