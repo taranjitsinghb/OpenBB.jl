@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T15:31:36+02:00
+# @Last modified time: 2019-08-27T17:45:41+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -62,22 +62,22 @@ function insert_constraints!(workspace::BBworkspace{T1,T2},
         if length(workspace.activeQueue)>0
             for i in 1:length(workspace.activeQueue)
                 splice!(workspace.activeQueue[i].cnsDual,index:index-1,zeros(numConstraints))
-                splice!(workspace.activeQueue[i].cnsLoBs,index:index-1,newBounds[1])
-				splice!(workspace.activeQueue[i].cnsUpBs,index:index-1,newBounds[2])
+                splice!(workspace.activeQueue[i].cnsLoBs,index:index-1,copy(newBounds[1]))
+				splice!(workspace.activeQueue[i].cnsUpBs,index:index-1,copy(newBounds[2]))
             end
         end
         if length(workspace.unactivePool)>0
             for i in  1:length(workspace.unactivePool)
                 splice!(workspace.unactivePool[i].cnsDual,index:index-1,zeros(numConstraints))
-				splice!(workspace.unactivePool[i].cnsLoBs,index:index-1,newBounds[1])
-				splice!(workspace.unactivePool[i].cnsUpBs,index:index-1,newBounds[2])
+				splice!(workspace.unactivePool[i].cnsLoBs,index:index-1,copy(newBounds[1]))
+				splice!(workspace.unactivePool[i].cnsUpBs,index:index-1,copy(newBounds[2]))
             end
         end
         if length(workspace.solutionPool)>0
             for i in  1:length(workspace.solutionPool)
                 splice!(workspace.solutionPool[i].cnsDual,index:index-1,zeros(numConstraints))
-				splice!(workspace.solutionPool[i].cnsLoBs,index:index-1,newBounds[1])
-				splice!(workspace.solutionPool[i].cnsUpBs,index:index-1,newBounds[2])
+				splice!(workspace.solutionPool[i].cnsLoBs,index:index-1,copy(newBounds[1]))
+				splice!(workspace.solutionPool[i].cnsUpBs,index:index-1,copy(newBounds[2]))
             end
         end
 
@@ -136,14 +136,14 @@ function remove_constraints!(workspace::BBworkspace{T1,T2},indices::Array{Int,1}
         # update all the problems in the solutionPool
         for i in 1:length(workspace.solutionPool)
             deleteat!(workspace.solutionPool[i].cnsDual,indices)
-			deleteat!(workspace.activeQueue[i].cnsLoBs,indices)
-			deleteat!(workspace.activeQueue[i].cnsUpBs,indices)
+			deleteat!(workspace.solutionPool[i].cnsLoBs,indices)
+			deleteat!(workspace.solutionPool[i].cnsUpBs,indices)
         end
-        # update all the problems in the activeQueue
+        # update all the problems in the unactivePool
         for i in 1:length(workspace.unactivePool)
             deleteat!(workspace.unactivePool[i].cnsDual,indices)
-			deleteat!(workspace.activeQueue[i].cnsLoBs,indices)
-			deleteat!(workspace.activeQueue[i].cnsUpBs,indices)
+			deleteat!(workspace.unactivePool[i].cnsLoBs,indices)
+			deleteat!(workspace.unactivePool[i].cnsUpBs,indices)
         end
 
         # update the workspace
@@ -270,7 +270,7 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
 			   	   (length(varLoBs) > 0 && any(@. varLoBs < workspace.subsolverWS.varLoBs)) ||
 			       (length(varUpBs) > 0 && any(@. varUpBs > workspace.subsolverWS.varLoBs))
 
-				@warn "Relaxing the variable bounds after some iterations is potentially destructive, please make sure that the new bound set is more restrictive than the old one."
+				@warn "Relaxing the bounds after some iterations is potentially destructive, please make sure that the new bound set is more restrictive than the old one."
 			end
 		end
 
@@ -302,7 +302,7 @@ function update_bounds!(workspace::BBworkspace{T1,T2};
         end
 
         # propagate the changes to the nodes solver
-        update_bounds!(workspace.subsolverWS,cnsLoBs,cnsUpBs,varLoBs,varUpBs,suppressUpdate=true)
+        update_bounds!(workspace.subsolverWS,varLoBs,varUpBs,cnsLoBs,cnsUpBs,suppressUpdate=true)
 
         # adapt the workspace to the changes
         if !suppressUpdate

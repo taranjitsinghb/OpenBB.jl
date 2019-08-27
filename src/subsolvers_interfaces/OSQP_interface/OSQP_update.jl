@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T15:34:12+02:00
+# @Last modified time: 2019-08-27T16:31:50+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -96,8 +96,8 @@ end
 
 #
 function update_bounds!(workspace::OSQPworkspace,
-                        cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
-                        varLoBs::Array{Float64,1},varUpBs::Array{Float64,1};
+                        varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
+                        cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1};
                         suppressUpdate::Bool=false)::Nothing
 
     if length(varLoBs)>0 @. workspace.varLoBs = varLoBs end

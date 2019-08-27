@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-14T11:55:08+02:00
+# @Last modified time: 2019-08-27T20:10:43+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -11,10 +11,10 @@
 
 # this function returns the size of a flat representation of a node
 function flat_size(numVars::Int,numCnss::Int)::Int
-    return 3 + 4 +        # header + (average fractionality + objective + pseudo-objective + reliable)
-           2*numVars + # branching bounds
-           2*numVars +    # primal + bound_dual
-           numCnss        # cns_dual
+    return 3 +            # header
+           4 +            # average fractionality + objective + pseudo-objective + reliable
+           4*numVars +    # variable bounds + primal + bound_dual
+           3*numCnss      # constraints bounds + constraints_dual
 end
 
 
@@ -32,7 +32,6 @@ end
 
 # fill the destination array with the flat representation of the given node
 function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where T <: AbstractArray
-
 
     numVars = length(node.primal)
     numCnss = length(node.cnsDual)
@@ -53,20 +52,17 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     offset += 4
 
     # bounds
-    @. destinationArray[offset+1:offset+numVars] = node.branchLoBs
-    offset+=numVars
-    @. destinationArray[offset+1:offset+numVars] = node.branchUpBs
-    offset+=numVars
+    @. destinationArray[offset+1:offset+numVars] = node.varLoBs; offset+=numVars
+    @. destinationArray[offset+1:offset+numVars] = node.varUpBs; offset+=numVars
+    @. destinationArray[offset+1:offset+numCnss] = node.cnsLoBs; offset+=numCnss
+    @. destinationArray[offset+1:offset+numCnss] = node.cnsUpBs; offset+=numCnss
 
     # primal
-    @. destinationArray[offset+1:offset+numVars] = node.primal
-    offset += numVars
+    @. destinationArray[offset+1:offset+numVars] = node.primal; offset += numVars
 
     # dual
-    @. destinationArray[offset+1:offset+numVars] = node.bndDual
-    offset += numVars
-    @. destinationArray[offset+1:offset+numCnss] = node.cnsDual
-    offset += numCnss
+    @. destinationArray[offset+1:offset+numVars] = node.bndDual; offset += numVars
+    @. destinationArray[offset+1:offset+numCnss] = node.cnsDual; offset += numCnss
 
     return offset
 
@@ -123,27 +119,21 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         offset += 4
 
         # bounds
-        branchLoBs = Array{Float64,1}(undef,numVars)
-        @. branchLoBs = flatRepresentation[offset+1:offset+numVars]
-        offset += numVars
-        branchUpBs = Array{Float64,1}(undef,numVars)
-        @. branchUpBs = flatRepresentation[offset+1:offset+numVars]
-        offset += numVars
+        varLoBs = flatRepresentation[offset+1:offset+numVars]; offset += numVars
+        varUpBs = flatRepresentation[offset+1:offset+numVars]; offset += numVars
+        cnsLoBs = flatRepresentation[offset+1:offset+cnsVars]; offset += cnsVars
+        cnsUpBs = flatRepresentation[offset+1:offset+cnsVars]; offset += cnsVars
+
 
         # primal
-        primal = Array{Float64,1}(undef,numVars)
-        @. primal = flatRepresentation[offset+1:offset+numVars]
-        offset += numVars
+        primal = flatRepresentation[offset+1:offset+numVars]; offset += numVars
 
         # dual
-        bndDual = Array{Float64,1}(undef,numVars)
-        @. bndDual = flatRepresentation[offset+1:offset+numVars]
-        offset += numVars
-        cnsDual = Array{Float64,1}(undef,numCnss)
-        @. cnsDual = flatRepresentation[offset+1:offset+numCnss]
-        offset += numCnss
+        bndDual = flatRepresentation[offset+1:offset+numVars]; offset += numVars
+        cnsDual = flatRepresentation[offset+1:offset+numCnss]; offset += numCnss
 
-        return BBnode(branchLoBs,branchUpBs,primal,bndDual,cnsDual,avgAbsFrac,objective,pseudoObjective,reliable)
+        return BBnode(varLoBs,varUpBs,cnsLoBs,cnsUpBs,primal,bndDual,cnsDual,avgAbsFrac,objective,pseudoObjective,reliable)
+
     elseif flatRepresentation[offset+1] == -1.0
         return KillerNode(flatRepresentation[offset+2])
     else

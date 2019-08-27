@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-14T12:47:11+02:00
+# @Last modified time: 2019-08-27T20:19:45+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -132,8 +132,8 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                     push!(workspace.unactivePool,node)
                 end
 
-            elseif !(workspace.sharedMemory isa NullSharedMemory) && timeToShareNodes # we are multiprocessing and it is time to send a child to the next process
-                   # !isready(workspace.sharedMemory.outputChannel) # the channel is free
+            elseif !(workspace.sharedMemory isa NullSharedMemory) && timeToShareNodes && # we are multiprocessing and it is time to send a child to the next process
+                   !isready(workspace.sharedMemory.outputChannel) # the channel is free
 
                 # send the new node to the neighbouring process
                 put!(workspace.sharedMemory.outputChannel,node)

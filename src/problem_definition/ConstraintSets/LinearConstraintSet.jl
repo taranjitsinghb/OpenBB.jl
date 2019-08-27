@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T14:30:15+02:00
+# @Last modified time: 2019-08-27T16:17:21+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -54,7 +54,7 @@ function get_sparsity(constraintSet::LinearConstraintSet)::Tuple{Array{Int,1},Ar
 end
 
 function get_sparsity(constraintSet::LinearConstraintSet,index::Int)::Array{Int,1}
-    return findnz(workspace.A[index,:])[1]
+    return findnz(constraintSet.A[index,:])[1]
 end
 
 # update functions (Not fundamental. Those are used only in updating the problem)

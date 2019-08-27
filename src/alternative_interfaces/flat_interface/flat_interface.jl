@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-12T15:09:38+02:00
+# @Last modified time: 2019-08-27T17:25:36+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -66,12 +66,12 @@ function VariableSet(variableDict::T)::AbstractVariableSet where T <: Dict
     if "sos1Groups" in keys(variableDict)
       sos1Groups = copy(variableDict["sos1Groups"])
     else
-      sos1Groups = Int[]
+      sos1Groups = Int.(zeros(length(dscIndices)))
     end
     if "pseudoCosts" in keys(variableDict)
       pseudoCosts = copy(variableDict["pseudoCosts"])
     else
-      pseudoCosts = Array{Float64,2}(undef,0,2)
+      pseudoCosts = (1e4.*ones(length(dscIndices),2),Int.(zeros(length(dscIndices),2)))
     end
     return VariableSet(loBs=copy(variableDict["loBs"]),upBs=copy(variableDict["upBs"]),vals=vals,
                               dscIndices=dscIndices,sos1Groups=sos1Groups,pseudoCosts=pseudoCosts)

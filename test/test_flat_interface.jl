@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-26T17:26:31+02:00
+# @Last modified time: 2019-08-27T19:59:37+02:00
 # @License: LGPL-3.0
 
 using OpenBB
@@ -78,7 +78,7 @@ OpenBB.append_constraints_b(problem["cnsSet"],false,true,false)
 OpenBB.remove_constraints_b([3,4],true,true,false)
 OpenBB.permute_constraints_b([2,1],true,true,false)
 @assert OpenBB.get_constraintBounds() == ([1.0, 0.0], [1.0, 0.0])
-OpenBB.update_bounds_b(Dict("cnsLoBs"=>[0.0,0.0],"varLoBs"=>[0.5, 0.0, 0.0, 0.0, -100.0]),false,true,false)
+OpenBB.update_bounds_b(Dict("cnsLoBs"=>[0.0,0.0],"varLoBs"=>[0.5, 0.0, 0.0, 0.0, -100.0]),true,true,false)
 @assert OpenBB.get_constraintBounds() == ([0.0, 0.0], [1.0, 0.0])
 @assert OpenBB.get_variableBounds() == ([0.5, 0.0, 0.0, 0.0, -100.0], [0.5, 1.0, 1.0, 1.0, 10.0])
 OpenBB.update_bounds_b(Dict("cnsLoBs"=>[1.0,0.0]),false,true,false)

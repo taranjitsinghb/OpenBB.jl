@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QuadraticObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T14:29:41+02:00
+# @Last modified time: 2019-08-27T18:25:50+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -53,7 +53,7 @@ end
 function insert_variables!(objective::QuadraticObjective,numVariables::Int,insertionPoint::Int)::Nothing
     objective.Q = vcat(hcat(objective.Q[1:insertionPoint-1,1:insertionPoint-1],zeros(insertionPoint-1,numVariables),objective.Q[1:insertionPoint-1,insertionPoint:end]),
                        zeros(numVariables,numVariables+get_numVariables(objective)),
-                       hcat(objective.Q[insertionPoint:end,1:insertionPoint-1],zeros(insertionPoint-1,numVariables),objective.Q[insertionPoint:end,insertionPoint:end]))
+                       hcat(objective.Q[insertionPoint:end,1:insertionPoint-1],zeros(get_numVariables(objective)-insertionPoint+1,numVariables),objective.Q[insertionPoint:end,insertionPoint:end]))
     splice!(objective.L,insertionPoint:insertionPoint-1,zeros(numVariables,1))
     return
 end
@@ -73,24 +73,16 @@ end
 
 
 import Base.+
+function +(objective1::QuadraticObjective,objective2::QuadraticObjective)::QuadraticObjective where T<:AbstractObjective
+    @assert get_numVariables(objective1) == get_numVariables(objective2)
+    return QuadraticObjective(objective1.Q+objective2.Q,objective1.L+objective2.L)
+end
+
 function +(objective1::QuadraticObjective,objective2::T)::QuadraticObjective where T<:AbstractObjective
 
     if objective2 isa NullObjective
         return objective1
     else
-        @assert get_numVariables(objective1) == get_numVariables(objective2)
-        objective2 = QuadraticObjective(objective2)
-        return QuadraticObjective(objective1.Q+objective2.Q,objective1.L+objective2.L)
-    end
-end
-
-function +(objective1::T,objective2::QuadraticObjective)::QuadraticObjective where T<:AbstractObjective
-
-    if objective1 isa NullObjective
-        return objective2
-    else
-        @assert get_numVariables(objective1) == get_numVariables(objective2)
-        objective1 = QuadraticObjective(objective1)
-        return QuadraticObjective(objective1.Q+objective2.Q,objective1.L+objective2.L)
+        return objective1 + QuadraticObjective(objective2)
     end
 end
