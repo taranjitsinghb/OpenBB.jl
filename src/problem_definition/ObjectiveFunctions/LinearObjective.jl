@@ -3,28 +3,68 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-05T15:11:30+02:00
+# @Last modified time: 2019-08-27T13:58:07+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
-# linear objective
-mutable struct LinearObjective <: AbstractObjective
-    L::Array{Float64,1}
-end
-
+# constructors and copy functions (Fundamental. These are used in Branch and Bound)
+# named constructor
 function LinearObjective(;L::Array{Float64,1})::LinearObjective
     return LinearObjective(L)
 end
 
+# type conversions
+function LinearObjective(objective::LinearObjective)::LinearObjective
+    return objective
+end
 
-# ...
-function get_numVariables(objectiveFun::LinearObjective)::Int
-    return size(objectiveFun.L,1)
+function LinearObjective(objective::QuadraticObjective)::LinearObjective
+    @assert all(objective.Q .== 0)
+    return LinearObjective(objective.L)
+end
+
+import Base.copy
+function copy(objective::LinearObjective)::LinearObjective
+    return LinearObjective(objective.L)
+end
+
+import Base.deepcopy
+function deepcopy(objective::LinearObjective)::LinearObjective
+    return LinearObjective(deepcopy(objective.L))
 end
 
 
-# ...
+# inspect functions (Fundamental. These are used in Branch and Bound)
+function get_numVariables(objective::LinearObjective)::Int
+    return size(objective.L,1)
+end
+
+
+# inspect functions (Not fundamental These are used only for problem update)
+function get_sparsity(objective::LinearObjective)::Array{Int,1}
+    return findnz(objective.L)[1]
+end
+
+
+# update functions (Not Fundamental. These are used only during problem update)
+import SparseArrays.sparse
+function sparse(objective::LinearObjective)::LinearObjective
+    return LinearObjective(sparse(objective.L))
+end
+
+
+function insert_variables!(objective::LinearObjective,numVariables::Int,insertionPoint::Int)::Nothing
+    splice!(objective.L,insertionPoint:insertionPoint-1,zeros(numVariables,1))
+    return
+end
+
+function append_variables!(objective::LinearObjective,numVariables::Int)::Nothing
+    insert_variables!(objective,numVariables,get_numVariables(objective)+1)
+    return
+end
+
+
 function remove_variables!(objective::LinearObjective,indices::Array{Int,1})::Nothing
     toKeep = filter(x->!(x in indices), collect(1:get_numVariables(objective)))
     objective.L = objective.L[toKeep]
@@ -32,10 +72,24 @@ function remove_variables!(objective::LinearObjective,indices::Array{Int,1})::No
 end
 
 
-# ...
-function append_term!(objective::LinearObjective,newObjectiveTerm::T)::Nothing where T <: Union{NullObjective,LinearObjective}
-    if newObjectiveTerm isa LinearObjective
-        objective.L = vcat(objective.L,newObjectiveTerm.L)
+import Base.+
+function +(objective1::LinearObjective,objective2::T)::LinearObjective where T<:AbstractObjective
+
+    if objective2 isa NullObjective
+        return objective1
+    else
+        @assert get_numVariables(objective1) == get_numVariables(objective2)
+        objective2 = LinearObjective(objective2)
+        return LinearObjective(objective1.L+objective2.L)
     end
-    return
+end
+function +(objective1::T,objective2::LinearObjective)::LinearObjective where T<:AbstractObjective
+
+    if objective1 isa NullObjective
+        return objective2
+    else
+        @assert get_numVariables(objective1) == get_numVariables(objective2)
+        objective1 = LinearObjective(objective1)
+        return LinearObjective(objective1.L+objective2.L)
+    end
 end

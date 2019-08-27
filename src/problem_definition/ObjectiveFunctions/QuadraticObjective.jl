@@ -3,41 +3,67 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QuadraticObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-02T17:14:20+02:00
+# @Last modified time: 2019-08-27T13:57:47+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
-
-# quadratic objective
-mutable struct QuadraticObjective{T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}} <: AbstractObjective
-    Q::T
-    L::Array{Float64,1}
-end
-
-function QuadraticObjective(;Q::Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}},L::Array{Float64,1})::QuadraticObjective
+# constructors and copy functions (Fundamental. These are used in Branch and Bound)
+# named constructor
+function QuadraticObjective(;Q::T1,L::T2)::QuadraticObjective where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return QuadraticObjective(Q,L)
 end
 
-# ...
+# type conversions
+function QuadraticObjective(objective::LinearObjective)::QuadraticObjective
+    return QuadraticObjective(sparse(zeros(length(objective.L),length(objective.L))),objective.L)
+end
+
+function QuadraticObjective(objective::QuadraticObjective)::QuadraticObjective
+    return objective
+end
+
+# copy functions
+import Base.copy
+function copy(objective::QuadraticObjective)::QuadraticObjective
+    return QuadraticObjective(objective.Q,objective.L)
+end
+import Base.deepcopy
+function deepcopy(objective::QuadraticObjective)::QuadraticObjective
+    return QuadraticObjective(deepcopy(objective.Q),deepcopy(objective.L))
+end
+
+# inspect functions  (Fundamental. These are used in Branch and Bound)
 function get_numVariables(objective::QuadraticObjective)::Int
     return size(objective.Q,1)
 end
 
+# inspect functions (Not fundamental These are used only for problem update)
+function get_sparsity(objective::QuadraticObjective)::Tuple{Tuple{Array{Int,1},Array{Int,1}},Array{Int,1}}
+    return (findnz(objective.Q)[1:2],findnz(objective.L)[1])
+end
 
-# ...
+
+# update functions (Not fundamental These are used only for problem update)
 import SparseArrays.sparse
-function sparse(objectivection::QuadraticObjective)::QuadraticObjective
-    return QuadraticObjective(sparse(objectivection.Q),objectivection.L)
+function sparse(objective::QuadraticObjective)::QuadraticObjective
+    return QuadraticObjective(sparse(objective.Q),sparse(objective.L))
 end
 
-# ...
-function get_sparsity(objective::QuadraticObjective{SparseMatrixCSC{Float64,Int}})::Tuple{Array{Int,1},Array{Int,1}}
-    return findnz(objectivection)[1:2]
+function insert_variables!(objective::QuadraticObjective,numVariables::Int,insertionPoint::Int)::Nothing
+    objective.Q = vcat(hcat(objective.Q[1:insertionPoint-1,1:insertionPoint-1],zeros(insertionPoint-1,numVariables),objective.Q[1:insertionPoint-1,insertionPoint:end]),
+                       zeros(numVariables,numVariables+get_numVariables(objective)),
+                       hcat(objective.Q[insertionPoint:end,1:insertionPoint-1],zeros(insertionPoint-1,numVariables),objective.Q[insertionPoint:end,insertionPoint:end]))
+    splice!(objective.L,insertionPoint:insertionPoint-1,zeros(numVariables,1))
+    return
+end
+
+function append_variables!(objective::QuadraticObjective,numVariables::Int)::Nothing
+    insert_variables!(objective,numVariables,get_numVariables(objective)+1)
+    return
 end
 
 
-# ...
 function remove_variables!(objective::QuadraticObjective,indices::Array{Int,1})::Nothing
     toKeep = filter(x->!(x in indices), collect(1:get_numVariables(objective)))
     objective.Q = objective.Q[toKeep,toKeep]
@@ -46,28 +72,25 @@ function remove_variables!(objective::QuadraticObjective,indices::Array{Int,1}):
 end
 
 
-# ...
-function append_term!(objective::QuadraticObjective,newObjectiveTerm::T)::Nothing where T <: Union{NullObjective,LinearObjective,QuadraticObjective}
+import Base.+
+function +(objective1::QuadraticObjective,objective2::T)::QuadraticObjective where T<:AbstractObjective
 
-    if newObjectiveTerm isa LinearObjective
-
-        numNewVariables = get_numVariables(newObjectiveTerm)
-        numOldVariables = get_numVariables(objective)
-
-        objective.Q = vcat(hcat(objective.Q,                            zeros(numOldVariables,numNewVariables)),
-                           hcat(zeros(numNewVariables,numOldVariables), zeros(numNewVariables,numNewVariables)))
-        objective.L = vcat(objective.L,newObjectiveTerm.L)
-
-    elseif newObjectiveTerm isa QuadraticObjective
-
-        numNewVariables = get_numVariables(newObjectiveTerm)
-        numOldVariables = get_numVariables(objective)
-
-        objective.Q = vcat(hcat(objective.Q,                            zeros(numOldVariables,numNewVariables)),
-                           hcat(zeros(numNewVariables,numOldVariables), newObjectiveTerm.Q                   ))
-        objective.L = vcat(objective.L,newObjectiveTerm.L)
-
+    if objective2 isa NullObjective
+        return objective1
+    else
+        @assert get_numVariables(objective1) == get_numVariables(objective2)
+        objective2 = QuadraticObjective(objective2)
+        return QuadraticObjective(objective1.Q+objective2.Q,objective1.L+objective2.L)
     end
+end
 
-    return
+function +(objective1::T,objective2::QuadraticObjective)::QuadraticObjective where T<:AbstractObjective
+
+    if objective1 isa NullObjective
+        return objective2
+    else
+        @assert get_numVariables(objective1) == get_numVariables(objective2)
+        objective1 = QuadraticObjective(objective1)
+        return QuadraticObjective(objective1.Q+objective2.Q,objective1.L+objective2.L)
+    end
 end
