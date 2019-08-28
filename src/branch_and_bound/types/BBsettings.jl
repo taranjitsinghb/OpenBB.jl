@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-22T16:55:55+02:00
+# @Last modified time: 2019-08-28T09:51:43+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -42,7 +42,7 @@ end
 
 function BBsettings(;verbose::Bool=false,
                      statusInfoPeriod::Float64 = 1.,
-                     numProcesses::Int=0,
+                     numProcesses::Int=1,
                      stopAfterSolution::Bool = true,
                      interactiveMode::Bool=false,
                      primalTolerance::Float64=1e-4,

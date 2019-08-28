@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T20:19:45+02:00
+# @Last modified time: 2019-08-27T21:22:56+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -36,7 +36,6 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
         # communicate the current local lower bound
         workspace.sharedMemory.objectiveBounds[processId] = workspace.status.objLoB
     end
-
 
     # main loop
     while !idle
@@ -114,15 +113,14 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
            node = pop!(workspace.activeQueue)
 
 
-            # check if node is already suboptimal (the upper-bound might have changed)
-            if node.objective > workspace.status.objUpB - workspace.settings.primalTolerance
+            if node.objective > workspace.status.objUpB - workspace.settings.primalTolerance # the node is already suboptimal (the upper-bound might have changed)
 
                 # in interactive mode the suboptimal nodes are stored
                 if workspace.settings.interactiveMode
                     push!(workspace.unactivePool,node)
                 end
 
-            elseif node.objective > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance
+            elseif node.objective > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance # the new node is worse than the user provided cutoff
 
                 # declare the cutoff active
                 workspace.status.cutoffActive = true
@@ -132,7 +130,8 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                     push!(workspace.unactivePool,node)
                 end
 
-            elseif !(workspace.sharedMemory isa NullSharedMemory) && timeToShareNodes && # we are multiprocessing and it is time to send a child to the next process
+            elseif !(workspace.sharedMemory isa NullSharedMemory) && # we are multiprocessing
+                    timeToShareNodes && # it is time to send a child to the next process
                    !isready(workspace.sharedMemory.outputChannel) # the channel is free
 
                 # send the new node to the neighbouring process
@@ -220,7 +219,9 @@ function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspac
                 newNode = take!(workspace.sharedMemory.inputChannel)
 
                 # insert the new node in the active queue
-                insert_node!(workspace.activeQueue,node,workspace.settings,workspace.status)
+                if newNode.objective < workspace.status.objUpB - workspace.settings.primalTolerance
+                    insert_node!(workspace.activeQueue,newNode,workspace.settings,workspace.status)
+                end
 
                 # update the objective lower bound
                 if newNode.objective < workspace.status.objLoB
