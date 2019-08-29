@@ -9,6 +9,16 @@
 
 function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BBnode,1} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
+    # set the node bounds (considering that the general bounds might have changed)
+    globalLoBs, globalUpBs = get_variableBounds(workspace)
+    @. node.branchLoBs = max(globalLoBs,node.branchLoBs)
+    @. node.branchUpBs = min(globalUpBs,node.branchUpBs)
+
+    # TODO: Enable
+    # globalCnsLoBs, globalCnsUpBs = get_constraintBounds(workspace)
+    # @. node.cnsLoBs = max(globalCnsLoBs, node.cnsLoBs)
+    # @. node.cnsUpBs = min(globalCnsUpBs, node.cnsUpBs)
+
     # create a list of children
     if node.avgAbsFrac == 0.0 || isnan(node.objective)
         children, branchIndices_dsc = [deepcopy(node)], [0]
@@ -19,7 +29,9 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BB
 
     # solve all the children
     for k in 1:length(children)
-        solve!(children[k],workspace)
+        # Preprocess
+        # if preprocess!(children[k], branchIndices_dsc)
+            solve!(children[k],workspace)
 
         # update pseudoCosts
         if branchIndices_dsc[k]>0 && children[k].reliable && children[k].objective < Inf
@@ -29,21 +41,21 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BB
             deltaObjective = max(children[k].objective-node.objective,workspace.settings.primalTolerance) # the max filters out small numerical errors
             deltaVariable = children[k].primal[workspace.dscIndices[branchIndices_dsc[k]]] - node.primal[workspace.dscIndices[branchIndices_dsc[k]]]
 
-            if deltaVariable < -workspace.settings.primalTolerance
+                if deltaVariable < -workspace.settings.primalTolerance
 
                 # update the pseudoCost
                 mu = 1/(workspace.pseudoCosts[2][branchIndices_dsc[k],1]+1)
                 workspace.pseudoCosts[1][branchIndices_dsc[k],1] = (1-mu)*workspace.pseudoCosts[1][branchIndices_dsc[k],1] - mu*deltaObjective/deltaVariable
                 workspace.pseudoCosts[2][branchIndices_dsc[k],1] += 1
 
-            elseif deltaVariable > workspace.settings.primalTolerance
+                elseif deltaVariable > workspace.settings.primalTolerance
 
                 # update the pseudoCost
                 mu = 1/(workspace.pseudoCosts[2][branchIndices_dsc[k],2]+1)
                 workspace.pseudoCosts[1][branchIndices_dsc[k],2] = (1-mu)*workspace.pseudoCosts[1][branchIndices_dsc[k],2] + mu*deltaObjective/deltaVariable
                 workspace.pseudoCosts[2][branchIndices_dsc[k],2] += 1
             end
-        end
+        # end
 
     end
     # return the solved children

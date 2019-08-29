@@ -12,7 +12,6 @@ using OpenBB
 using SparseArrays
 using LinearAlgebra
 
-clearconsole()
 
 # subsolver = "osqp"
 subsolverSettings = OpenBB.OSQPsettings()

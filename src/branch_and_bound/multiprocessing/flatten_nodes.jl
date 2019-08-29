@@ -124,7 +124,6 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         cnsLoBs = flatRepresentation[offset+1:offset+cnsVars]; offset += cnsVars
         cnsUpBs = flatRepresentation[offset+1:offset+cnsVars]; offset += cnsVars
 
-
         # primal
         primal = flatRepresentation[offset+1:offset+numVars]; offset += numVars
 

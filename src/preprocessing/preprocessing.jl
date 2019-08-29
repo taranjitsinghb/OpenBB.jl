@@ -9,3 +9,26 @@
 
 
 include("./linear_bounds_propagation.jl")
+
+function preprocess!(workspace::BBworkspace)::Bool
+    globalVarLoBs, globalVarUpBs = OpenBB.get_variableBounds(workspace)
+    globalCnsLoBs, globalCnsUpBs = OpenBB.get_constraintBounds(workspace)
+
+    return OpenBB.bounds_propagation!(workspace.subsolverWS.A,
+                                     globalCnsLoBs,
+                                     globalCnsUpBs,
+                                     globalVarLoBs,
+                                     globalVarUpBs,
+                                     workspace.dscIndices)
+end
+
+function preprocess!(node::BBnode, updatedVars::Array{Int64,1})::Bool
+    try
+        OpenBB.variable_bounds_propagation!(
+            updatedVars, node
+        )
+        return true
+    catch
+        return false
+    end
+end
