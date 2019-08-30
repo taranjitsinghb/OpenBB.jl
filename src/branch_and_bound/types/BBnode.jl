@@ -26,7 +26,6 @@ mutable struct BBnode <: AbstractBBnode
     reliable::Bool
 end
 
-
 # construct a BBnode given its lower bounds, upper bounds and solution hotstart
 function BBnode(varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
                 cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
@@ -34,7 +33,6 @@ function BBnode(varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
 
     return BBnode(varLoBs,varUpBs,cnsLoBs,cnsUpBs,primal,bndDual,cnsDual,NaN,NaN,NaN,false)
 end
-
 
 # this node is used to arrest the branch and bound process
 struct KillerNode <:AbstractBBnode

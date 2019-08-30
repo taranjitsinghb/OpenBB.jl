@@ -16,14 +16,17 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BB
         children, branchIndices_dsc = branch!(node,workspace)
     end
 
-
     # solve all the children
     for k in 1:length(children)
-        solve!(children[k],workspace)
+        # Preprocess & solve
+        if preprocess!(children[k],workspace,[branchIndices_dsc[k]])
+            solve!(children[k],workspace)
+        else
+            children[k].objective = Inf
+        end
 
         # update pseudoCosts
         if branchIndices_dsc[k]>0 && children[k].reliable && children[k].objective < Inf
-
 
             # compute objective and primal variation
             deltaObjective = max(children[k].objective-node.objective,workspace.settings.primalTolerance) # the max filters out small numerical errors
@@ -46,6 +49,7 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BB
         end
 
     end
+
     # return the solved children
     return children
 end

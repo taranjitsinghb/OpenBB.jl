@@ -7,5 +7,26 @@
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
+struct InfeasibleError <: Exception
+   msg::String
+end
 
 include("./linear_bounds_propagation.jl")
+
+
+function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{Int64,1})::Bool
+   try
+      OpenBB.bounds_propagation!(
+         node, workspace.subsolverWS.A,
+         workspace.dscIndices,
+         updatedVars
+      )
+      return true
+   catch e
+      if isa(e, InfeasibleError)
+         return false
+      else
+         rethrow(e)
+      end
+   end
+end

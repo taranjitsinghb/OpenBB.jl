@@ -11,8 +11,7 @@
 using OpenBB
 using SparseArrays
 using LinearAlgebra
-
-clearconsole()
+using Juno
 
 subsolver = "osqp"
 # subsolver = "gurobi"
