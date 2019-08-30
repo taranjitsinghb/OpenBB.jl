@@ -11,6 +11,7 @@
 using OpenBB
 using SparseArrays
 using LinearAlgebra
+using Juno
 
 subsolver = "osqp"
 # subsolver = "gurobi"
@@ -26,6 +27,6 @@ problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(2.0I,4,4,),L=
                          cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.]),
                          varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],vals=zeros(4),dscIndices=[1]))
 
+
 workspace = OpenBB.setup(problem,OpenBB.BBsettings(verbose=true,interactiveMode=true,numProcesses=1),subsolverSettings)
-OpenBB.preprocess!(workspace)
 result = OpenBB.solve!(workspace)

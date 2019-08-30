@@ -60,7 +60,7 @@ function bounds_propagation!(row::Int,
             if newLoB > newUpB
                   # Found infeasibility!
                   @info varLobs, varUpBs, newLoB, newUpB
-                  error("Infeasible")
+                  throw(InfeasibleError("Infeasible bound detected"))
             end
 
             # perform changes
@@ -156,21 +156,14 @@ function bounds_propagation!(rowsToCheck::Set{Int},
       return updatedVars
 end
 
-function bounds_propagation!(A::SparseMatrixCSC{Float64,Int},
-                            cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
-                            varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
-                            dscIndices::Array{Int64,1})::Set{Int}
-    return bounds_propagation!(Set(1:size(cnsLoBs)[1]),
-                               A, cnsLoBs, cnsUpBs,
-                               varLoBs, varUpBs, dscIndices)
-end
+function bounds_propagation!(node::BBnode, A::SparseMatrixCSC{Float64,Int}, dscIndices::Array{Int64,1}, updatedVars::Array{Int64,1})::Set{Int}
+      if 0 in updatedVars
+            rows = Set(1:size(A)[1])
+      else
+            rows = Set(unique(findnz(A[1:end,collect(updatedVars)])[1]))
+      end
 
-function variable_bounds_propagation!(updatedVars::Array{Int64,1},
-                            A::SparseMatrixCSC{Float64,Int},
-                            cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
-                            varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
-                            dscIndices::Array{Int64,1})::Set{Int}
-    return bounds_propagation!(Set(unique(findnz(A[1:end,collect(updatedVars)]))[1]),
-                               A, cnsLoBs, cnsUpBs,
-                               varLoBs, varUpBs, dscIndices)
+      return bounds_propagation!(rows,
+                                 A, node.cnsLoBs, node.cnsUpBs,
+                                 node.varLoBs, node.varUpBs, dscIndices)
 end
