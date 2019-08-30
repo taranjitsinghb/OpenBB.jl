@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: insert_node.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-14T12:48:40+02:00
+# @Last modified time: 2019-08-28T20:13:22+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -65,7 +65,7 @@ function insert_node!(workspace::BBworkspace,node::BBnode)::Nothing
 
     elseif node.avgAbsFrac == 0.0 # a new solution has been found
 
-        if node.reliable # the solution is reliable
+        if node.reliable || workspace.settings.acceptUnreliableSolutions # the solution is reliable or the algorithm is set to accept unreliable solutions
 
             # declare the cutoff inactive
             workspace.status.cutoffActive = false

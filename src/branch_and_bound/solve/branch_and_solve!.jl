@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T19:03:30+02:00
+# @Last modified time: 2019-08-30T19:31:15+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -155,7 +155,6 @@ function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:A
         node.pseudoObjective = Inf
         node.reliable = true
     elseif ssStatus == 2
-        @warn "Numerical difficulties in the subsolver"
         node.objective = objective
         node.reliable = false
     else
