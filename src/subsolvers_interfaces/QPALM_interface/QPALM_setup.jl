@@ -3,41 +3,33 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T12:25:52+02:00
+# @Last modified time: 2019-08-29T18:53:10+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
-
 
 
 # this function creates an QPALM.Model representing the given CvxQproblem
 function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Float64=Inf,bb_timeLimit=Inf)::QPALMworkspace
 
-    # reformat the settings for QPALM
-    settings_dict = Dict{Symbol,Any}()
-    for field in fieldnames(QPALMsettings)
-        settings_dict[field] = getfield(settings,field)
-    end
+    # collect info on the problem
+    numVars = get_numVariables(problem)
 
-    # overwrite the osqp setting depending on the branch and bound settings
-    settings_dict[:eps_prim_inf] = min(settings_dict[:eps_prim_inf],bb_primalTolerance)
-
+    # use the workspace info to update the QPALM settings
+    settings.eps_prim_inf = min(settings.eps_prim_inf,bb_primalTolerance*1e-1)
     if bb_timeLimit < Inf
-        if settings_dict[:timeLimit] == 0.
-            settings_dict[:timeLimit] = bb_timeLimit
+        if settings.timeLimit == 0.
+            settings.timeLimit = bb_timeLimit
         else
-            settings_dict[:timeLimit] = min(settings_dict[:timeLimit],bb_timeLimit)
+            settings.timeLimit = min(settings.timeLimit,bb_timeLimit)
         end
     end
 
-    nVars = length(problem.varSet.loBs)
-
-
     # check the objective function
     if problem.objFun isa NullObjective
-        Q = spzeros(nVars,nVars)
-        L = zeros(nVars)
+        Q = spzeros(numVars,numVars)
+        L = zeros(numVars)
     elseif problem.objFun isa LinearObjective
-        Q = spzeros(nVars,nVars)
+        Q = spzeros(numVars,numVars)
         L = problem.objFun.L
     elseif problem.objFun isa QuadraticObjective
         Q = dropzeros(sparse(problem.objFun.Q))
@@ -48,7 +40,7 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
 
     # check the constraint set
     if problem.cnsSet isa NullConstraintSet
-        A = spzeros(0,length(problem.varSet.loBs))
+        A = spzeros(0,numVars)
         cnsLoBs = Float64[]
         cnsUpBs = Float64[]
 
@@ -60,16 +52,20 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
         @error "QPALM cannot deal with the given constraint set"
     end
 
+    # reformat the settings for QPALM
+    settings_dict = Dict{Symbol,Any}()
+    for field in fieldnames(QPALMsettings)
+        settings_dict[field] = getfield(settings,field)
+    end
 
     # create the subsolver QPALMworkspace
     model = QPALM.Model()
     if length(problem.varSet.loBs) > 0
-        QPALM.setup!(model;Q=Q,
-                          q=L,
-                          A=vcat(speye(length(problem.varSet.loBs)),sparse(A)),
-                          bmin=vcat(problem.varSet.loBs,cnsLoBs),
-                          bmax=vcat(problem.varSet.upBs,cnsUpBs),
-                          settings_dict...)
+        QPALM.setup!(model;Q=Q,q=L,
+                           A=vcat(speye(numVars),sparse(A)),
+                           bmin=vcat(problem.varSet.loBs,cnsLoBs),
+                           bmax=vcat(problem.varSet.upBs,cnsUpBs),
+                           settings_dict...)
     end
 
     return QPALMworkspace(copy(Q),copy(L),
