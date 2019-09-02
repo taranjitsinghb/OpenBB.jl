@@ -3,11 +3,12 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: Gurobi_setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-15T12:25:31+02:00
+# @Last modified time: 2019-08-29T14:33:20+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
+# this function creates a Gurobi Model representing the given CvxQproblem
 function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Float64=Inf,bb_timeLimit=Inf)::GUROBIworkspace
 
     # reformat the settings for GUROBI
@@ -35,7 +36,6 @@ function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Flo
     if problem.objFun isa NullObjective
         Q = spzeros(nVars,nVars)
         L = zeros(nVars)
-
     elseif problem.objFun isa LinearObjective
         Q = spzeros(nVars,nVars)
         L = problem.objFun.L
@@ -48,13 +48,10 @@ function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Flo
 
     # check the constraint set
     if problem.cnsSet isa NullConstraintSet
-        # adapt the constraint set to accomodate for variables bounds
         A = spzeros(0,length(problem.varSet.loBs))
         cnsLoBs = Float64[]
         cnsUpBs = Float64[]
-
     elseif problem.cnsSet isa LinearConstraintSet
-        # adapt the constraint set to accomodate for variables bounds
         A = dropzeros(sparse(problem.cnsSet.A))
         cnsLoBs = copy(problem.cnsSet.loBs)
         cnsUpBs = copy(problem.cnsSet.upBs)

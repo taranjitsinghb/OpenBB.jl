@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBIsolve.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T15:36:19+02:00
+# @Last modified time: 2019-08-29T17:27:12+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -16,14 +16,15 @@ function solve!(subsolverWS::GUROBIworkspace,
     nVars = get_numVariables(subsolverWS)
     nCnss = get_numConstraints(subsolverWS)
 
-    model = Gurobi.Model(subsolverWS.environment,"OpenBBsubsolver")
-    if nVars > 0
-        Gurobi.add_cvars!(model,subsolverWS.L,varLoBs,varUpBs)
-        Gurobi.update_model!(model)
-        Gurobi.add_qpterms!(model,sparse(subsolverWS.Q))
-        Gurobi.add_rangeconstrs!(model,sparse(subsolverWS.A),cnsLoBs,cnsUpBs)
-        Gurobi.update_model!(model)
-    end
+    # create a Gurobi environment
+    model = Gurobi.gurobi_model(subsolverWS.environment,H = subsolverWS.Q,
+                                                        f = subsolverWS.L,
+                                                        A = vcat(-subsolverWS.A,subsolverWS.A),
+                                                        b = vcat(-cnsLoBs,cnsUpBs),
+                                                        lb = varLoBs,
+                                                        ub = varUpBs)
+
+    Gurobi.update_model!(model)
 
     # solve problem
     info_runtime = @elapsed Gurobi.optimize(model)
@@ -33,7 +34,7 @@ function solve!(subsolverWS::GUROBIworkspace,
     # output sol info
     if  info_status == 2
         status = 0 # "solved"
-        info_primal = Gurobi.get_solution(model)[1:nVars]
+        info_primal = Gurobi.get_solution(model)
         info_bndDual = zeros(nVars)
         info_cnsDual = zeros(nCnss)
         info_obj = (transpose(info_primal)*subsolverWS.Q*info_primal)/2. + transpose(subsolverWS.L)*info_primal
@@ -47,7 +48,7 @@ function solve!(subsolverWS::GUROBIworkspace,
 
     elseif info_status in [7,8,10,11,13]
         status = 2 # "unreliable"
-        info_primal = Gurobi.get_solution(model)[1:nVars]
+        info_primal = Gurobi.get_solution(model)
         info_primal = @. min(max(info_primal,varLoBs),varUpBs)
         info_bndDual = zeros(nVars)
         info_cnsDual = zeros(nCnss)
@@ -61,6 +62,7 @@ function solve!(subsolverWS::GUROBIworkspace,
         @error "Subsolver unknown status: "*string(Gurobi.get_status(model))*" (code:"*string(info_status)*")"
     end
 
+    # return solution
     @. primal = info_primal
     @. bndDual = info_bndDual
     @. cnsDual = info_cnsDual

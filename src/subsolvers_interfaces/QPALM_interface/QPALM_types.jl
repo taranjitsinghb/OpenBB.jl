@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: types.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-23T14:43:30+02:00
+# @Last modified time: 2019-08-29T19:32:27+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -33,12 +33,12 @@ end
 
 
 function QPALMsettings(; max_iter::Int=10000,
-                         eps_abs::Float64=1e-6,
-                         eps_rel::Float64=1e-6,
+                         eps_abs::Float64=1e-8,
+                         eps_rel::Float64=1e-8,
                          eps_abs_in::Float64=1.0,
                          eps_rel_in::Float64=1.0,
-                         eps_prim_inf::Float64=1e-4,
-                         eps_dual_inf::Float64=1e-4,
+                         eps_prim_inf::Float64=1e-8,
+                         eps_dual_inf::Float64=1e-8,
                          rho::Float64=0.1,
                          theta::Float64=0.25,
                          delta::Float64=10.0,
