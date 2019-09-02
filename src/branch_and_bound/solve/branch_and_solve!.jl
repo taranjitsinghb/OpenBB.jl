@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T13:51:24+02:00
+# @Last modified time: 2019-09-02T14:48:58+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -21,7 +21,7 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BB
         # Preprocess & solve
         if preprocess!(children[k],workspace,[branchIndices_dsc[k]],
                        withBoundsPropagation=workspace.settings.withBoundsPropagation)
-            solve!(children[k],workspace)
+            solve_node!(children[k],workspace)
         else
             children[k].objective = Inf
         end
@@ -129,7 +129,7 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2})::Tuple{Array{BBnode
 end
 
 
-function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+function solve_node!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # solve the node
     # node status guide:
@@ -141,26 +141,21 @@ function solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where T1<:A
        any(@. node.cnsLoBs > node.cnsUpBs + workspace.settings.primalTolerance)
         ssStatus = 1
     else
-        (objective,ssStatus,~) = solve!(workspace.subsolverWS,
-                                        node.varLoBs,node.varUpBs,node.cnsLoBs,node.cnsUpBs,
-                                        node.primal,node.bndDual,node.cnsDual)
+        (ssStatus,info) = solve!(node,workspace.subsolverWS)
     end
 
 
     if ssStatus == 0
-        node.objective = objective
-        node.pseudoObjective = objective
+        node.pseudoObjective = node.objective
         for (k,i) in enumerate(workspace.dscIndices)
             node.pseudoObjective +=  min(workspace.pseudoCosts[1][k,1]*(node.primal[i]-floor(node.primal[i]+workspace.settings.primalTolerance)),
                                          workspace.pseudoCosts[1][k,2]*(ceil(node.primal[i]-workspace.settings.primalTolerance)-node.primal[i]))/length(workspace.dscIndices)
         end
         node.reliable = true
     elseif ssStatus == 1
-        node.objective = Inf
         node.pseudoObjective = Inf
         node.reliable = true
     elseif ssStatus == 2
-        node.objective = objective
         node.reliable = false
     else
         @error "Error in the subsolver"

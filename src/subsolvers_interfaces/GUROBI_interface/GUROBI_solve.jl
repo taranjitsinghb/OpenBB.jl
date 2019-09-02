@@ -3,68 +3,61 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBIsolve.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-29T17:27:12+02:00
+# @Last modified time: 2019-09-02T14:58:19+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
-
-function solve!(subsolverWS::GUROBIworkspace,
-                varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
-                primal::Array{Float64,1},bndDual::Array{Float64,1},cnsDual::Array{Float64,1})::Tuple{Float64,Int8,Float64}
+function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
 
     # update the gurobi model
-    nVars = get_numVariables(subsolverWS)
-    nCnss = get_numConstraints(subsolverWS)
+    nVars = get_numVariables(workspace)
+    nCnss = get_numConstraints(workspace)
 
     # create a Gurobi environment
-    model = Gurobi.gurobi_model(subsolverWS.environment,H = subsolverWS.Q,
-                                                        f = subsolverWS.L,
-                                                        A = vcat(-subsolverWS.A,subsolverWS.A),
-                                                        b = vcat(-cnsLoBs,cnsUpBs),
-                                                        lb = varLoBs,
-                                                        ub = varUpBs)
+    model = Gurobi.gurobi_model(workspace.environment,H = workspace.Q,
+                                                      f = workspace.L,
+                                                      A = vcat(-workspace.A,workspace.A),
+                                                      b = vcat(-node.cnsLoBs,node.cnsUpBs),
+                                                      lb = node.varLoBs,
+                                                      ub = node.varUpBs)
 
     Gurobi.update_model!(model)
 
     # solve problem
-    info_runtime = @elapsed Gurobi.optimize(model)
-    info_status = Gurobi.get_status_code(model)
+    runtime = @elapsed Gurobi.optimize(model)
+    status = Gurobi.get_status_code(model)
 
 
     # output sol info
-    if  info_status == 2
+    if  status == 2
         status = 0 # "solved"
-        info_primal = Gurobi.get_solution(model)
-        info_bndDual = zeros(nVars)
-        info_cnsDual = zeros(nCnss)
-        info_obj = (transpose(info_primal)*subsolverWS.Q*info_primal)/2. + transpose(subsolverWS.L)*info_primal
+        node.primal = Gurobi.get_solution(model)
+        node.bndDual = zeros(nVars)
+        node.cnsDual = zeros(nCnss)
+        node.objective = (transpose(node.primal)*workspace.Q*node.primal)/2. + transpose(workspace.L)*node.primal
 
-    elseif info_status in [3,4]
+    elseif status in [3,4]
         status = 1 # "infeasible"
-        info_primal = NaNs(nVars)
-        info_bndDual = NaNs(nVars)
-        info_cnsDual = NaNs(nCnss)
-        info_obj = Inf
+        node.primal = NaNs(nVars)
+        node.bndDual = NaNs(nVars)
+        node.cnsDual = NaNs(nCnss)
+        node.objective = Inf
 
-    elseif info_status in [7,8,10,11,13]
+    elseif status in [7,8,10,11,13]
         status = 2 # "unreliable"
-        info_primal = Gurobi.get_solution(model)
-        info_primal = @. min(max(info_primal,varLoBs),varUpBs)
-        info_bndDual = zeros(nVars)
-        info_cnsDual = zeros(nCnss)
-        info_obj = (transpose(info_primal)*subsolverWS.Q*info_primal)/2. + transpose(subsolverWS.L)*info_primal
-        @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(info_status)*")"
+        node.primal = Gurobi.get_solution(model)
+        node.primal = @. min(max(node.primal,node.varLoBs),node.varUpBs)
+        node.bndDual = zeros(nVars)
+        node.cnsDual = zeros(nCnss)
+        node.objective = (transpose(node.primal)*workspace.Q*node.primal)/2. + transpose(workspace.L)*node.primal
+        @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(status)*")"
 
-    elseif info_status in [1,5,12]
+    elseif status in [1,5,12]
         status = 3 # "error"
-        @error "Subsover error, status: "*string(Gurobi.get_status(model))*" (code: "*string(info_status)*")"
+        @error "Subsover error, status: "*string(Gurobi.get_status(model))*" (code: "*string(status)*")"
     else
-        @error "Subsolver unknown status: "*string(Gurobi.get_status(model))*" (code:"*string(info_status)*")"
+        @error "Subsolver unknown status: "*string(Gurobi.get_status(model))*" (code:"*string(status)*")"
     end
 
-    # return solution
-    @. primal = info_primal
-    @. bndDual = info_bndDual
-    @. cnsDual = info_cnsDual
-    return (info_obj, status, info_runtime)
+    return (status, runtime)
 end

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T20:15:57+02:00
+# @Last modified time: 2019-09-02T14:50:47+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -46,7 +46,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 
 		# build the root node and solve it
 		push!(workspace.activeQueue,BBroot(workspace))
-		solve!(workspace.activeQueue[1],workspace)
+		solve_node!(workspace.activeQueue[1],workspace)
 		workspace.status.objLoB = workspace.activeQueue[1].objective
 
 		# initialize the pseudo costs
