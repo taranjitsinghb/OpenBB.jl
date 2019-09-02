@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: osqp_wrong_result.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-30T17:40:02+02:00
+# @Last modified time: 2019-09-02T17:05:00+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -34,7 +34,7 @@ Atmp = vcat(sparse(Matrix(1.0I,1399,1399)),A)
 ltmp = vcat(vl,l)
 utmp = vcat(vu,u)
 model = OSQP.Model()
-OSQP.setup!(model;P=Q,q=L,A=Atmp,l=ltmp,u=utmp,eps_prim_inf=1e-4,eps_rel=1e-6,eps_abs=1e-6,max_iter=100000)
+OSQP.setup!(model;P=Q,q=L,A=Atmp,l=ltmp,u=utmp,eps_prim_inf=1e-4,eps_rel=1e-6,eps_abs=1e-6,max_iter=100000,scaled_termination=false)
 sol1 = OSQP.solve!(model)
 println("- status: ",sol1.info.status," objective ",sol1.info.obj_val," # iterations: ",sol1.info.iter)
 

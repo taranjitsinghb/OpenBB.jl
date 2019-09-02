@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: insert_node.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-28T20:13:22+02:00
+# @Last modified time: 2019-09-02T17:28:36+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -42,18 +42,18 @@ end
 # insert a node into the BBtree
 function insert_node!(workspace::BBworkspace,node::BBnode)::Nothing
 
-    if isnan(node.objective) # no info on the node
+    if isnan(node.objVal) # no info on the node
         # insert the node as first
         push!(workspace.activeQueue,node)
 
-    elseif node.objective > workspace.status.objUpB - workspace.settings.primalTolerance # the node is suboptimal
+    elseif node.objVal - node.objGap > workspace.status.objUpB - workspace.settings.primalTolerance # the node is suboptimal
 
         # in interactive mode the suboptimal nodes are stored
         if workspace.settings.interactiveMode
             push!(workspace.unactivePool,node)
         end
 
-    elseif node.objective > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance # the node objective is greater than the cutoff
+    elseif node.objVal - node.objGap > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance # the node objective is greater than the cutoff
 
         # declare the cutoff active
         workspace.status.cutoffActive = true
@@ -76,7 +76,7 @@ function insert_node!(workspace::BBworkspace,node::BBnode)::Nothing
             # update the number of solutions found
             workspace.status.numSolutions += 1
             # update the objective upper bound
-            workspace.status.objUpB = node.objective
+            workspace.status.objUpB = node.objVal
 
             # update the global objective upper bound and the number of solutions found
             if !(workspace.sharedMemory isa NullSharedMemory)

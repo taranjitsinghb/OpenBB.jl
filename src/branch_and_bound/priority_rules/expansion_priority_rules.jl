@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: nodes_priority_functions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-11T16:33:18+02:00
+# @Last modified time: 2019-09-02T15:07:58+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -18,7 +18,7 @@ end
 
 # priority functions for nodes
 function lower_objective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
-    if leftNode.objective <= rightNode.objective
+    if leftNode.objVal <= rightNode.objVal
         return true
     else
         return false
@@ -26,7 +26,7 @@ function lower_objective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::B
 end
 
 function higher_objective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
-    if leftNode.objective >= rightNode.objective
+    if leftNode.objVal >= rightNode.objVal
         return true
     else
         return false

@@ -51,7 +51,7 @@ function update_objectiveCutoff!(workspace::BBworkspace{T1,T2},newCutoff::Float6
         else
             solutionsToElim = Array{Int,1}()
             for k in 1:length(workspace.solutionPool)
-                if workspace.solutionPool[k].objective > newCutoff - workspace.settings.primalTolerance
+                if workspace.solutionPool[k].objVal > newCutoff - workspace.settings.primalTolerance
                     push!(solutionsToElim,k)
                     push!(workspace.unactivePool,workspace.solutionPool[k])
                     workspace.status.numSolutions -= 1

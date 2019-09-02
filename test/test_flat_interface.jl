@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T19:59:37+02:00
+# @Last modified time: 2019-09-02T15:19:45+02:00
 # @License: LGPL-3.0
 
 using OpenBB
@@ -44,7 +44,7 @@ OpenBB.setup("osqp",problem,bbSettings,ssSettings)
 OpenBB.solve_b()
 
 
-@assert 0.5 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objective"] <= 0.5 + OpenBB.get_settings()["primalTolerance"]
+@assert 0.5 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objVal"] <= 0.5 + OpenBB.get_settings()["primalTolerance"]
 OpenBB.get_subsolver_settings()
 
 OpenBB.get_all_solutions()
@@ -87,7 +87,7 @@ OpenBB.update_bounds_b(Dict("cnsLoBs"=>[1.0,0.0]),false,true,false)
 OpenBB.append_problem_b(problem,false,true,false)
 OpenBB.update_b()
 OpenBB.solve_b()
-@assert 1.0 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objective"] <= 1.0 + OpenBB.get_settings()["primalTolerance"]
+@assert 1.0 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objVal"] <= 1.0 + OpenBB.get_settings()["primalTolerance"]
 
 OpenBB.integralize_variables_b([5])
 OpenBB.solve_b()

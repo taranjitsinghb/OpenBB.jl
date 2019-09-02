@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: pseudo_costs_initialization.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-17T12:36:41+02:00
+# @Last modified time: 2019-09-02T15:08:06+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -22,7 +22,7 @@ function initialize_to_constant!(pseudoCosts::Tuple{Array{Float64,2},Array{Int,2
 end
 
 function initialize_with_root_objective!(pseudoCosts::Tuple{Array{Float64,2},Array{Int,2}},refNode::BBnode,proportionalityConstant::Float64)::Nothing
-    @. pseudoCosts[1] = max(proportionalityConstant*abs(refNode.objective),1e-4)
+    @. pseudoCosts[1] = max(proportionalityConstant*abs(refNode.objVal),1e-4)
     @. pseudoCosts[2] = 0
     return
 end

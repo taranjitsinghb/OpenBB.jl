@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T14:50:47+02:00
+# @Last modified time: 2019-09-02T18:08:54+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -47,7 +47,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		# build the root node and solve it
 		push!(workspace.activeQueue,BBroot(workspace))
 		solve_node!(workspace.activeQueue[1],workspace)
-		workspace.status.objLoB = workspace.activeQueue[1].objective
+		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
 
 		# initialize the pseudo costs
 		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.pseudoCosts,workspace.activeQueue[1])
@@ -112,7 +112,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		# build the root node and solve it
 		push!(workspace.activeQueue,BBroot(workspace))
 		solve!(workspace.activeQueue[1],workspace)
-		workspace.status.objLoB = workspace.activeQueue[1].objective
+		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
 
 		# initialize the pseudo costs in the master process
 		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.pseudoCosts,workspace.activeQueue[1])

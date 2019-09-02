@@ -3,14 +3,14 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T14:48:58+02:00
+# @Last modified time: 2019-09-02T15:09:57+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BBnode,1} where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
 
     # create a list of children
-    if node.avgAbsFrac == 0.0 || isnan(node.objective)
+    if node.avgAbsFrac == 0.0 || isnan(node.objVal)
         children, branchIndices_dsc = [deepcopy(node)], [0]
     else
         children, branchIndices_dsc = branch!(node,workspace)
@@ -23,14 +23,14 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BB
                        withBoundsPropagation=workspace.settings.withBoundsPropagation)
             solve_node!(children[k],workspace)
         else
-            children[k].objective = Inf
+            children[k].objVal = Inf
         end
 
         # update pseudoCosts
-        if branchIndices_dsc[k]>0 && children[k].reliable && children[k].objective < Inf
+        if branchIndices_dsc[k]>0 && children[k].reliable && children[k].objVal < Inf
 
             # compute objective and primal variation
-            deltaObjective = max(children[k].objective-node.objective,workspace.settings.primalTolerance) # the max filters out small numerical errors
+            deltaObjective = max(children[k].objVal-node.objVal,workspace.settings.primalTolerance) # the max filters out small numerical errors
             deltaVariable = children[k].primal[workspace.dscIndices[branchIndices_dsc[k]]] - node.primal[workspace.dscIndices[branchIndices_dsc[k]]]
 
             if deltaVariable < -workspace.settings.primalTolerance
@@ -146,7 +146,7 @@ function solve_node!(node::BBnode,workspace::BBworkspace{T1,T2})::Nothing where 
 
 
     if ssStatus == 0
-        node.pseudoObjective = node.objective
+        node.pseudoObjective = node.objVal
         for (k,i) in enumerate(workspace.dscIndices)
             node.pseudoObjective +=  min(workspace.pseudoCosts[1][k,1]*(node.primal[i]-floor(node.primal[i]+workspace.settings.primalTolerance)),
                                          workspace.pseudoCosts[1][k,2]*(ceil(node.primal[i]-workspace.settings.primalTolerance)-node.primal[i]))/length(workspace.dscIndices)

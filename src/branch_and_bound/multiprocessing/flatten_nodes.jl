@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T20:10:43+02:00
+# @Last modified time: 2019-09-02T15:07:21+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -46,7 +46,7 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
 
     # numeric values
     destinationArray[offset+1] = node.avgAbsFrac
-    destinationArray[offset+2] = node.objective
+    destinationArray[offset+2] = node.objVal
     destinationArray[offset+3] = node.pseudoObjective
     destinationArray[offset+4] = node.reliable
     offset += 4

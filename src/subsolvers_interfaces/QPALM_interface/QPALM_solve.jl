@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T14:59:01+02:00
+# @Last modified time: 2019-09-02T17:58:37+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -29,19 +29,29 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
         @. node.primal = sol.x
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:end]
-        node.objective = 1/2 * transpose(node.primal) * workspace.Q * node.primal + transpose(workspace.L) * node.primal
+        node.objVal = 1/2 * transpose(node.primal) * workspace.Q * node.primal + transpose(workspace.L) * node.primal
+        node.objGap = max(workspace.settings.eps_abs,
+                          workspace.settings.eps_rel*abs(node.objVal))
     elseif sol.info.status_val == -3
         status = 1 # "infeasible"
-        node.objective = Inf
         @. node.primal = @. min(max(sol.x,node.varLoBs),node.varUpBs)
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:end]
+        node.objVal = Inf
+        node.objGap = 0.0
     elseif sol.info.status_val in [2,3,4,-6,-2]
         status = 2 # "unreliable"
         @. node.primal = min(max(sol.x,node.varLoBs),node.varUpBs)
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:end]
-        node.objective = 1/2 * transpose(node.primal) * workspace.Q * node.primal + transpose(workspace.L) * node.primal
+        newObjVal = 1/2 * transpose(node.primal) * workspace.Q * node.primal + transpose(workspace.L) * node.primal
+        if newObjVal >= node.ObjVal - node.objGap
+            node.objGap = newObjVal - node.objVal + node.objGap #TODO: recopute the gap if possible
+            node.objVal = newObjVal
+        else
+            node.objGap = Inf #TODO: recopute the gap if possible
+            @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(status)*")"
+        end
         @warn "Inaccuracy in node sol, message: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
     elseif sol.info.status_val in [-7,-10]
         status = 3 # "error"

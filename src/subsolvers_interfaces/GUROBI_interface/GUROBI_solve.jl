@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBIsolve.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T14:58:19+02:00
+# @Last modified time: 2019-09-02T18:26:18+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -34,24 +34,30 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
         node.primal = Gurobi.get_solution(model)
         node.bndDual = zeros(nVars)
         node.cnsDual = zeros(nCnss)
-        node.objective = (transpose(node.primal)*workspace.Q*node.primal)/2. + transpose(workspace.L)*node.primal
-
+        node.objGap = workspace.settings.OptimalityTol
+        node.objVal = (transpose(node.primal)*workspace.Q*node.primal)/2. + transpose(workspace.L)*node.primal
     elseif status in [3,4]
         status = 1 # "infeasible"
         node.primal = NaNs(nVars)
         node.bndDual = NaNs(nVars)
         node.cnsDual = NaNs(nCnss)
-        node.objective = Inf
-
+        node.objGap = workspace.optimalityTol
+        node.objVal = Inf
     elseif status in [7,8,10,11,13]
         status = 2 # "unreliable"
         node.primal = Gurobi.get_solution(model)
         node.primal = @. min(max(node.primal,node.varLoBs),node.varUpBs)
         node.bndDual = zeros(nVars)
         node.cnsDual = zeros(nCnss)
-        node.objective = (transpose(node.primal)*workspace.Q*node.primal)/2. + transpose(workspace.L)*node.primal
-        @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(status)*")"
-
+        newObjVal = (transpose(node.primal)*workspace.Q*node.primal)/2. + transpose(workspace.L)*node.primal
+        if newObjVal >= node.ObjVal - node.objGap
+            node.objGap = newObjVal - node.objVal + node.objGap
+            node.objVal = newObjVal
+        else
+            node.objGap = Inf # gurobi doesn't give enough information to estimate the gap
+            node.objVal = newObjVal
+            @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(status)*")"
+        end
     elseif status in [1,5,12]
         status = 3 # "error"
         @error "Subsover error, status: "*string(Gurobi.get_status(model))*" (code: "*string(status)*")"

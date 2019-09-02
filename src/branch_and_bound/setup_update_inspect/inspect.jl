@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-12T21:56:05+02:00
+# @Last modified time: 2019-09-02T18:16:47+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -53,10 +53,10 @@ function get_best_solution(workspace::BBworkspace{T1,T2};localOnly::Bool=false):
 
     # check the other workers if needed/required
     if !(localOnly || workspace.sharedMemory isa NullSharedMemory) &&
-       (solution isa NullBBnode || solution.objective > workspace.status.objLoB)
+       (solution isa NullBBnode || solution.objVal > workspace.status.objLoB)
         for p in 2:workspace.settings.numProcesses
             node = remotecall_fetch(Main.eval,p,:(OpenBB.get_best_solution(workspace,localOnly=true)))
-            if !(node isa NullBBnode) && node.objective == workspace.sharedMemory.objectiveBounds[end]
+            if !(node isa NullBBnode) && node.objVal == workspace.sharedMemory.objectiveBounds[end]
                 solution = node
                 break
             end
