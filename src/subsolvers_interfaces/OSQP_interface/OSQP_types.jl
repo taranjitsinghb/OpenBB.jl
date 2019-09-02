@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: types.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-06T17:31:03+02:00
+# @Last modified time: 2019-08-29T17:31:52+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -37,20 +37,20 @@ end
 
 function OSQPsettings(; rho::Float64=1e-1,
                         sigma::Float64=1e-6,
-                        max_iter::Int=2000,
-                        eps_abs::Float64=1e-5,
-                        eps_rel::Float64=1e-5,
-                        eps_prim_inf::Float64=1e-5,
-                        eps_dual_inf::Float64=1e-5,
+                        max_iter::Int=10000,
+                        eps_abs::Float64=1e-6,
+                        eps_rel::Float64=1e-6,
+                        eps_prim_inf::Float64=1e-4,
+                        eps_dual_inf::Float64=1e-4,
                         alpha::Float64=1.6,
                         delta::Float64=1e-06,
                         polish::Bool=true,
-                        polish_refine_iter::Int=3,
+                        polish_refine_iter::Int=15,
                         verbose::Bool=false,
                         scaled_termination::Bool=false,
-                        check_termination::Int=100,
+                        check_termination::Int=15,
                         warm_start::Bool=true,
-                        scaling::Int=10,
+                        scaling::Int=15,
                         adaptive_rho::Bool=true,
                         adaptive_rho_interval::Int=0,
                         adaptive_rho_tolerance::Float64=5.,

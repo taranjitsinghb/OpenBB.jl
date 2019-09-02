@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-30T18:59:40+02:00
+# @Last modified time: 2019-09-02T12:22:57+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -14,7 +14,7 @@ function solve!(subsolverWS::QPALMworkspace,
     # collect info on the problem
     numVars = get_numVariables(subsolverWS)
 
-    # update the qpalm model
+    # update bounds in the the qpalm model
     QPALM.update!(subsolverWS.model;bmin=vcat(varLoBs,cnsLoBs),bmax=vcat(varUpBs,cnsUpBs))
 
     # set hotstart info
