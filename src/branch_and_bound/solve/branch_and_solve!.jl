@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-30T19:31:15+02:00
+# @Last modified time: 2019-09-02T13:51:24+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -19,7 +19,8 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2})::Array{BB
     # solve all the children
     for k in 1:length(children)
         # Preprocess & solve
-        if preprocess!(children[k],workspace,[branchIndices_dsc[k]])
+        if preprocess!(children[k],workspace,[branchIndices_dsc[k]],
+                       withBoundsPropagation=workspace.settings.withBoundsPropagation)
             solve!(children[k],workspace)
         else
             children[k].objective = Inf

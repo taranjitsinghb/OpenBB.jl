@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: linear_bounds_propagation.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-05T17:16:11+02:00
+# @Last modified time: 2019-09-02T13:34:08+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -59,7 +59,7 @@ function bounds_propagation!(row::Int,
 
             if newLoB > newUpB
                   # Found infeasibility!
-                  @info varLobs, varUpBs, newLoB, newUpB
+                  @info varLoBs, varUpBs, newLoB, newUpB
                   throw(InfeasibleError("Infeasible bound detected"))
             end
 

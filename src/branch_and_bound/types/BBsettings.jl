@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-29T14:07:07+02:00
+# @Last modified time: 2019-09-02T13:38:25+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -36,7 +36,10 @@ mutable struct BBsettings <: AbstractSettings
     relativeGapTolerance::Float64           # stop if the relative optimality gap is below the given level
     # heuristic search
     roundingHeuristicsThreshold::Float64    # use the simple rounding heuristics whenever the average fractionality is under the threshold
-    acceptUnreliableSolutions::Bool			# consider solutions also in case of unreliability
+	# preprocessing
+	withBoundsPropagation::Bool
+	# algorithm modifiers
+	acceptUnreliableSolutions::Bool			# consider solutions also in case of unreliability
 end
 
 
@@ -58,6 +61,7 @@ function BBsettings(;verbose::Bool=false,
                      absoluteGapTolerance::Float64=1e-4,
                      relativeGapTolerance::Float64=1e-6,
                      roundingHeuristicsThreshold::Float64 = -1.,
+					 withBoundsPropagation::Bool=false,
 					 acceptUnreliableSolutions::Bool=false
                      )::BBsettings
 
@@ -72,5 +76,6 @@ function BBsettings(;verbose::Bool=false,
                       primalTolerance,objectiveCutoff,
                       expansionPriorityRule,branchingPriorityRule,unreliablesPriority,
                       pseudoCostsInitialization,customStoppingRule,
-                      timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,roundingHeuristicsThreshold,acceptUnreliableSolutions)
+                      timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,
+					  roundingHeuristicsThreshold,withBoundsPropagation,acceptUnreliableSolutions)
 end
