@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: GUROBIsolve.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T18:26:18+02:00
+# @Last modified time: 2019-09-03T14:55:38+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -41,7 +41,7 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
         node.primal = NaNs(nVars)
         node.bndDual = NaNs(nVars)
         node.cnsDual = NaNs(nCnss)
-        node.objGap = workspace.optimalityTol
+        node.objGap = workspace.settings.OptimalityTol
         node.objVal = Inf
     elseif status in [7,8,10,11,13]
         status = 2 # "unreliable"
