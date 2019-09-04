@@ -30,9 +30,6 @@ function bounds_propagation!(row::Int,
       negCoeffs = Array{Float64,1}(undef,length(indices))
       @. negCoeffs = coeffs*(coeffs<0)
 
-      test = varLoBs[indices]
-      test = varUpBs[indices]
-
       # compute the max and the min value of the constraint components
       maxArray = Array{Float64,1}(undef,length(indices))
       @. maxArray = posCoeffs*varUpBs[indices] + negCoeffs*varLoBs[indices]
@@ -53,8 +50,8 @@ function bounds_propagation!(row::Int,
                   newLoB = (-(sum(maxArray[1:i-1]) + sum(maxArray[i+1:end])) + cnsLoB)/coeffs[i]
                   newUpB = (-(sum(minArray[1:i-1]) + sum(minArray[i+1:end])) + cnsUpB)/coeffs[i]
             else
-                  newLoB = (-(sum(maxArray[1:i-1]) + sum(maxArray[i+1:end])) + cnsLoB)/coeffs[i]
-                  newUpB = (-(sum(minArray[1:i-1]) + sum(minArray[i+1:end])) + cnsUpB)/coeffs[i]
+                  newUpB = (-(sum(maxArray[1:i-1]) + sum(maxArray[i+1:end])) + cnsLoB)/coeffs[i]
+                  newLoB = (-(sum(minArray[1:i-1]) + sum(minArray[i+1:end])) + cnsUpB)/coeffs[i]
             end
 
             if newLoB > newUpB
@@ -108,9 +105,11 @@ function bounds_propagation!(row::Int,
                 newCnsLoB = sum(minArray[1:end])
                 if newCnsUpB < cnsUpB
                     cnsUpB = newCnsUpB
+                    cnsUpBs[row] = cnsUpB
                 end
                 if newCnsLoB > cnsLoB
                     cnsLoB = newCnsLoB
+                    cnsLoBs[row] = cnsLoB
                 end
             end
 
