@@ -36,6 +36,8 @@ function bounds_propagation!(row::Int,
       minArray = Array{Float64,1}(undef,length(indices))
       @. minArray = posCoeffs*varLoBs[indices] + negCoeffs*varUpBs[indices]
 
+      totalMaxArray = sum(maxArray)
+      totalMinArray = sum(minArray)
 
       # column index
       iteration = 0
@@ -47,16 +49,16 @@ function bounds_propagation!(row::Int,
 
             # compute new lower and upper bounds
             if coeffs[i] > 0
-                  newLoB = (-(sum(maxArray[1:i-1]) + sum(maxArray[i+1:end])) + cnsLoB)/coeffs[i]
-                  newUpB = (-(sum(minArray[1:i-1]) + sum(minArray[i+1:end])) + cnsUpB)/coeffs[i]
+                  newLoB = (-(totalMaxArray - maxArray[i]) + cnsLoB)/coeffs[i]
+                  newUpB = (-(totalMinArray - minArray[i]) + cnsUpB)/coeffs[i]
             else
-                  newUpB = (-(sum(maxArray[1:i-1]) + sum(maxArray[i+1:end])) + cnsLoB)/coeffs[i]
-                  newLoB = (-(sum(minArray[1:i-1]) + sum(minArray[i+1:end])) + cnsUpB)/coeffs[i]
+                  newUpB = (-(totalMaxArray - maxArray[i]) + cnsLoB)/coeffs[i]
+                  newLoB = (-(totalMinArray - minArray[i]) + cnsUpB)/coeffs[i]
             end
 
             if newLoB > newUpB
                   # Found infeasibility!
-                  @info varLoBs, varUpBs, newLoB, newUpB
+                  @info i, indices[i], varLoBs, varUpBs, newLoB, newUpB
                   throw(InfeasibleError("Infeasible bound detected"))
             end
 
@@ -68,9 +70,13 @@ function bounds_propagation!(row::Int,
 
                   # change max and min arrays
                   if coeffs[i] > 0
-                        minArray[i] = coeffs[i]*newLoB
+                      totalMinArray = totalMinArray - minArray[i]
+                      minArray[i] = coeffs[i]*newLoB
+                      totalMinArray = totalMinArray + minArray[i]
                   else
-                        maxArray[i] = coeffs[i]*newLoB
+                      totalMaxArray = totalMaxArray - maxArray[i]
+                      maxArray[i] = coeffs[i]*newLoB
+                      totalMaxArray = totalMaxArray + maxArray[i]
                   end
                   # update the bound
                   varLoBs[indices[i]] = newLoB
@@ -83,13 +89,18 @@ function bounds_propagation!(row::Int,
             if varUpBs[indices[i]] > newUpB
                   if indices[i] in dscIndices
                       newLoB = floor(newUpB)
+                      @info "Interesting!"
                   end
 
                   # change max and min arrays
                   if coeffs[i] > 0
-                        maxArray[i] = coeffs[i]*newUpB
+                      totalMaxArray = totalMaxArray - maxArray[i]
+                      maxArray[i] = coeffs[i]*newUpB
+                      totalMaxArray = totalMaxArray + maxArray[i]
                   else
-                        minArray[i] = coeffs[i]*newUpB
+                      totalMinArray = totalMinArray - minArray[i]
+                      minArray[i] = coeffs[i]*newUpB
+                      totalMinArray = totalMinArray + minArray[i]
                   end
                   # update the bound
                   varUpBs[indices[i]] = newUpB
@@ -101,14 +112,12 @@ function bounds_propagation!(row::Int,
 
             # If a variable bound changed, change cns bounds
             if lastChanged == i
-                newCnsUpB = sum(maxArray[1:end])
-                newCnsLoB = sum(minArray[1:end])
-                if newCnsUpB < cnsUpB
-                    cnsUpB = newCnsUpB
+                if totalMaxArray < cnsUpB
+                    cnsUpB = totalMaxArray
                     cnsUpBs[row] = cnsUpB
                 end
-                if newCnsLoB > cnsLoB
-                    cnsLoB = newCnsLoB
+                if totalMinArray > cnsLoB
+                    cnsLoB = totalMinArray
                     cnsLoBs[row] = cnsLoB
                 end
             end
