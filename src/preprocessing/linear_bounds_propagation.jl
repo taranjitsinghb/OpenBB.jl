@@ -21,6 +21,10 @@ function bounds_propagation!(row::Int,
       # use a set for the output
       updatedVars = Set{Int}()
 
+      if cnsLoB == Inf && cnsUpB == Inf
+          return updatedVars
+      end
+
       # get the sparsity of cns
       indices,coeffs = findnz(cns)
 
@@ -38,6 +42,18 @@ function bounds_propagation!(row::Int,
 
       totalMaxArray = sum(maxArray)
       totalMinArray = sum(minArray)
+
+      if totalMaxArray <= cnsUpB && totalMinArray >= cnsLoB
+          # redundant constraint -> Remove?
+          cnsLoBs[row] = -Inf
+          cnsUpBs[row] = Inf
+          return updatedVars
+      elseif totalMinArray > cnsUpBs[row]
+          throw(InfeasibleError("Infeasible bound detected"))
+      elseif totalMaxArray < cnsLoBs[row]
+          throw(InfeasibleError("Infeasible bound detected"))
+      end
+
 
       # column index
       iteration = 0
@@ -89,7 +105,6 @@ function bounds_propagation!(row::Int,
             if varUpBs[indices[i]] > newUpB
                   if indices[i] in dscIndices
                       newLoB = floor(newUpB)
-                      @info "Interesting!"
                   end
 
                   # change max and min arrays

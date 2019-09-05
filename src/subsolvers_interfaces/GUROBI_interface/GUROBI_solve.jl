@@ -41,7 +41,7 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
         node.primal = NaNs(nVars)
         node.bndDual = NaNs(nVars)
         node.cnsDual = NaNs(nCnss)
-        node.objGap = workspace.settings.optimalityTol
+        node.objGap = workspace.settings.OptimalityTol
         node.objVal = Inf
     elseif status in [7,8,10,11,13]
         status = 2 # "unreliable"
