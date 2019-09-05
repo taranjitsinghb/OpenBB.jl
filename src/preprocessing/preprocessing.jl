@@ -1,6 +1,6 @@
 # @Author: Wim Van Roy
 # @Date:   2019-03-11T12:27:34+01:00
-# @Email:  wim.van.roy@atlascopco.com
+# @Email:  wim.vanroy@kuleuven.be
 # @Filename: preprocessing.jl
 # @Last modified by:   massimo
 # @Last modified time: 2019-09-02T13:44:21+02:00
