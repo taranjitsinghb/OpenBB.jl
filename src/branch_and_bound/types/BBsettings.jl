@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T13:38:25+02:00
+# @Last modified time: 2019-09-03T17:20:17+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -54,7 +54,7 @@ function BBsettings(;verbose::Bool=false,
                      expansionPriorityRule::Tuple=(lower_pseudoObjective,),
                      branchingPriorityRule::Tuple=(pseudoIncrements_geomean,),
                      unreliablesPriority::Int=0,
-                     pseudoCostsInitialization::Tuple=(initialize_to_constant!,1e-4),
+                     pseudoCostsInitialization::Tuple=(initialize_to_constant!,1e20),
                      customStoppingRule::Function=x->false,
                      timeLimit::Float64=Inf,
                      numSolutionsLimit::Int=0,

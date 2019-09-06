@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T17:38:02+02:00
+# @Last modified time: 2019-09-03T21:14:14+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -182,14 +182,13 @@ function reset!(workspace::BBworkspace{T1,T2};localOnly::Bool=false)::Nothing wh
         # eliminate all the generated nodes and reinsert the root of the BB tree
         clear!(workspace,localOnly=true)
 
-		# set the objective lowerbound to minus infinity to allow BB to work
-		workspace.status.objLoB = -Inf
-		# mark the workspace as new
-		workspace.status.description = "new"
+		# set the status to default
+		workspace.status = BBstatus()
 
 		if myid() == 1
 			# insert the root node into the queue
 	        push!(workspace.activeQueue,BBroot(workspace))
+			solve_node!(workspace.activeQueue[1],workspace)
 		end
     end
 
