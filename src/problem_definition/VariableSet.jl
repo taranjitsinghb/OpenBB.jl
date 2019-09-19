@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T13:54:50+02:00
+# @Last modified time: 2019-09-06T15:03:10+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -178,4 +178,16 @@ function append_variables!(variableSet1::VariableSet,variableSet2::AbstractVaria
                                     vcat(variableSet1.pseudoCosts[2],variableSet2.pseudoCosts[2]))
         return
     end
+end
+
+function update_bounds!(variableSet::VariableSet,loBs::Array{Float64,1}=Float64[],upBs::Array{Float64,1}=Float64)::Nothing
+    if length(loBs) > 0
+        @assert length(loBs) == length(variableSet.loBs) == length(variableSet.upBs)
+        @. variableSet.loBs = loBs
+    end
+    if length(upBs) > 0
+        @assert length(upBs) == length(variableSet.loBs) == length(variableSet.upBs)
+        @. variableSet.upBs = upBs
+    end
+    return
 end

@@ -3,33 +3,26 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_settings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-12T21:58:51+02:00
+# @Last modified time: 2019-09-11T18:39:00+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
-function update_objectiveCutoff!(workspace::BBworkspace{T1,T2},newCutoff::Float64;
-                                 suppressWarnings::Bool=false,
-                                 suppressUpdate::Bool=false,
-                                 localOnly::Bool=false)::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+function update_objectiveCutoff!(workspace::BBworkspace{T1,T2,T3},newCutoff::Float64;
+                                 suppressWarnings::Bool=false,localOnly::Bool=false)::Nothing where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
 
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
         # call the local version of the function on the remote workers
         for p in 2:workspace.settings.numProcesses
-            @async remotecall_fetch(Main.eval,p,:(OpenBB.update_objectiveCutoff!(workspace,$newCutoff,
-                                                                                 suppressWarnings=$suppressWarnings,
-                                                                                 suppressUpdate=true,localOnly=true)))
+            @async remotecall_fetch(Main.eval,p,:(
+                OpenBB.update_objectiveCutoff!(workspace,$newCutoff,suppressWarnings=$suppressWarnings,localOnly=true)
+            ))
         end
 
         # call the function on the local worker
-        update_objectiveCutoff!(workspace,newCutoff,
-                                suppressWarnings=suppressWarnings,
-                                suppressUpdate=true,localOnly=true)
+        update_objectiveCutoff!(workspace,newCutoff,suppressWarnings=suppressWarnings,localOnly=true)
 
-        # update the information shared among the processes
-        reset_global_info!(workspace)
-        workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
     else
         # check the correctness of the input
         if !suppressWarnings && newCutoff > workspace.settings.objectiveCutoff && workspace.status.description != "new" && myid() == 1
@@ -45,7 +38,7 @@ function update_objectiveCutoff!(workspace::BBworkspace{T1,T2},newCutoff::Float6
             if workspace.status.description == "optimalSolutionFound"
                 workspace.status.description = "interrupted"
             end
-            
+
             append!(workspace.unactivePool,workspace.solutionPool)
             deleteat!(workspace.solutionPool,1:length(workspace.solutionPool))
         else
@@ -64,6 +57,9 @@ function update_objectiveCutoff!(workspace::BBworkspace{T1,T2},newCutoff::Float6
         end
     end
 
+    # mark the workspace as outdated
+    make_outdated!(workspace)
+
     return
 end
 
@@ -71,8 +67,8 @@ end
 
 
 #TODO: implement update_settings!
-# function update_settings!(workspace::BBworkspace{T1,T2};bb_settings::AbstractSettings=NullSettings(),ss_settings::AbstractSettings=NullSettings())::Nothing
-#          where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+# function update_settings!(workspace::BBworkspace{T1,T2,T3};bb_settings::AbstractSettings=NullSettings(),ss_settings::AbstractSettings=NullSettings())::Nothing
+#          where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
 #
 #
 #     @error "Not implemented yet"

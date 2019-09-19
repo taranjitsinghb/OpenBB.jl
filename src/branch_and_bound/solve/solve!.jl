@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T13:53:33+02:00
+# @Last modified time: 2019-09-06T16:52:27+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -17,6 +17,12 @@ include("./run!.jl")
 
 # This is the main function called to solve a branch and bound problem
 function solve!(workspace::BBworkspace)::Nothing
+
+
+	# update the workspace if necessary
+	if workspace.outdated
+		update!(workspace,localOnly=!(workspace.sharedMemory isa NullSharedMemory))
+	end
 
 	@sync if true
 		# start the remote branch and bound processes

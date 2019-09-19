@@ -10,7 +10,7 @@
 
 
 # branch and bound algorithm
-function run!(workspace::BBworkspace{T1,T2})::Nothing where T1<:AbstractWorkspace where T2<:AbstractSharedMemory
+function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
 
     # timing
     lastTimeCheckpoint = time()

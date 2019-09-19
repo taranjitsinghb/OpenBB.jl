@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: bounds_propagation_issue.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T14:20:30+02:00
+# @Last modified time: 2019-09-06T18:22:12+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -62,7 +62,7 @@ workspace = OpenBB.setup(problem,
                                            expansionPriorityRule=(OpenBB.lower_pseudoObjective,),
                                            branchingPriorityRule=(OpenBB.pseudoIncrements_geomean,),
                                            pseudoCostsInitialization=(OpenBB.initialize_to_constant!,1e-4),
-                                           withBoundsPropagation=true,
+                                           withBoundsPropagation=false,
                                            numProcesses=1),
                          OpenBB.GUROBIsettings())
 

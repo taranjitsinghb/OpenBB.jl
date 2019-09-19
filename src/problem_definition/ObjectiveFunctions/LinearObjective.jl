@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T19:57:37+02:00
+# @Last modified time: 2019-09-06T19:41:14+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -15,11 +15,11 @@ function LinearObjective(;L::T)::LinearObjective{T} where T<:Union{Array{Float64
 end
 
 # type conversions
-function LinearObjective{T}(objective::LinearObjective{T})::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+function LinearObjective(objective::LinearObjective{T})::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return objective
 end
 
-function LinearObjective{T2}(objective::QuadraticObjective{T1,T2})::LinearObjective{T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}} where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+function LinearObjective(objective::QuadraticObjective{T1,T2})::LinearObjective{T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}} where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     @assert all(objective.Q .== 0)
     return LinearObjective(objective.L)
 end
@@ -51,6 +51,8 @@ end
 
 # update functions (Not Fundamental. These are used only during problem update)
 function insert_variables!(objective::LinearObjective,numVariables::Int,insertionPoint::Int)::Nothing
+    @assert numVariables>=0
+    @assert 0<=insertionPoint<=get_numVariables(objective)+1
     splice!(objective.L,insertionPoint:insertionPoint-1,zeros(numVariables,1))
     return
 end
@@ -80,5 +82,21 @@ function +(objective1::LinearObjective,objective2::T)::LinearObjective where T<:
         return objective1
     else
         return objective1 + LinearObjective(objective2)
+    end
+end
+
+
+function add!(objective1::LinearObjective,objective2::LinearObjective)::Nothing
+    @assert get_numVariables(objective1) == get_numVariables(objective2)
+    @. objective1.L += objective2.L
+    return
+end
+
+function add!(objective1::LinearObjective,objective2::T)::Nothing where T<:AbstractObjective
+    if objective2 isa NullObjective
+        return
+    else
+        add!(objective1,LinearObjective(objective2))
+        return
     end
 end

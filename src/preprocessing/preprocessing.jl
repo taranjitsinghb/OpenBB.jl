@@ -21,7 +21,7 @@ function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{In
       try
          OpenBB.bounds_propagation!(
             node, workspace.subsolverWS.A,
-            workspace.dscIndices,
+            workspace.problem.varSet.dscIndices,
             updatedVars
          )
       catch e

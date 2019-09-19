@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QuadraticObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T18:25:50+02:00
+# @Last modified time: 2019-09-06T19:33:54+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -15,11 +15,11 @@ function QuadraticObjective(;Q::T1,L::T2)::QuadraticObjective{T1,T2} where T1<:U
 end
 
 # type conversions
-function QuadraticObjective{T1,T2}(objective::LinearObjective{T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+function QuadraticObjective(objective::LinearObjective{T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return QuadraticObjective(sparse(zeros(length(objective.L),length(objective.L))),objective.L)
 end
 
-function QuadraticObjective{T1,T2}(objective::QuadraticObjective{T1,T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+function QuadraticObjective(objective::QuadraticObjective{T1,T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return objective
 end
 
@@ -51,6 +51,8 @@ end
 
 # update functions (Not fundamental These are used only for problem update)
 function insert_variables!(objective::QuadraticObjective,numVariables::Int,insertionPoint::Int)::Nothing
+    @assert numVariables >= 0
+    @assert 0<=insertionPoint<=get_numVariables(objective)+1
     objective.Q = vcat(hcat(objective.Q[1:insertionPoint-1,1:insertionPoint-1],zeros(insertionPoint-1,numVariables),objective.Q[1:insertionPoint-1,insertionPoint:end]),
                        zeros(numVariables,numVariables+get_numVariables(objective)),
                        hcat(objective.Q[insertionPoint:end,1:insertionPoint-1],zeros(get_numVariables(objective)-insertionPoint+1,numVariables),objective.Q[insertionPoint:end,insertionPoint:end]))
@@ -84,5 +86,23 @@ function +(objective1::QuadraticObjective,objective2::T)::QuadraticObjective whe
         return objective1
     else
         return objective1 + QuadraticObjective(objective2)
+    end
+end
+
+
+
+function add!(objective1::QuadraticObjective,objective2::QuadraticObjective)::Nothing
+    @assert get_numVariables(objective1) == get_numVariables(objective2)
+    @. objective1.Q += objective2.Q
+    @. objective1.L += objective2.L
+    return
+end
+
+function add!(objective1::QuadraticObjective,objective2::T)::Nothing where T<:AbstractObjective
+    if objective2 isa NullObjective
+        return
+    else
+        add!(objective1,QuadraticObjective(objective2))
+        return
     end
 end

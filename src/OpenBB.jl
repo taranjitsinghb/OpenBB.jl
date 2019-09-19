@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-25T22:53:00+02:00
+# @Last modified time: 2019-09-19T12:53:15+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -62,7 +62,7 @@ if withOSQP()
     include("./subsolvers_interfaces/OSQP_interface/OSQP_interface.jl")
 end
 if withGUROBI()
-    include("./subsolvers_interfaces/GUROBI_interface/GUROBI_interface.jl")
+    include("./subsolvers_interfaces/GUROBI_interface.jl")
 end
 if withQPALM()
     include("./subsolvers_interfaces/QPALM_interface/QPALM_interface.jl")
