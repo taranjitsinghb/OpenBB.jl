@@ -8,25 +8,6 @@
 # @Copyright: {{copyright}}
 
 
-#
-function update!(workspace::QPALMworkspace)::Nothing
-
-    # reformat the settings for QPALM
-    settings_dict = Dict{Symbol,Any}()
-    for field in fieldnames(QPALMsettings)
-        settings_dict[field] = getfield(workspace.settings,field)
-    end
-
-    # setup QPALM with the new constraint set
-    QPALM.setup!(workspace.model;
-                    Q=sparse(workspace.Q),
-                    q=workspace.L,
-                    A=vcat(speye(size(workspace.A,2)),sparse(workspace.A)),
-                    bmin=vcat(workspace.varLoBs,workspace.cnsLoBs),
-                    bmax=vcat(workspace.varUpBs,workspace.cnsUpBs),
-                    settings_dict...)
-    return
-end
 
 
 #

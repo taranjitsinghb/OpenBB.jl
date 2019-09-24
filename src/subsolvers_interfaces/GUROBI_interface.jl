@@ -100,25 +100,6 @@ mutable struct GUROBIworkspace{T1<:AbstractObjective,T2<:AbstractConstraintSet} 
 end
 
 
-## Inspect ##########################################################
-# getters and setters
-function get_primalTolerance(workspace::GUROBIworkspace)::Float64
-    return workspace.settings.FeasibilityTol
-end
-
-
-
-# ...
-function get_solver_name(workspace::GUROBIworkspace)::String
-    return "GUROBI"
-end
-
-# ...
-function get_settings(workspace::GUROBIworkspace)::GUROBIsettings
-    return workspace.settings
-end
-
-
 ## Setup & Update ##########################################################
 # this function creates a Gurobi Model representing the given CvxQproblem
 function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Float64=Inf,bb_timeLimit=Inf)::GUROBIworkspace
@@ -127,21 +108,20 @@ function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Flo
     @assert problem.objFun isa NullObjective || problem.objFun isa LinearObjective || problem.objFun isa QuadraticObjective
     @assert problem.cnsSet isa NullConstraintSet || problem.cnsSet isa LinearConstraintSet
 
+    # overwrite the gurobi setting depending on the branch and bound settings
+    settings.FeasibilityTol = min(settings.FeasibilityTol,bb_primalTolerance)
+    if bb_timeLimit < Inf
+        if settings_dict.TimeLimit == 0.
+            settings_dict.TimeLimit = bb_timeLimit
+        else
+            settings.TimeLimit = min(settings.TimeLimit,bb_timeLimit)
+        end
+    end
+
     # reformat the settings for GUROBI
     settings_dict = Dict{Symbol,Any}()
     for field in fieldnames(GUROBIsettings)
         settings_dict[field] = getfield(settings,field)
-    end
-
-    # overwrite the osqp setting depending on the branch and bound settings
-    settings_dict[:FeasibilityTol] = min(settings_dict[:FeasibilityTol],bb_primalTolerance)
-
-    if bb_timeLimit < Inf
-        if settings_dict[:TimeLimit] == 0.
-            settings_dict[:TimeLimit] = bb_timeLimit
-        else
-            settings_dict[:TimeLimit] = min(settings_dict[:TimeLimit],bb_timeLimit)
-        end
     end
 
     # create the subsolver OSQPworkspace
@@ -166,15 +146,15 @@ end
 function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
 
     # update the gurobi model
-    nVars = get_numVariables(workspace.problem)
-    nCnss = get_numConstraints(workspace.problem)
+    numVars = get_numVariables(workspace.problem)
+    numCnss = get_numConstraints(workspace.problem)
 
     # create a Gurobi environment
-    tmpConstraintSet = LinearConstraintSet(workspace.problem.cnsSet)
-    tmpObjectiveFun = QuadraticObjective(workspace.problem.objFun)
-    model = Gurobi.gurobi_model(workspace.environment,H = tmpObjectiveFun.Q,
-                                                      f = tmpObjectiveFun.L,
-                                                      A = vcat(-tmpConstraintSet.A,tmpConstraintSet.A),
+    cnsSet = LinearConstraintSet(workspace.problem.cnsSet)
+    objFun = QuadraticObjective(workspace.problem.objFun)
+    model = Gurobi.gurobi_model(workspace.environment,H = objFun.Q,
+                                                      f = objFun.L,
+                                                      A = vcat(-cnsSet.A,cnsSet.A),
                                                       b = vcat(-node.cnsLoBs,node.cnsUpBs),
                                                       lb = node.varLoBs,
                                                       ub = node.varUpBs)
@@ -190,24 +170,24 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
     if  status == 2
         status = 0 # "solved"
         node.primal = Gurobi.get_solution(model)
-        node.bndDual = zeros(nVars)
-        node.cnsDual = zeros(nCnss)
+        node.bndDual = zeros(numVars)
+        node.cnsDual = zeros(numCnss)
         node.objGap = workspace.settings.OptimalityTol
-        node.objVal = (transpose(node.primal)*tmpObjectiveFun.Q*node.primal)/2. + transpose(tmpObjectiveFun.L)*node.primal
+        node.objVal = (transpose(node.primal)*objFun.Q*node.primal)/2. + transpose(objFun.L)*node.primal
     elseif status in [3,4]
         status = 1 # "infeasible"
-        node.primal = NaNs(nVars)
-        node.bndDual = NaNs(nVars)
-        node.cnsDual = NaNs(nCnss)
+        node.primal = NaNs(numVars)
+        node.bndDual = NaNs(numVars)
+        node.cnsDual = NaNs(numCnss)
         node.objGap = workspace.settings.OptimalityTol
         node.objVal = Inf
     elseif status in [7,8,10,11,13]
         status = 2 # "unreliable"
         node.primal = Gurobi.get_solution(model)
         node.primal = @. min(max(node.primal,node.varLoBs),node.varUpBs)
-        node.bndDual = zeros(nVars)
-        node.cnsDual = zeros(nCnss)
-        newObjVal = (transpose(node.primal)*tmpObjectiveFun.Q*node.primal)/2. + transpose(tmpObjectiveFun.L)*node.primal
+        node.bndDual = zeros(numVars)
+        node.cnsDual = zeros(numCnss)
+        newObjVal = (transpose(node.primal)*objFun.Q*node.primal)/2. + transpose(objFun.L)*node.primal
         if newObjVal >= node.ObjVal - node.objGap
             node.objGap = newObjVal - node.objVal + node.objGap
             node.objVal = newObjVal

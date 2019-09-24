@@ -48,10 +48,6 @@ function get_constraintBounds(workspace::QPALMworkspace)::Tuple{Array{Float64,1}
     return (workspace.cnsLoBs,workspace.cnsUpBs)
 end
 
-# ...
-function get_settings(workspace::QPALMworkspace)::QPALMsettings
-    return workspace.settings
-end
 
 # ...
 function get_constraints(workspace::QPALMworkspace)::LinearConstraintSet

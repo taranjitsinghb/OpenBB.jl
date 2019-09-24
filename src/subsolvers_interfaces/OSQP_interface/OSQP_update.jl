@@ -8,25 +8,7 @@
 # @Copyright: {{copyright}}
 
 
-#
-function update!(workspace::OSQPworkspace)::Nothing
 
-    # reformat the settings for OSQP
-    settings_dict = Dict{Symbol,Any}()
-    for field in fieldnames(OSQPsettings)
-        settings_dict[field] = getfield(workspace.settings,field)
-    end
-
-    # setup OSQP with the new constraint set
-    OSQP.setup!(workspace.model;
-                    P=sparse(workspace.Q),
-                    q=workspace.L,
-                    A=vcat(speye(size(workspace.A,2)),sparse(workspace.A)),
-                    l=vcat(workspace.varLoBs,workspace.cnsLoBs),
-                    u=vcat(workspace.varUpBs,workspace.cnsUpBs),
-                    settings_dict...)
-    return
-end
 
 
 #

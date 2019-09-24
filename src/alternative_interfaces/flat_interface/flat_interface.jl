@@ -13,8 +13,6 @@
 ############################################################################
 
 
-using OpenBB
-
 # define the BBworkspace in the global scope
 global workspace = NullWorkspace()
 
@@ -142,10 +140,9 @@ end
 
 
 ######################## inspect ########################
-
 # ...
 function get_settings()::Dict{String,Any}
-  tmp = get_settings(workspace)
+  tmp = workspace.settings
   out = Dict{String,Any}()
   for field in fieldnames(BBsettings)
     out[String(field)] = getfield(tmp,field)
@@ -160,7 +157,7 @@ end
 
 # ...
 function get_subsolver_settings()::Dict{String,Any}
-  tmp = get_settings(workspace)
+  tmp = workspace.subsolverWS.settings
   out = Dict{String,Any}()
   for field in fieldnames(typeof(tmp))
     out[String(field)] = getfield(tmp,field)

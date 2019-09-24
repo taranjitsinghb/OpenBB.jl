@@ -221,15 +221,6 @@ function get_status(workspace::BBworkspace{T1,T2,T3};localOnly::Bool=false)::BBs
     return status
 end
 
-# ...
-function get_settings(workspace::BBworkspace{T1,T2,T3})::BBsettings where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
-    return workspace.settings
-end
-
-# ...
-function get_subsover_settings(workspace::BBworkspace{T1,T2,T3})::AbstractSettings where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
-    return get_settings(workspace.subsolverWS)
-end
 
 # ...
 function get_discreteIndices(workspace::T)::Array{Int,1} where T<:BBworkspace
