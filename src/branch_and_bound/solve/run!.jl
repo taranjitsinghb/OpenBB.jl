@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T18:05:52+02:00
+# @Last modified time: 2019-09-25T23:02:33+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -26,6 +26,9 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
 
     # print the initial algorithm status
     printCountdown = 0.0
+
+    # allowed time for inter-process communication
+    communicationTimeout = 1e-2
 
     # keep in memory how many nodes the algorithm has explored since the last time
     # it has sent a node to the neighbouring process
@@ -131,11 +134,11 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
                 end
 
             elseif !(workspace.sharedMemory isa NullSharedMemory) && # we are multiprocessing
-                    timeToShareNodes && # it is time to send a child to the next process
-                   !isready(workspace.sharedMemory.outputChannel) # the channel is free
+                   !isready(workspace.sharedMemory.outputChannel) && # the channel is free
+                   timeToShareNodes # it is time to send a child to the next process
 
                 # send the new node to the neighbouring process
-                put!(workspace.sharedMemory.outputChannel,node)
+                put!(workspace.sharedMemory.outputChannel,node;timeout=communicationTimeout)
 
                 # the next node has to be explored locally
                 timeToShareNodes = false
@@ -216,7 +219,7 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
                 end
 
                 # take a new node from the input channel
-                newNode = take!(workspace.sharedMemory.inputChannel)
+                newNode = take!(workspace.sharedMemory.inputChannel;timeout=communicationTimeout)
 
                 # insert the new node in the active queue
                 if newNode.objVal - newNode.objGap < workspace.status.objUpB - workspace.settings.primalTolerance

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_problem_definition_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T12:39:24+02:00
+# @Last modified time: 2019-09-25T19:17:10+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -27,7 +27,7 @@ end
 # test constraint sets
 for c in cns
     tmp = deepcopy(c)
-    OpenBB.update_bounds!(tmp,[2.],[2.])
+    OpenBB.update_bounds!(tmp,loBs=[2.],upBs=[2.])
     OpenBB.insert_constraints!(tmp,c,2)
     OpenBB.append_constraints!(tmp,tmp)
     OpenBB.remove_constraints!(tmp,[3])

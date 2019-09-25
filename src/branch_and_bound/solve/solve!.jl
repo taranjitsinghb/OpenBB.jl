@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-06T16:52:27+02:00
+# @Last modified time: 2019-09-25T21:14:00+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -21,9 +21,8 @@ function solve!(workspace::BBworkspace)::Nothing
 
 	# update the workspace if necessary
 	if workspace.outdated
-		update!(workspace,localOnly=!(workspace.sharedMemory isa NullSharedMemory))
+		update!(workspace)
 	end
-
 	@sync if true
 		# start the remote branch and bound processes
 		if workspace.settings.numProcesses > 1

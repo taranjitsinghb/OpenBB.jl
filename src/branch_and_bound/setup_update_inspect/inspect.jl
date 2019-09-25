@@ -4,7 +4,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: inspect.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-06T14:03:33+02:00
+# @Last modified time: 2019-09-25T17:21:24+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -141,7 +141,7 @@ end
 
 # returns the number of discrete variables
 function get_numDiscreteVariables(workspace::BBworkspace{T1,T2,T3})::Int where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
-    return length(get_numDiscrete(workspace.problem.varSet))
+    return get_numDiscrete(workspace.problem.varSet)
 end
 
 # returns the number of constraints
@@ -170,7 +170,7 @@ function get_constraint_sparsity(workspace::BBworkspace{T1,T2,T3},index::Int)::A
 end
 
 # this function returns the sparsity pattern of the objective function
-function get_objective_sparsity(workspace::BBworkspace{T1,T2,T3})::Tuple{Array{Int,1},Array{Int,1}}  where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
+function get_objective_sparsity(workspace::BBworkspace{T1,T2,T3})::Tuple  where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
     return get_sparsity(workspace.problem.objFun)
 end
 

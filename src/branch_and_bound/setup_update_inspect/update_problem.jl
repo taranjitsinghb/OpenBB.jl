@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-08T22:51:32+02:00
+# @Last modified time: 2019-09-25T19:23:14+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -176,6 +176,9 @@ function permute_constraints!(workspace::BBworkspace{T1,T2,T3},permutation::Arra
         end
     end
 
+    # mark the subsolver workspace as outdated
+	make_outdated!(workspace.subsolverWS)
+
     return
 end
 
@@ -190,10 +193,10 @@ function update_bounds!(workspace::BBworkspace{T1,T2,T3};
 
 
     # ensure the correctness of the input
-	@assert length(varLoBs)==length(workspace.subsolverWS.varLoBs) || length(varLoBs)==0
-	@assert length(varUpBs)==length(workspace.subsolverWS.varUpBs) || length(varUpBs)==0
-	@assert length(cnsLoBs)==length(workspace.subsolverWS.cnsLoBs) || length(cnsLoBs)==0
-	@assert length(cnsUpBs)==length(workspace.subsolverWS.cnsUpBs) || length(cnsUpBs)==0
+	@assert length(varLoBs)==length(workspace.problem.varSet.loBs) || length(varLoBs)==0
+	@assert length(varUpBs)==length(workspace.problem.varSet.upBs) || length(varUpBs)==0
+	@assert length(cnsLoBs)==length(workspace.problem.cnsSet.loBs) || length(cnsLoBs)==0
+	@assert length(cnsUpBs)==length(workspace.problem.cnsSet.upBs) || length(cnsUpBs)==0
 
 
     @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
@@ -216,10 +219,10 @@ function update_bounds!(workspace::BBworkspace{T1,T2,T3};
 			if !workspace.settings.interactiveMode
 				@warn "In order to correctly manipulate the problem formulation, OpenBB must be run in interactive mode"
 			# check if a bounds relaxation was requested
-			elseif (length(cnsLoBs) > 0 && any(@. cnsLoBs < workspace.subsolverWS.cnsLoBs)) ||
-			   	   (length(cnsUpBs) > 0 && any(@. cnsUpBs > workspace.subsolverWS.cnsUpBs)) ||
-			   	   (length(varLoBs) > 0 && any(@. varLoBs < workspace.subsolverWS.varLoBs)) ||
-			       (length(varUpBs) > 0 && any(@. varUpBs > workspace.subsolverWS.varLoBs))
+		elseif (length(cnsLoBs) > 0 && any(@. cnsLoBs < workspace.problem.cnsSet.loBs)) ||
+			   (length(cnsUpBs) > 0 && any(@. cnsUpBs > workspace.problem.cnsSet.upBs)) ||
+			   (length(varLoBs) > 0 && any(@. varLoBs < workspace.problem.varSet.loBs)) ||
+			   (length(varUpBs) > 0 && any(@. varUpBs > workspace.problem.varSet.upBs))
 				@warn "Relaxing the bounds after some iterations is potentially destructive, please make sure that the new bound set is more restrictive than the old one."
 			end
 		end
@@ -285,17 +288,22 @@ function append_problem!(workspace::BBworkspace{T1,T2,T3},problem::Problem;suppr
 		# make a copy of the problem to append
 		localProblem = deepcopy(problem)
 
+		# collect info
+		numVars1 = get_numVariables(workspace.problem)
+		numVars2 = get_numVariables(localProblem)
+		numCnss2 = get_numConstraints(localProblem)
+
 		# modify the variable set
 		append_variables!(workspace.problem.varSet,localProblem.varSet)
 
 		# modify the constraint set
-		append_variables!(workspace.problem.cnsSet,get_numVariables(localProblem))
-		insert_variables!(localProblem.varSet,1,get_numVariables(workspace.problem))
+		append_variables!(workspace.problem.cnsSet,numVars2)
+		insert_variables!(localProblem.cnsSet,numVars1,1)
 		append_constraints!(workspace.problem.cnsSet,localProblem.cnsSet)
 
 		# modify the objective function
-		append_variables!(workspace.problem.objFun,get_numVariables(localProblem))
-		insert_variables!(localProblem.objFun,1,get_numVariables(workspace.problem))
+		append_variables!(workspace.problem.objFun,numVars2)
+		insert_variables!(localProblem.objFun,numVars1,1)
 		add!(workspace.problem.objFun,localProblem.objFun)
 
 		# mark the workspace as outdated
@@ -313,8 +321,8 @@ function append_problem!(workspace::BBworkspace{T1,T2,T3},problem::Problem;suppr
             append!(workspace.activeQueue[i].cnsUpBs,newCnsBounds[2])
             # extend primal and dual optimization results
             append!(workspace.activeQueue[i].primal,newPrimal)
-            append!(workspace.activeQueue[i].bndDual,zeros(nVars2))
-            append!(workspace.activeQueue[i].cnsDual,zeros(nCnss2))
+            append!(workspace.activeQueue[i].bndDual,zeros(numVars2))
+            append!(workspace.activeQueue[i].cnsDual,zeros(numCnss2))
         end
         for i in  1:length(workspace.solutionPool)
             # extend branching bounds
@@ -324,8 +332,8 @@ function append_problem!(workspace::BBworkspace{T1,T2,T3},problem::Problem;suppr
             append!(workspace.solutionPool[i].cnsUpBs,newCnsBounds[2])
             # extend primal and dual optimization results
             append!(workspace.solutionPool[i].primal,newPrimal)
-            append!(workspace.solutionPool[i].bndDual,zeros(nVars2))
-            append!(workspace.solutionPool[i].cnsDual,zeros(nCnss2))
+            append!(workspace.solutionPool[i].bndDual,zeros(numVars2))
+            append!(workspace.solutionPool[i].cnsDual,zeros(numCnss2))
         end
         for i in  1:length(workspace.unactivePool)
             # extend branching bounds
@@ -335,8 +343,8 @@ function append_problem!(workspace::BBworkspace{T1,T2,T3},problem::Problem;suppr
             append!(workspace.unactivePool[i].cnsUpBs,newCnsBounds[2])
             # extend primal and dual optimization results
             append!(workspace.unactivePool[i].primal,newPrimal)
-            append!(workspace.unactivePool[i].bndDual,zeros(nVars2))
-            append!(workspace.unactivePool[i].cnsDual,zeros(nCnss2))
+            append!(workspace.unactivePool[i].bndDual,zeros(numVars2))
+            append!(workspace.unactivePool[i].cnsDual,zeros(numCnss2))
         end
     end
 

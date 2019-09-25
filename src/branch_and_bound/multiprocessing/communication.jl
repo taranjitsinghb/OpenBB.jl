@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: communication.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-05-31T13:31:39+02:00
+# @Last modified time: 2019-09-25T23:06:35+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -21,10 +21,14 @@ end
 
 # place a node on the shared memory
 import Base.put!
-function put!(channel::BBnodeChannel,node::T)::Nothing where T <: AbstractBBnode
+function put!(channel::BBnodeChannel,node::T;timeout::Float64=Inf)::Nothing where T <: AbstractBBnode
 
     # wait for the channel to be unlocked and free
+    startTime = time()
     while true
+        if time() - startTime > timeout
+            @error "communication timeout"
+        end
         if !channel.state[1] && !isready(channel)
             break
         end
@@ -50,10 +54,14 @@ end
 
 
 import Base.take!
-function take!(channel::BBnodeChannel)
+function take!(channel::BBnodeChannel;timeout::Float64=Inf)
 
     # wait if the memory space for the process is free or locked
+    startTime = time()
     while true
+        if time()-startTime>timeout
+            @error "communication timeout"
+        end
         if  !channel.state[1] && isready(channel)
             break
         end

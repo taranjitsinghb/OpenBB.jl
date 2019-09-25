@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-06T18:44:21+02:00
+# @Last modified time: 2019-09-25T17:35:29+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -114,7 +114,6 @@ function setup(subsolver::String,problemDict::T1,bbSettingsDict::T2,ssSettingsDi
   for pair in ssSettingsDict
     setfield!(ss_settings,Symbol(pair[1]),pair[2])
   end
-
   # create a OpenBB problem description
   global workspace = setup(Problem(problemDict),bb_settings,ss_settings)
 
@@ -277,7 +276,7 @@ function get_constraint_sparsity(index::Int)::Array{Int,1}
   return get_constraint_sparsity(workspace,index)
 end
 
-function get_objective_sparsity()::Tuple{Array{Int,1},Array{Int,1}}
+function get_objective_sparsity()::Tuple
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
@@ -315,13 +314,6 @@ end
 
 
 ######################## update workspace ########################
-
-function reset_explored_nodes_b(localOnly::Bool=false)::Nothing
-  if workspace isa NullWorkspace
-    @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
-  end
-  return reset_explored_nodes!(workspace,localOnly=localOnly)
-end
 
 function update_b(localOnly::Bool=false)::Nothing
   if workspace isa NullWorkspace

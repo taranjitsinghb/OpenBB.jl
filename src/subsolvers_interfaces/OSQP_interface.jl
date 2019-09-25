@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-16T15:55:00+01:00
+# @Last modified time: 2019-09-24T16:42:34+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -117,6 +117,7 @@ function setup(problem::Problem,settings::OSQPsettings;bb_primalTolerance::Float
                       A=vcat(speye(get_size(problem.varSet)),sparse(cnsSet.A)),
                       l=vcat(problem.varSet.loBs,cnsSet.loBs),
                       u=vcat(problem.varSet.upBs,cnsSet.upBs),
+                      settings_dict...)
 
 
     return OSQPworkspace(problem,model,settings,false)
@@ -142,7 +143,7 @@ function update!(workspace::OSQPworkspace)::Nothing
     cnsSet = LinearConstraintSet(workspace.problem.cnsSet)
 
     # re-setup OSQP for the new problem
-    OSQP.setup!(workspace.model;P=sparse(objfun.Q),q=objFun.L,
+    OSQP.setup!(workspace.model;P=sparse(objFun.Q),q=objFun.L,
                 A=vcat(speye(get_size(workspace.problem.varSet)),sparse(cnsSet.A)),
                 l=vcat(workspace.problem.varSet.loBs,cnsSet.loBs),
                 u=vcat(workspace.problem.varSet.upBs,cnsSet.upBs),
@@ -196,7 +197,8 @@ function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
         @. node.primal = min(max(sol.x,node.varLoBs-workspace.settings.eps_prim_inf),node.varUpBs+workspace.settings.eps_prim_inf)
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:end]
-        newObjVal = 1/2 * transpose(node.primal) * workspace.Q *node.primal + transpose(workspace.L) * node.primal
+        objFun = QuadraticObjective(workspace.problem.objFun)
+        newObjVal = 1/2 * transpose(node.primal) * objFun.Q *node.primal + transpose(objFun.L) * node.primal
         if newObjVal >= node.ObjVal - node.objGap
             node.objGap = newObjVal - node.objVal + node.objGap #TODO: recopute the gap if possible
             node.objVal = newObjVal

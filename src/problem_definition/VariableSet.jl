@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-06T15:03:10+02:00
+# @Last modified time: 2019-09-25T18:29:59+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -180,7 +180,7 @@ function append_variables!(variableSet1::VariableSet,variableSet2::AbstractVaria
     end
 end
 
-function update_bounds!(variableSet::VariableSet,loBs::Array{Float64,1}=Float64[],upBs::Array{Float64,1}=Float64)::Nothing
+function update_bounds!(variableSet::VariableSet;loBs::Array{Float64,1}=Float64[],upBs::Array{Float64,1}=Float64)::Nothing
     if length(loBs) > 0
         @assert length(loBs) == length(variableSet.loBs) == length(variableSet.upBs)
         @. variableSet.loBs = loBs

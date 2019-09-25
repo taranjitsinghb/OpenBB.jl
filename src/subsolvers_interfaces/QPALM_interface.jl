@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-03-16T15:55:00+01:00
+# @Last modified time: 2019-09-25T19:26:26+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -110,8 +110,8 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
     # create the QPALMworkspace
     model = QPALM.Model()
     if length(problem.varSet.loBs) > 0
-        QPALM.setup!(model;Q=objFun.Q,q=objFun.L,
-                           A=vcat(get_size(problem.varSet),sparse(cnsSet.A)),
+        QPALM.setup!(model;Q=sparse(objFun.Q),q=objFun.L,
+                           A=vcat(speye(get_size(problem.varSet)),sparse(cnsSet.A)),
                            bmin=vcat(problem.varSet.loBs,cnsSet.loBs),
                            bmax=vcat(problem.varSet.upBs,cnsSet.upBs),
                            settings_dict...)
@@ -121,7 +121,7 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
 end
 
 # it marks the workspace as outdated
-function make_outdated!(workspace::OSQPworkspace)::Nothing
+function make_outdated!(workspace::QPALMworkspace)::Nothing
     workspace.outdated = true
     return
 end
@@ -142,8 +142,8 @@ function update!(workspace::QPALMworkspace)::Nothing
     # setup QPALM for the new problem
     QPALM.setup!(workspace.model;Q=sparse(objFun.Q),q=objFun.L,
                  A=vcat(speye(get_size(workspace.problem.varSet)),sparse(cnsSet.A)),
-                 bmin=vcat(workspace.problem.varLoBs,cnsSet.loBs),
-                 bmax=vcat(workspace.problem.varUpBs,cnsSet.upBs),
+                 bmin=vcat(workspace.problem.varSet.loBs,cnsSet.loBs),
+                 bmax=vcat(workspace.problem.varSet.upBs,cnsSet.upBs),
                  settings_dict...)
 
     # mark the workspace as up to date
@@ -160,7 +160,7 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
     end
 
     # collect info on the problem
-    numVars = get_numVariables(workspace)
+    numVars = get_size(workspace.problem.varSet)
 
     # update bounds in the the qpalm model
     QPALM.update!(workspace.model;bmin=vcat(node.varLoBs,node.cnsLoBs),bmax=vcat(node.varUpBs,node.cnsUpBs))
@@ -179,7 +179,8 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
         @. node.primal = sol.x
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:end]
-        node.objVal = 1/2 * transpose(node.primal) * workspace.Q * node.primal + transpose(workspace.L) * node.primal
+        objFun = QuadraticObjective(workspace.problem.objFun)
+        node.objVal = 1/2 * transpose(node.primal) * objFun.Q * node.primal + transpose(objFun.L) * node.primal
         node.objGap = max(workspace.settings.eps_abs,
                           workspace.settings.eps_rel*abs(node.objVal))
     elseif sol.info.status_val == -3
@@ -194,7 +195,8 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
         @. node.primal = min(max(sol.x,node.varLoBs),node.varUpBs)
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:end]
-        newObjVal = 1/2 * transpose(node.primal) * workspace.Q * node.primal + transpose(workspace.L) * node.primal
+        objFun = QuadraticObjective(workspace.problem.objFun)
+        newObjVal = 1/2 * transpose(node.primal) * objFun.Q * node.primal + transpose(objFun.L) * node.primal
         if newObjVal >= node.ObjVal - node.objGap
             node.objGap = newObjVal - node.objVal + node.objGap #TODO: recopute the gap if possible
             node.objVal = newObjVal

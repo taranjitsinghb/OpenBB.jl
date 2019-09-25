@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-06T19:41:14+02:00
+# @Last modified time: 2019-09-25T17:09:38+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -45,7 +45,7 @@ function get_numVariables(objective::LinearObjective)::Int
 end
 
 function get_sparsity(objective::LinearObjective)::Array{Int,1}
-    return findnz(objective.L)[1]
+    return findnz(sparse(objective.L))[1]
 end
 
 

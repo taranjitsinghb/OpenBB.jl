@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QuadraticObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-06T19:33:54+02:00
+# @Last modified time: 2019-09-25T17:09:53+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -45,7 +45,7 @@ function get_numVariables(objective::QuadraticObjective)::Int
 end
 
 function get_sparsity(objective::QuadraticObjective)::Tuple{Tuple{Array{Int,1},Array{Int,1}},Array{Int,1}}
-    return (findnz(objective.Q)[1:2],findnz(objective.L)[1])
+    return (findnz(sparse(objective.Q))[1:2],findnz(sparse(objective.L))[1])
 end
 
 

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-06T13:20:48+02:00
+# @Last modified time: 2019-09-25T23:15:29+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -65,10 +65,6 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		for k in 1:bbSettings.numProcesses
 			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numCnss))
 		end
-		# communicationChannels = Array{RemoteChannel,1}(undef,bbSettings.numProcesses)
-		# @sync for k in 1:bbSettings.numProcesses
-		# 	@async communicationChannels[k] = RemoteChannel(()->Channel{AbstractBBnode}(2),k)
-		# end
 
 		# construct shared Memory
 		objectiveBounds = SharedArray{Float64,1}(vcat([-Inf],repeat([Inf],bbSettings.numProcesses)))
@@ -107,7 +103,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 
 		# build the root node and solve it
 		push!(workspace.activeQueue,BBroot(workspace))
-		solve!(workspace.activeQueue[1],workspace)
+		solve!(workspace.activeQueue[1],workspace.subsolverWS)
 		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
 
 		# initialize the pseudo costs in the master process

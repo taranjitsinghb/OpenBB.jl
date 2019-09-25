@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-08T20:49:07+02:00
+# @Last modified time: 2019-09-25T23:18:53+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -39,8 +39,10 @@ function update_sharedMemory!(workspace::BBworkspace{T1,T2,T3})::Nothing where T
 		# construct new communication Channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,workspace.settings.numProcesses)
 		for k in 1:workspace.settings.numProcesses
-			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numDscVars,numCnss))
+			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numCnss))
 		end
+		workspace.sharedMemory.inputChannel = communicationChannels[1]
+		workspace.sharedMemory.outputChannel = communicationChannels[2]
 		@sync for k in 2:workspace.settings.numProcesses
 			@async if k < workspace.settings.numProcesses
 				remotecall_fetch(Main.eval,k,:(workspace.sharedMemory.inputChannel = $(communicationChannels[k]);
