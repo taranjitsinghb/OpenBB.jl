@@ -13,7 +13,7 @@ function bounds_propagation!(row::Int,
                             A::SparseMatrixCSC{Float64,Int},
                             cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
                             varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
-                            dscIndices::Array{Int64,1})::Set{Int}
+                            dscIndices::Array{Int64,1})::Tuple{Bool,Set{Int}}
       cns = A[row,1:end]
       cnsLoB = cnsLoBs[row]
       cnsUpB = cnsUpBs[row]
@@ -47,11 +47,13 @@ function bounds_propagation!(row::Int,
           # redundant constraint -> Remove?
           cnsLoBs[row] = -Inf
           cnsUpBs[row] = Inf
-          return updatedVars
+          return true, updatedVars
       elseif totalMinArray > cnsUpBs[row]
-          throw(InfeasibleError("Infeasible bound detected"))
+          # Infeasible
+          return false, updatedVars
       elseif totalMaxArray < cnsLoBs[row]
-          throw(InfeasibleError("Infeasible bound detected"))
+          # Infeasible
+          return false, updatedVars
       end
 
 
@@ -75,7 +77,7 @@ function bounds_propagation!(row::Int,
             if newLoB > newUpB
                   # Found infeasibility!
                   @info i, indices[i], varLoBs, varUpBs, newLoB, newUpB
-                  throw(InfeasibleError("Infeasible bound detected"))
+                  return false, updatedVars
             end
 
             # perform changes
@@ -125,22 +127,10 @@ function bounds_propagation!(row::Int,
                   push!(updatedVars,indices[i])
             end
 
-            # If a variable bound changed, change cns bounds
-            if lastChanged == i
-                if totalMaxArray < cnsUpB
-                    cnsUpB = totalMaxArray
-                    cnsUpBs[row] = cnsUpB
-                end
-                if totalMinArray > cnsLoB
-                    cnsLoB = totalMinArray
-                    cnsLoBs[row] = cnsLoB
-                end
-            end
-
             # if an update took place:
             # mark the current variable as updated and restart the iteration
             if lastChanged - 1 == mod(i,length(indices))
-                  return updatedVars
+                  return true, updatedVars
             else
                   iteration = iteration + 1
             end
@@ -153,7 +143,7 @@ function bounds_propagation!(rowsToCheck::Set{Int},
                             A::SparseMatrixCSC{Float64,Int},
                             cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
                             varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
-                            dscIndices::Array{Int64,1})::Set{Int}
+                            dscIndices::Array{Int64,1})::Tuple{Bool, Set{Int}}
 
       # use a set for the output
       updatedVars = Set{Int}()
@@ -164,7 +154,10 @@ function bounds_propagation!(rowsToCheck::Set{Int},
             row = pop!(rowsToCheck)
 
             # perform bound propagation and collect the updated variables
-            newUpdatedVars = bounds_propagation!(row, A, cnsLoBs, cnsUpBs, varLoBs, varUpBs, dscIndices)
+            feasible, newUpdatedVars = bounds_propagation!(row, A, cnsLoBs, cnsUpBs, varLoBs, varUpBs, dscIndices)
+            if !feasible
+                return false, updatedVars
+            end
 
             if length(newUpdatedVars) > 0
                   # collect the new rows to check
@@ -176,10 +169,10 @@ function bounds_propagation!(rowsToCheck::Set{Int},
             end
       end
 
-      return updatedVars
+      return true, updatedVars
 end
 
-function bounds_propagation!(node::BBnode, A::SparseMatrixCSC{Float64,Int}, dscIndices::Array{Int64,1}, updatedVars::Array{Int64,1})::Set{Int}
+function bounds_propagation!(node::BBnode, A::SparseMatrixCSC{Float64,Int}, dscIndices::Array{Int64,1}, updatedVars::Array{Int64,1})::Tuple{Bool, Set{Int}}
       if 0 in updatedVars
             rows = Set(1:size(A)[1])
       else

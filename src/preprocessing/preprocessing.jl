@@ -17,21 +17,14 @@ include("./linear_bounds_propagation.jl")
 function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{Int64,1};
                      withBoundsPropagation::Bool=true)::Bool
 
+   feasible = true
    if withBoundsPropagation
-      try
-         OpenBB.bounds_propagation!(
+       feasible, updatedVars = OpenBB.bounds_propagation!(
             node, workspace.subsolverWS.A,
             workspace.dscIndices,
             updatedVars
          )
-      catch e
-         if isa(e, InfeasibleError)
-            return false
-         else
-            rethrow(e)
-         end
-      end
    end
 
-   return true
+   return feasible
 end
