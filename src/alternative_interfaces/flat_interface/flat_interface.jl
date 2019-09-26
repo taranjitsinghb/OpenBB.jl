@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T17:25:36+02:00
+# @Last modified time: 2019-09-25T17:35:29+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -12,8 +12,6 @@
 # facilitate the task of building interfaces for OpenBB in other languages #
 ############################################################################
 
-
-using OpenBB
 
 # define the BBworkspace in the global scope
 global workspace = NullWorkspace()
@@ -116,7 +114,6 @@ function setup(subsolver::String,problemDict::T1,bbSettingsDict::T2,ssSettingsDi
   for pair in ssSettingsDict
     setfield!(ss_settings,Symbol(pair[1]),pair[2])
   end
-
   # create a OpenBB problem description
   global workspace = setup(Problem(problemDict),bb_settings,ss_settings)
 
@@ -142,10 +139,9 @@ end
 
 
 ######################## inspect ########################
-
 # ...
 function get_settings()::Dict{String,Any}
-  tmp = get_settings(workspace)
+  tmp = workspace.settings
   out = Dict{String,Any}()
   for field in fieldnames(BBsettings)
     out[String(field)] = getfield(tmp,field)
@@ -160,7 +156,7 @@ end
 
 # ...
 function get_subsolver_settings()::Dict{String,Any}
-  tmp = get_settings(workspace)
+  tmp = workspace.subsolverWS.settings
   out = Dict{String,Any}()
   for field in fieldnames(typeof(tmp))
     out[String(field)] = getfield(tmp,field)
@@ -280,7 +276,7 @@ function get_constraint_sparsity(index::Int)::Array{Int,1}
   return get_constraint_sparsity(workspace,index)
 end
 
-function get_objective_sparsity()::Tuple{Array{Int,1},Array{Int,1}}
+function get_objective_sparsity()::Tuple
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
@@ -319,13 +315,6 @@ end
 
 ######################## update workspace ########################
 
-function reset_explored_nodes_b(localOnly::Bool=false)::Nothing
-  if workspace isa NullWorkspace
-    @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
-  end
-  return reset_explored_nodes!(workspace,localOnly=localOnly)
-end
-
 function update_b(localOnly::Bool=false)::Nothing
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
@@ -354,47 +343,40 @@ end
 
 function append_constraints_b(constraintsDict::T,
                               suppressWarnings::Bool=false,
-                              suppressUpdate::Bool=false,
                               localOnly::Bool=false)::Nothing where T <: Dict
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
   return append_constraints!(workspace,ConstraintSet(constraintsDict),
                                     suppressWarnings=suppressWarnings,
-                                    suppressUpdate=suppressUpdate,
                                     localOnly=localOnly)
 end
 
 function insert_constraints_b(constraintsDict::T,index::Int,
                               suppressWarnings::Bool=false,
-                              suppressUpdate::Bool=false,
                               localOnly::Bool=false)::Nothing where T <: Dict
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
   return insert_constraints!(workspace,index,constraintsDict["A"],constraintsDict["cnsLoBs"],constraintsDict["cnsUpBs"],
                                     suppressWarnings=suppressWarnings,
-                                    suppressUpdate=suppressUpdate,
                                     localOnly=localOnly)
 end
 
 function remove_constraints_b(indices::Array{Int,1},
                               suppressWarnings::Bool=false,
-                              suppressUpdate::Bool=false,
                               localOnly::Bool=false)::Nothing
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
   return remove_constraints!(workspace,indices,
                                     suppressWarnings=suppressWarnings,
-                                    suppressUpdate=suppressUpdate,
                                     localOnly=localOnly)
 end
 
 
 function permute_constraints_b(permutation::Array{Int,1},
                                suppressWarnings::Bool=false,
-                               suppressUpdate::Bool=false,
                                localOnly::Bool=false)::Nothing
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
@@ -402,13 +384,11 @@ function permute_constraints_b(permutation::Array{Int,1},
 
   return permute_constraints!(workspace,permutation,
                                      suppressWarnings=suppressWarnings,
-                                     suppressUpdate=suppressUpdate,
                                      localOnly=localOnly)
 end
 
 function update_bounds_b(boundsDict::T,
                          suppressWarnings::Bool=false,
-                         suppressUpdate::Bool=false,
                          localOnly::Bool=false)::Nothing where T <: Dict
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
@@ -420,29 +400,24 @@ function update_bounds_b(boundsDict::T,
   end
   return update_bounds!(workspace; boundsIn...,
                                suppressWarnings=suppressWarnings,
-                               suppressUpdate=suppressUpdate,
                                localOnly=localOnly)
 end
 
 
 function set_objective_b(newObjectiveDict::T,
                          suppressWarnings::Bool=false,
-                         suppressUpdate::Bool=false,
                          localOnly::Bool=false)::Nothing where T <: Dict
   set_objective!(workspace,ObjectiveFunction(newObjectiveDict),
                                    suppressWarnings=suppressWarnings,
-                                   suppressUpdate=suppressUpdate,
                                    localOnly=localOnly)
   return
 end
 
 function set_constraintSet_b(newConstraintSetDict::T,
                            suppressWarnings::Bool=false,
-                           suppressUpdate::Bool=false,
                            localOnly::Bool=false)::Nothing where T <: Dict
   set_constraintSet!(workspace,ConstraintSet(newConstraintSetDict),
                                    suppressWarnings=suppressWarnings,
-                                   suppressUpdate=suppressUpdate,
                                    localOnly=localOnly)
   return
 end
@@ -450,7 +425,6 @@ end
 
 function append_problem_b(problemDict::T,
                           suppressWarnings::Bool=false,
-                          suppressUpdate::Bool=false,
                           localOnly::Bool=false)::Nothing where T <: Dict
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
@@ -460,7 +434,6 @@ function append_problem_b(problemDict::T,
 
   return append_problem!(workspace,problemIn,
                                 suppressWarnings=suppressWarnings,
-                                suppressUpdate=suppressUpdate,
                                 localOnly=localOnly)
 end
 
@@ -468,27 +441,23 @@ end
 function integralize_variables_b(newDscIndices::Array{Int,1},
                                  newSos1Groups::Array{Int,1}=Int[],
                                  suppressWarnings::Bool=false,
-                                 suppressUpdate::Bool=false,
                                  localOnly=false)::Nothing
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
   return integralize_variables!(workspace,newDscIndices,
                                 suppressWarnings=suppressWarnings,
-                                suppressUpdate=suppressUpdate,
                                 localOnly=localOnly)
 end
 
 ######################## update settings ########################
 function update_objectiveCutoff_b(newCutoff::Float64,
                                   suppressWarnings::Bool=false,
-                                  suppressUpdate::Bool=false,
                                   localOnly::Bool=false)::Nothing
   if workspace isa NullWorkspace
     @error "workspace not initialized, please run setup(problemDict,bbSettingsDict,ssSettingsDict)"
   end
   return update_objectiveCutoff!(workspace,newCutoff,
                                  suppressWarnings=suppressWarnings,
-                                 suppressUpdate=suppressUpdate,
                                  localOnly=localOnly)
 end

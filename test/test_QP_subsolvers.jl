@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_QP.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-26T17:26:58+02:00
+# @Last modified time: 2019-09-25T19:20:54+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -41,9 +41,8 @@ function test_QP_subsolver(subsolver)
                              cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.]),
                              varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],vals=zeros(4),dscIndices=[1]))
 
-    OpenBB.append_problem!(workspace,problem2,suppressUpdate=true)
-    OpenBB.permute_constraints!(workspace,reverse(collect(1:size(workspace.subsolverWS.A,1))),suppressUpdate=true)
-    OpenBB.update!(workspace)
+    OpenBB.append_problem!(workspace,problem2)
+    OpenBB.permute_constraints!(workspace,reverse(collect(1:OpenBB.get_numConstraints(workspace))))
     result2 = OpenBB.solve!(workspace)
 
     print("4...")

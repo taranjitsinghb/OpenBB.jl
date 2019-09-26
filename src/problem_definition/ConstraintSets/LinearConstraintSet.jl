@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T16:17:21+02:00
+# @Last modified time: 2019-09-25T19:13:00+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -25,7 +25,7 @@ function deepcopy(constraintSet::LinearConstraintSet)::LinearConstraintSet
 end
 
 # type conversion
-function LinearConstraintSet{T}(constraintSet::LinearConstraintSet{T})::LinearConstraintSet{T} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+function LinearConstraintSet(constraintSet::LinearConstraintSet{T})::LinearConstraintSet{T} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     return constraintSet
 end
 
@@ -50,18 +50,56 @@ end
 
 
 function get_sparsity(constraintSet::LinearConstraintSet)::Tuple{Array{Int,1},Array{Int,1}}
-    return findnz(constraintSet.A)[1:2]
+    return findnz(sparse(constraintSet.A))[1:2]
 end
 
 function get_sparsity(constraintSet::LinearConstraintSet,index::Int)::Array{Int,1}
-    return findnz(constraintSet.A[index,:])[1]
+    return findnz(sparse(constraintSet.A[index,:]))[1]
 end
 
+function get_firstNZs(constraintSet::LinearConstraintSet)::Array{Int,1}
+    out = Array{Int,1}(undef,size(constraintSet.A,1))
+    for k in 1:length(out)
+        try
+            out[k] = findfirst(!iszero,constraintSet.A[k,:])
+        catch
+            out[k] = -1
+        end
+    end
+    return out
+end
+
+function get_firstNZ(constraintSet::LinearConstraintSet,index::Int)::Int
+    return findfirst(!iszero,constraintSet.A[index,:])
+end
+
+function get_lastNZs(constraintSet::LinearConstraintSet)::Array{Int,1}
+    out = Array{Int,1}(undef,size(constraintSet.A,1))
+    for k in 1:length(out)
+        try
+            out[k] = findlast(!iszero,constraintSet.A[k,:])
+        catch
+            out[k] = -1
+        end
+    end
+    return out
+end
+
+function get_lastNZ(constraintSet::LinearConstraintSet,index::Int)::Int
+    return findlast(!iszero,constraintSet.A[index,:])
+end
+
+
 # update functions (Not fundamental. Those are used only in updating the problem)
-function update_bounds!(constraintSet::LinearConstraintSet,loBs::Array{Float64,1},upBs::Array{Float64,1})::Nothing
-    @assert length(loBs) == length(upBs) == length(constraintSet.loBs) == length(constraintSet.upBs)
-    constraintSet.loBs = loBs
-    constraintSet.upBs = upBs
+function update_bounds!(constraintSet::LinearConstraintSet;loBs::Array{Float64,1}=Float64[],upBs::Array{Float64,1}=Float64[])::Nothing
+    if length(loBs) > 0
+        @assert length(loBs) == length(constraintSet.loBs) == length(constraintSet.upBs)
+        constraintSet.loBs = loBs
+    end
+    if length(upBs) > 0
+        @assert length(upBs) == length(constraintSet.loBs) == length(constraintSet.upBs)
+        constraintSet.upBs = upBs
+    end
     return
 end
 
@@ -72,12 +110,14 @@ function remove_variables!(constraintSet::LinearConstraintSet,indices::Array{Int
 end
 
 function insert_variables!(constraintSet::LinearConstraintSet,numVariables::Int,insertionPoint::Int)::Nothing
+    @assert numVariables>=0
+    @assert 0<=insertionPoint<=get_numVariables(constraintSet)+1
     constraintSet.A = hcat(constraintSet.A[:,1:insertionPoint-1],zeros(size(constraintSet.A,1),numVariables),constraintSet.A[:,insertionPoint:end])
     return
 end
 
 function append_variables!(constraintSet::LinearConstraintSet,numVariables::Int)::Nothing
-    insert_variables!(constraintSet,numVariables,get_size(constraintSet)+1)
+    insert_variables!(constraintSet,numVariables,get_numVariables(constraintSet)+1)
     return
 end
 

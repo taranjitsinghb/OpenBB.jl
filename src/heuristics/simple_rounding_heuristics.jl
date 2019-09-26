@@ -14,12 +14,12 @@ function simple_rounding_heuristics(node::BBnode, workspace::BBworkspace)::BBnod
     newPrimal = copy(node.primal)
     newLoBs = -Infs(length(node.primal))
     newUpBs =  Infs(length(node.primal))
-    @. newPrimal[workspace.dscIndices]  =
-       newLoBs[workspace.dscIndices]    =
-       newUpBs[workspace.dscIndices]    = round(newPrimal[workspace.dscIndices])
+    @. newPrimal[workspace.problem.varSet.dscIndices]  =
+       newLoBs[workspace.problem.varSet.dscIndices]    =
+       newUpBs[workspace.problem.varSet.dscIndices]    = round(newPrimal[workspace.problem.varSet.dscIndices])
 
     # return the resulting node
-    BBnode(newPrimal[workspace.dscIndices],newPrimal[workspace.dscIndices],
+    BBnode(newPrimal[workspace.problem.varSet.dscIndices],newPrimal[workspace.problem.varSet.dscIndices],
            newPrimal,copy(node.bndDual),copy(node.cnsDual),
            0.0,node.objVal,node.pseudoObjective,false)
 

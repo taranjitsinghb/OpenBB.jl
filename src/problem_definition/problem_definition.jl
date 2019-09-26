@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: problem_definitions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-30T13:04:01+02:00
+# @Last modified time: 2019-09-06T14:27:52+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -47,14 +47,6 @@ function sparse(problem::Problem)::Problem
     return Problem(sparse(problem.objFun),sparse(problem.cnsSet),problem.varSet)
 end
 
-# this function creates a relaxation of the given problem that stays up to date with the original problem
-function relaxation(problem::Problem{T1,T2})::Problem{T1,T2} where T1<:AbstractObjective where T2<:AbstractConstraintSet
-    out = Problem(copy(problem.objFun),copy(problem.cnsSet),copy(problem.varSet))
-    out.varSet.dscIndices = Int[]
-    out.varSet.sos1Groups = Int[]
-    out.varSet.pseudoCosts = (Array{Float64,2}(undef,0,2),Array{Int,2}(undef,0,2))
-    return out
-end
 
 # inspect functions (Fundamental. These are used by branch and bound.)
 function get_numVariables(problem::Problem)::Int
@@ -100,6 +92,3 @@ end
 function get_constraint_sparsity(problem::Problem,index::Int)::Any
     return get_sparsity(problem.cnsSet,index)
 end
-
-
-# update functions (Not Fundamental. These are used only during problem update)

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBworkspace.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T17:08:02+02:00
+# @Last modified time: 2019-09-06T13:20:16+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -13,21 +13,22 @@ abstract type AbstractWorkspace end; struct NullWorkspace <: AbstractWorkspace e
 
 
 # this structure collects all the informations needed to run B&B
-mutable struct BBworkspace{T1<:AbstractWorkspace,T2<:AbstractSharedMemory} <: AbstractWorkspace
+mutable struct BBworkspace{T1,T2,T3} <: AbstractWorkspace where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
     # problem description
-    subsolverWS::T1
-    dscIndices::Array{Int64,1}
-    sos1Groups::Array{Int64,1}
-    pseudoCosts::Tuple{Array{Float64,2},Array{Int,2}}
+    problem::T1
+    # subsolver WS
+    subsolverWS::T2
+    # multiprocessing communication
+    sharedMemory::T3
     # branch and bound status
     activeQueue::Array{BBnode,1}
     solutionPool::Array{BBnode,1}
     unactivePool::Array{BBnode,1}
     status::BBstatus
-    # multiprocessing communication
-    sharedMemory::T2
     # user settings
     settings::BBsettings
+    # workspace status
+    outdated::Bool
 end
 
 

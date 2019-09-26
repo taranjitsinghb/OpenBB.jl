@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T15:07:21+02:00
+# @Last modified time: 2019-09-25T20:17:39+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -12,7 +12,7 @@
 # this function returns the size of a flat representation of a node
 function flat_size(numVars::Int,numCnss::Int)::Int
     return 3 +            # header
-           4 +            # average fractionality + objective + pseudo-objective + reliable
+           5 +            # average fractionality + objective + objective gap + pseudo-objective + reliable
            4*numVars +    # variable bounds + primal + bound_dual
            3*numCnss      # constraints bounds + constraints_dual
 end
@@ -47,9 +47,10 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     # numeric values
     destinationArray[offset+1] = node.avgAbsFrac
     destinationArray[offset+2] = node.objVal
-    destinationArray[offset+3] = node.pseudoObjective
-    destinationArray[offset+4] = node.reliable
-    offset += 4
+    destinationArray[offset+3] = node.objGap
+    destinationArray[offset+4] = node.pseudoObjective
+    destinationArray[offset+5] = node.reliable
+    offset += 5
 
     # bounds
     @. destinationArray[offset+1:offset+numVars] = node.varLoBs; offset+=numVars
@@ -114,15 +115,16 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         # numeric values
         avgAbsFrac      = flatRepresentation[offset+1]
         objective       = flatRepresentation[offset+2]
-        pseudoObjective = flatRepresentation[offset+3]
-        reliable        = Bool(flatRepresentation[offset+4])
-        offset += 4
+        objGap          = flatRepresentation[offset+3]
+        pseudoObjective = flatRepresentation[offset+4]
+        reliable        = Bool(flatRepresentation[offset+5])
+        offset += 5
 
         # bounds
         varLoBs = flatRepresentation[offset+1:offset+numVars]; offset += numVars
         varUpBs = flatRepresentation[offset+1:offset+numVars]; offset += numVars
-        cnsLoBs = flatRepresentation[offset+1:offset+cnsVars]; offset += cnsVars
-        cnsUpBs = flatRepresentation[offset+1:offset+cnsVars]; offset += cnsVars
+        cnsLoBs = flatRepresentation[offset+1:offset+numCnss]; offset += numCnss
+        cnsUpBs = flatRepresentation[offset+1:offset+numCnss]; offset += numCnss
 
         # primal
         primal = flatRepresentation[offset+1:offset+numVars]; offset += numVars
@@ -131,7 +133,7 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         bndDual = flatRepresentation[offset+1:offset+numVars]; offset += numVars
         cnsDual = flatRepresentation[offset+1:offset+numCnss]; offset += numCnss
 
-        return BBnode(varLoBs,varUpBs,cnsLoBs,cnsUpBs,primal,bndDual,cnsDual,avgAbsFrac,objective,pseudoObjective,reliable)
+        return BBnode(varLoBs,varUpBs,cnsLoBs,cnsUpBs,primal,bndDual,cnsDual,avgAbsFrac,objective,objGap,pseudoObjective,reliable)
 
     elseif flatRepresentation[offset+1] == -1.0
         return KillerNode(flatRepresentation[offset+2])

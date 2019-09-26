@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T18:08:54+02:00
+# @Last modified time: 2019-09-25T23:15:29+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,21 +28,18 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 	numCnss = get_numConstraints(problem)
 	numDscVars = get_numDiscreteVariables(problem)
 
-    if !(problem isa NullProblem)
-        dscIndices = problem.varSet.dscIndices
-	end
-
+	localProblem = deepcopy(problem)
 
 	if bbSettings.numProcesses == 1	# single-process setup
 
 		# construct the master BBworkspace
-		workspace = BBworkspace(setup(problem,ssSettings,
+		workspace = BBworkspace(localProblem,
+							    setup(localProblem,ssSettings,
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
-								problem.varSet.dscIndices,problem.varSet.sos1Groups,
-								deepcopy(problem.varSet.pseudoCosts),
+								NullSharedMemory(),
 								Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
-								BBstatus(),NullSharedMemory(),bbSettings)
+								BBstatus(),bbSettings,false)
 
 		# build the root node and solve it
 		push!(workspace.activeQueue,BBroot(workspace))
@@ -50,7 +47,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
 
 		# initialize the pseudo costs
-		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.pseudoCosts,workspace.activeQueue[1])
+		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.problem.varSet.pseudoCosts,workspace.activeQueue[1])
 
 	else # multi-process setup
 
@@ -68,10 +65,6 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		for k in 1:bbSettings.numProcesses
 			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numCnss))
 		end
-		# communicationChannels = Array{RemoteChannel,1}(undef,bbSettings.numProcesses)
-		# @sync for k in 1:bbSettings.numProcesses
-		# 	@async communicationChannels[k] = RemoteChannel(()->Channel{AbstractBBnode}(2),k)
-		# end
 
 		# construct shared Memory
 		objectiveBounds = SharedArray{Float64,1}(vcat([-Inf],repeat([Inf],bbSettings.numProcesses)))
@@ -79,13 +72,13 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		arrestable = SharedArray{Bool,1}(repeat([false],bbSettings.numProcesses))
 
 		# construct the master BBworkspace
-		workspace = BBworkspace(setup(problem,ssSettings,
+		workspace = BBworkspace(localProblem,
+								setup(localProblem,ssSettings,
 									  bb_primalTolerance=bbSettings.primalTolerance,
 									  bb_timeLimit=bbSettings.timeLimit),
-								problem.varSet.dscIndices,problem.varSet.sos1Groups,
-								deepcopy(problem.varSet.pseudoCosts),
+							    BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats,arrestable),
 								Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
-								BBstatus(),BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats,arrestable),bbSettings)
+								BBstatus(),bbSettings,false)
 
 		# construct the remote workspaces
 		expressions = Array{Expr,1}(undef,length(workersList))
@@ -95,14 +88,13 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 			else
 				sharedMemory = BBsharedMemory(communicationChannels[k],communicationChannels[1],objectiveBounds,stats,arrestable)
 			end
-			expressions[k-1] = :(workspace = OpenBB.BBworkspace(OpenBB.setup($problem,$ssSettings,
-																		bb_primalTolerance=$(bbSettings.primalTolerance),
-																		bb_timeLimit=$(bbSettings.timeLimit)
-																		),
-														   copy($(problem.varSet.dscIndices)),copy($(problem.varSet.sos1Groups)),
-														   deepcopy($problem.varSet.pseudoCosts),
-														   Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),
-														   OpenBB.BBstatus(objLoB=Inf,description="empty"),$sharedMemory,deepcopy($bbSettings)))
+			expressions[k-1] = :(workspace = OpenBB.BBworkspace($localProblem,
+																OpenBB.setup($localProblem,$ssSettings,
+																			 bb_primalTolerance=$(bbSettings.primalTolerance),
+																			 bb_timeLimit=$(bbSettings.timeLimit)),
+																$sharedMemory,
+															    Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),
+															    OpenBB.BBstatus(objLoB=Inf,description="empty"),$bbSettings,false))
 	    end
 
 		@sync for k in 1:length(workersList)
@@ -111,15 +103,15 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 
 		# build the root node and solve it
 		push!(workspace.activeQueue,BBroot(workspace))
-		solve!(workspace.activeQueue[1],workspace)
+		solve!(workspace.activeQueue[1],workspace.subsolverWS)
 		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
 
 		# initialize the pseudo costs in the master process
-		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.pseudoCosts,workspace.activeQueue[1])
+		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.problem.varSet.pseudoCosts,workspace.activeQueue[1])
 
 		# initialize the pseudoCosts in the remote workers
 		@sync for k in 2:workspace.settings.numProcesses
-			@async remotecall_fetch(Main.eval,k,:(workspace.pseudoCosts[1] .= $(workspace.pseudoCosts[1]);workspace.pseudoCosts[2] .= $(workspace.pseudoCosts[2])))
+			@async remotecall_fetch(Main.eval,k,:(workspace.problem.varSet.pseudoCosts[1] .= $(workspace.problem.varSet.pseudoCosts[1]);workspace.problem.varSet.pseudoCosts[2] .= $(workspace.problem.varSet.pseudoCosts[2])))
 		end
 	end
 

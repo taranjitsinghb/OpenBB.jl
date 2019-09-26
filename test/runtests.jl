@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: runtests.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-27T19:59:11+02:00
+# @Last modified time: 2019-09-25T19:24:08+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 using OpenBB
