@@ -3,7 +3,7 @@
 # @Email:  wim.vanroy@kuleuven.be
 # @Filename: preprocessing.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T13:44:21+02:00
+# @Last modified time: 2019-09-26T12:51:06+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -20,7 +20,7 @@ function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{In
    feasible = true
    if withBoundsPropagation
        feasible, updatedVars = OpenBB.bounds_propagation!(
-            node, workspace.subsolverWS.A,
+            node, get_linearConstraints(workspace.problem.cnsSet),
             workspace.problem.varSet.dscIndices,
             updatedVars
          )

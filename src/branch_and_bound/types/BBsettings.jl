@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-03T17:20:17+02:00
+# @Last modified time: 2019-09-26T12:46:44+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -17,15 +17,14 @@ mutable struct BBsettings <: AbstractSettings
     verbose::Bool                           # print info during execution
     statusInfoPeriod::Float64               # frequency of status info print
     numProcesses::Int                       # max number of processes to launch
-    stopAfterSolution::Bool                 # stop workers after the solution for the current problem has been found
-    interactiveMode::Bool                       # store in memory suboptimal solutions and nodes to allow later updates
+    interactiveMode::Bool                   # store in memory suboptimal solutions and nodes to allow later updates
     # problem bounds
     primalTolerance::Float64                # constraint violation tolerance
     objectiveCutoff::Float64                # look only for solutions that are better than the provided upper bound
     # priority rules
     expansionPriorityRule::Tuple            # ordering of the nodes in the activeQueue
     branchingPriorityRule::Tuple            # ordering of the discrete variables for branching
-    unreliablesPriority::Int      # activeQueue insertion priority for unreliable nodes (-1->low, 0->normal, 1->high)
+    unreliablesPriority::Int      			# activeQueue insertion priority for unreliable nodes (-1->low, 0->normal, 1->high)
     # pseudo-costs
     pseudoCostsInitialization::Tuple        # function returning the initialization of the pseudo-costs
     # stopping criteria
@@ -47,7 +46,6 @@ end
 function BBsettings(;verbose::Bool=false,
                      statusInfoPeriod::Float64 = 1.,
                      numProcesses::Int=1,
-                     stopAfterSolution::Bool = true,
                      interactiveMode::Bool=false,
                      primalTolerance::Float64=1e-4,
                      objectiveCutoff::Float64=Inf,
@@ -72,7 +70,7 @@ function BBsettings(;verbose::Bool=false,
     	numProcesses = div(Sys.CPU_THREADS,2)
 	end
 
-    return BBsettings(verbose,statusInfoPeriod,numProcesses,stopAfterSolution,interactiveMode,
+    return BBsettings(verbose,statusInfoPeriod,numProcesses,interactiveMode,
                       primalTolerance,objectiveCutoff,
                       expansionPriorityRule,branchingPriorityRule,unreliablesPriority,
                       pseudoCostsInitialization,customStoppingRule,

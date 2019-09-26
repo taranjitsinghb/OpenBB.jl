@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T19:13:00+02:00
+# @Last modified time: 2019-09-26T13:02:30+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -89,6 +89,9 @@ function get_lastNZ(constraintSet::LinearConstraintSet,index::Int)::Int
     return findlast(!iszero,constraintSet.A[index,:])
 end
 
+function get_linearConstraints(constraintSet::LinearConstraintSet)::Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+    return constraintSet.A
+end
 
 # update functions (Not fundamental. Those are used only in updating the problem)
 function update_bounds!(constraintSet::LinearConstraintSet;loBs::Array{Float64,1}=Float64[],upBs::Array{Float64,1}=Float64[])::Nothing
