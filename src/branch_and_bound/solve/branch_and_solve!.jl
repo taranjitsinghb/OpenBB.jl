@@ -11,15 +11,15 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array
 
     # create a list of children
     if node.avgAbsFrac == 0.0 || isnan(node.objVal)
-        children, branchIndices_dsc = [deepcopy(node)], [0]
+        children, branchIndices_dsc, presolveIndices = [deepcopy(node)], [0], [0]
     else
-        children, branchIndices_dsc = branch!(node,workspace)
+        children, branchIndices_dsc, presolveIndices = branch!(node,workspace)
     end
 
     # solve all the children
     for k in 1:length(children)
         # Preprocess & solve
-        if preprocess!(children[k],workspace,[branchIndices_dsc[k]],
+        if preprocess!(children[k],workspace,presolveIndices,
                        withBoundsPropagation=workspace.settings.withBoundsPropagation)
             solve_node!(children[k],workspace)
         else
@@ -56,7 +56,7 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array
 end
 
 
-function branch!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Tuple{Array{BBnode,1},Array{Int,1}} where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
+function branch!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Tuple{Array{BBnode,1},Array{Int,1}, Array{Int,1}} where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
 
     # select a branching index
     branchIndex_dsc, priorityScores = branching_priority_rule(workspace.settings.branchingPriorityRule,
@@ -101,11 +101,11 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Tuple{Array{BBn
         @. children[2].primal[workspace.problem.varSet.dscIndices[sos1Group[2:2:end]]] = 0.
 
         if length(sos1Group) == 3
-            return children, [0,sos1Group[2]]
+            return children, [0,sos1Group[2]], sos1Group
         elseif length(sos1Group) == 2
-            return children, [sos1Group[1],sos1Group[2]]
+            return children, [sos1Group[1],sos1Group[2]], sos1Group
         else
-            return children, [0,0]
+            return children, [0,0], sos1Group
         end
 
     else # standard branching
@@ -123,7 +123,7 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Tuple{Array{BBn
         children[2].primal[branchIndex] = floor(node.primal[branchIndex]+workspace.settings.primalTolerance)
         children[2].varUpBs[branchIndex] = children[2].primal[branchIndex]
 
-        return children, [branchIndex_dsc,branchIndex_dsc]
+        return children, [branchIndex_dsc,branchIndex_dsc], [branchIndex_dsc]
 
     end
 end

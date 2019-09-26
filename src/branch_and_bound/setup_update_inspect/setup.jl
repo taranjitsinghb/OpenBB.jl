@@ -43,7 +43,12 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 
 		# build the root node and solve it
 		push!(workspace.activeQueue,BBroot(workspace))
-		solve_node!(workspace.activeQueue[1],workspace)
+        if preprocess!(workspace.activeQueue[1],workspace,[0],
+                       withBoundsPropagation=workspace.settings.withBoundsPropagation)
+            solve_node!(workspace.activeQueue[1],workspace)
+        else
+            workspace.activeQueue[1].objVal = Inf
+        end
 		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
 
 		# initialize the pseudo costs

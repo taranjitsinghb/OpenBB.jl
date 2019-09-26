@@ -22,17 +22,18 @@ function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{In
    if withBoundsPropagation
       if 0 in updatedVars
           feasible = process_gcd!(
-             workspace.subsolverWS.A,
+             get_linearConstraints(workspace.problem.cnsSet),
              node.cnsLoBs, node.cnsUpBs,
              node.varLoBs, node.varUpBs,
-             workspace.dscIndices,
+             workspace.problem.varSet.dscIndices,
           )
       end
 
       if feasible
           feasible, updatedVars = OpenBB.bounds_propagation!(
-               node, workspace.subsolverWS.A,
-               workspace.dscIndices,
+               node,
+               get_linearConstraints(workspace.problem.cnsSet),
+               workspace.problem.varSet.dscIndices,
                updatedVars
           )
       end
