@@ -45,9 +45,7 @@ function bounds_propagation!(row::Int,
 
       if totalMaxArray <= cnsUpB && totalMinArray >= cnsLoB
           # redundant constraint -> Remove?
-          cnsLoBs[row] = -Inf
-          cnsUpBs[row] = Inf
-          return true, updatedVars
+          return true, Set{Int}()
       elseif totalMinArray > cnsUpBs[row]
           # Infeasible
           return false, updatedVars
@@ -59,11 +57,13 @@ function bounds_propagation!(row::Int,
 
       # column index
       iteration = 0
+      nrOfIndices = length(indices)
+      maxIterations = nrOfIndices * nrOfIndices
       lastChanged = 1
       while true
 
             # select the variable to work on
-            i = mod(iteration,length(indices))+1
+            i = mod(iteration,nrOfIndices)+1
 
             # compute new lower and upper bounds
             if coeffs[i] > 0
@@ -81,7 +81,7 @@ function bounds_propagation!(row::Int,
             end
 
             # perform changes
-            if varLoBs[indices[i]] < newLoB
+            if varLoBs[indices[i]] < newLoB - 1e-8
                   if indices[i] in dscIndices
                       newLoB = ceil(newLoB)
                   end
@@ -104,7 +104,7 @@ function bounds_propagation!(row::Int,
                   push!(updatedVars,indices[i])
             end
 
-            if varUpBs[indices[i]] > newUpB
+            if varUpBs[indices[i]] > newUpB + 1e-8
                   if indices[i] in dscIndices
                       newLoB = floor(newUpB)
                   end
@@ -129,11 +129,16 @@ function bounds_propagation!(row::Int,
 
             # if an update took place:
             # mark the current variable as updated and restart the iteration
-            if lastChanged - 1 == mod(i,length(indices))
+            if lastChanged - 1 == mod(i,nrOfIndices)
                   return true, updatedVars
             else
                   iteration = iteration + 1
+                  if iteration > maxIterations
+                      @warn "Too many iterations!", varUpBs[indices], varLoBs[indices], totalMinArray, totalMaxArray
+                      return true, updatedVars
+                  end
             end
+
       end
 end
 
