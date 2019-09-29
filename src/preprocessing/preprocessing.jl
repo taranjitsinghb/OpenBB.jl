@@ -12,6 +12,7 @@ struct InfeasibleError <: Exception
 end
 
 include("./linear_bounds_propagation.jl")
+include("./gcd.jl")
 
 
 function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{Int64,1};
@@ -19,11 +20,23 @@ function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{In
 
    feasible = true
    if withBoundsPropagation
-       feasible, updatedVars = OpenBB.bounds_propagation!(
-            node, get_linearConstraints(workspace.problem.cnsSet),
-            workspace.problem.varSet.dscIndices,
-            updatedVars
-         )
+      if 0 in updatedVars
+          feasible = process_gcd!(
+             get_linearConstraints(workspace.problem.cnsSet),
+             node.cnsLoBs, node.cnsUpBs,
+             node.varLoBs, node.varUpBs,
+             workspace.problem.varSet.dscIndices,
+          )
+      end
+
+      if feasible
+          feasible, updatedVars = OpenBB.bounds_propagation!(
+               node,
+               get_linearConstraints(workspace.problem.cnsSet),
+               workspace.problem.varSet.dscIndices,
+               updatedVars
+          )
+      end
    end
 
    return feasible

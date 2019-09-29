@@ -66,5 +66,16 @@ workspace = OpenBB.setup(problem,
                                            numProcesses=1),
                          OpenBB.GUROBIsettings())
 
+workspacePreprocess = OpenBB.setup(problem,
+                         OpenBB.BBsettings(verbose=true,
+                                           interactiveMode=true,
+                                           expansionPriorityRule=(OpenBB.lower_pseudoObjective,),
+                                           branchingPriorityRule=(OpenBB.pseudoIncrements_geomean,),
+                                           pseudoCostsInitialization=(OpenBB.initialize_to_constant!,1e-4),
+                                           withBoundsPropagation=true,
+                                           numProcesses=1),
+                         OpenBB.GUROBIsettings())
+
 # solve
+OpenBB.solve!(workspacePreprocess)
 OpenBB.solve!(workspace)
