@@ -15,13 +15,18 @@ function LinearObjective(;L::T)::LinearObjective{T} where T<:Union{Array{Float64
 end
 
 # type conversions
-function LinearObjective(objective::LinearObjective{T})::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+function LinearObjective{T}(objective::LinearObjective{T})::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return objective
 end
 
-function LinearObjective(objective::QuadraticObjective{T1,T2})::LinearObjective{T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}} where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+function LinearObjective{T}(objective::LinearObjective)::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    return LinearObjective(T(objective.L))
+end
+
+
+function LinearObjective{T}(objective::QuadraticObjective)::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     @assert all(objective.Q .== 0)
-    return LinearObjective(objective.L)
+    return LinearObjective(T(objective.L))
 end
 
 import Base.copy

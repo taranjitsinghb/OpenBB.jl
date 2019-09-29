@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-26T13:02:30+02:00
+# @Last modified time: 2019-09-27T18:14:20+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -25,8 +25,12 @@ function deepcopy(constraintSet::LinearConstraintSet)::LinearConstraintSet
 end
 
 # type conversion
-function LinearConstraintSet(constraintSet::LinearConstraintSet{T})::LinearConstraintSet{T} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+function LinearConstraintSet{T}(constraintSet::LinearConstraintSet{T})::LinearConstraintSet{T} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     return constraintSet
+end
+
+function LinearConstraintSet{T}(constraintSet::LinearConstraintSet)::LinearConstraintSet{T} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+    return LinearConstraintSet(T(constraintSet.A),constraintSet.loBs,constraintSet.upBs)
 end
 
 import SparseArrays.sparse

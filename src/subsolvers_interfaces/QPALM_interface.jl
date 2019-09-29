@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T19:26:26+02:00
+# @Last modified time: 2019-09-27T17:17:52+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -103,8 +103,8 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
     end
 
     # ensure type consistency
-    objFun = QuadraticObjective(problem.objFun)
-    cnsSet = LinearConstraintSet(problem.cnsSet)
+    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(problem.objFun)
+    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(problem.cnsSet)
 
 
     # create the QPALMworkspace
@@ -136,8 +136,8 @@ function update!(workspace::QPALMworkspace)::Nothing
     end
 
     # ensure type consistency
-    objFun = QuadraticObjective(workspace.problem.objFun)
-    cnsSet = LinearConstraintSet(workspace.problem.cnsSet)
+    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
+    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(workspace.problem.cnsSet)
 
     # setup QPALM for the new problem
     QPALM.setup!(workspace.model;Q=sparse(objFun.Q),q=objFun.L,
@@ -179,7 +179,7 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
         @. node.primal = sol.x
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:end]
-        objFun = QuadraticObjective(workspace.problem.objFun)
+        objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
         node.objVal = 1/2 * transpose(node.primal) * objFun.Q * node.primal + transpose(objFun.L) * node.primal
         node.objGap = max(workspace.settings.eps_abs,
                           workspace.settings.eps_rel*abs(node.objVal))
@@ -195,7 +195,7 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
         @. node.primal = min(max(sol.x,node.varLoBs),node.varUpBs)
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:end]
-        objFun = QuadraticObjective(workspace.problem.objFun)
+        objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
         newObjVal = 1/2 * transpose(node.primal) * objFun.Q * node.primal + transpose(objFun.L) * node.primal
         if newObjVal >= node.ObjVal - node.objGap
             node.objGap = newObjVal - node.objVal + node.objGap #TODO: recopute the gap if possible

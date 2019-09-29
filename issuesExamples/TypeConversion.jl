@@ -19,4 +19,4 @@ vars = OpenBB.VariableSet(loBs=zeros(4), upBs=zeros(4), vals=zeros(4))
 
 problem = OpenBB.Problem(objFun=obj, cnsSet=cnss, varSet=vars)
 
-workspace = OpenBB.setup(problem, OpenBB.BBsettings(verbose=true), OpenBB.GUROBIsettings())
+workspace = OpenBB.setup(problem, OpenBB.BBsettings(verbose=true), OpenBB.OSQPsettings())

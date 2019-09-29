@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: Gurobi_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-19T12:53:46+02:00
+# @Last modified time: 2019-09-27T17:19:38+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -150,8 +150,8 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
     numCnss = get_numConstraints(workspace.problem)
 
     # create a Gurobi environment
-    cnsSet = LinearConstraintSet(workspace.problem.cnsSet)
-    objFun = QuadraticObjective(workspace.problem.objFun)
+    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(workspace.problem.cnsSet)
+    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
     model = Gurobi.gurobi_model(workspace.environment,H = objFun.Q,
                                                       f = objFun.L,
                                                       A = vcat(-cnsSet.A,cnsSet.A),

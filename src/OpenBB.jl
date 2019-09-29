@@ -28,7 +28,7 @@ module OpenBB
         return "Gurobi" in keys(installed())
     end
     function withQPALM()::Bool
-        return "QPALM" in keys(installed())
+        return false && "QPALM" in keys(installed())
     end
 
     function get_available_subsolvers()::Array{String,1}

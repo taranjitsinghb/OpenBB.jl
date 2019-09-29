@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QuadraticObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T17:09:53+02:00
+# @Last modified time: 2019-09-27T17:14:55+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -15,12 +15,16 @@ function QuadraticObjective(;Q::T1,L::T2)::QuadraticObjective{T1,T2} where T1<:U
 end
 
 # type conversions
-function QuadraticObjective(objective::LinearObjective{T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
-    return QuadraticObjective(sparse(zeros(length(objective.L),length(objective.L))),objective.L)
+function QuadraticObjective{T1,T2}(objective::LinearObjective{T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    return QuadraticObjective(T1(zeros(length(objective.L),length(objective.L))),T2(objective.L))
 end
 
-function QuadraticObjective(objective::QuadraticObjective{T1,T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+function QuadraticObjective{T1,T2}(objective::QuadraticObjective{T1,T2})::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return objective
+end
+
+function QuadraticObjective{T1,T2}(objective::QuadraticObjective)::QuadraticObjective{T1,T2} where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    return QuadraticObjective(T1(objective.Q),T2(objective.L))
 end
 
 # copy functions

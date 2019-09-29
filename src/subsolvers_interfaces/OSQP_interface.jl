@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-24T16:42:34+02:00
+# @Last modified time: 2019-09-27T17:18:57+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -108,10 +108,10 @@ function setup(problem::Problem,settings::OSQPsettings;bb_primalTolerance::Float
     end
 
     # ensure type consistency
-    objFun = QuadraticObjective(problem.objFun)
-    cnsSet = LinearConstraintSet(problem.cnsSet)
+    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(problem.objFun)
+    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(problem.cnsSet)
 
-    # create the OSQPworkspace
+    # create the OSQPworkspaces
     model = OSQP.Model()
     OSQP.setup!(model;P=sparse(objFun.Q),q=objFun.L,
                       A=vcat(speye(get_size(problem.varSet)),sparse(cnsSet.A)),
@@ -139,8 +139,8 @@ function update!(workspace::OSQPworkspace)::Nothing
     end
 
     # ensure type consistency
-    objFun = QuadraticObjective(workspace.problem.objFun)
-    cnsSet = LinearConstraintSet(workspace.problem.cnsSet)
+    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
+    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(workspace.problem.cnsSet)
 
     # re-setup OSQP for the new problem
     OSQP.setup!(workspace.model;P=sparse(objFun.Q),q=objFun.L,
@@ -197,7 +197,7 @@ function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
         @. node.primal = min(max(sol.x,node.varLoBs-workspace.settings.eps_prim_inf),node.varUpBs+workspace.settings.eps_prim_inf)
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:end]
-        objFun = QuadraticObjective(workspace.problem.objFun)
+        objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
         newObjVal = 1/2 * transpose(node.primal) * objFun.Q *node.primal + transpose(objFun.L) * node.primal
         if newObjVal >= node.ObjVal - node.objGap
             node.objGap = newObjVal - node.objVal + node.objGap #TODO: recopute the gap if possible
