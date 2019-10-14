@@ -14,8 +14,16 @@ function LinearObjective(;L::T)::LinearObjective{T} where T<:Union{Array{Float64
     return LinearObjective(L)
 end
 
+function LinearObjective(;L::T)::LinearObjective{T} where T<:Union{Array{Float64,2},SparseVector{Float64,Int}}
+    return LinearObjective(L)
+end
+
 # type conversions
 function LinearObjective{T}(objective::LinearObjective{T})::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    return objective
+end
+
+function LinearObjective{T}(objective::LinearObjective{T})::LinearObjective{T} where T<:Union{Array{Float64,2},SparseVector{Float64,Int}}
     return objective
 end
 
@@ -46,11 +54,11 @@ end
 
 # inspect functions (Fundamental. These are used in Branch and Bound)
 function get_numVariables(objective::LinearObjective)::Int
-    return size(objective.L,1)
+    return size(objective.L,1)*size(objective.L,2)
 end
 
 function get_sparsity(objective::LinearObjective)::Array{Int,1}
-    return findnz(sparse(objective.L))[1]
+    return findnz(sparse(objective.L))[1:2]
 end
 
 

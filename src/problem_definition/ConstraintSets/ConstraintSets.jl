@@ -20,4 +20,9 @@ mutable struct LinearConstraintSet{T} <: AbstractConstraintSet where T<:Union{Ar
     upBs::Array{Float64,1}
 end
 
+mutable struct SDPConstraintSet{T} <: AbstractConstraintSet where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+    A::T
+end
+
 include("./LinearConstraintSet.jl")
+include("./SDPConstraintSet.jl")

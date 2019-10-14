@@ -67,6 +67,54 @@ function VariableSet(;loBs::Array{Float64,1},upBs::Array{Float64,1},vals::Array{
     return VariableSet(loBs,upBs,vals,dscIndices,sos1Groups,pseudoCosts)
 end
 
+
+function VariableSet(;loBs::Array{Array{Float64,2},1},upBs::Array{Array{Float64,2},1},vals::Array{Float64,2}=Float64[],
+                      dscIndices::Array{Int,1}=Int[],sos1Groups::Array{Int,1}=Int[],pseudoCosts::Tuple{Array{Float64,2},Array{Int,2}}=(NaNs(0,2),Int.(zeros(0,2))))::VariableSet
+loBs = vec(loBs[1])
+upBs = vec(upBs[1])
+vals = vec(vals)
+#dscIndices = vec(dscIndices)
+#sos1Groups = vec(sos1Groups)
+    # check the correctness of inputs
+    if length(sos1Groups) == 0
+        sos1Groups = repeat([0],length(dscIndices))
+    elseif length(sos1Groups) != length(dscIndices)
+        @error "sos1Groups should either be empty or have the same length of dscIndices"
+    end
+
+    if size(pseudoCosts[1],1) == 0
+        pseudoCosts = (1e-4*ones(length(dscIndices),2),pseudoCosts[2])
+    end
+    if size(pseudoCosts[2],1) == 0
+        pseudoCosts = (pseudoCosts[1],Int.(zeros(length(dscIndices),2)))
+    end
+    if !(size(pseudoCosts[1],1) == size(pseudoCosts[2],1) == length(dscIndices)) || size(pseudoCosts[1],2) != 2 || size(pseudoCosts[2],2) != 2
+        @error "pseudoCosts should either be empty or have size: (length(dscIndices) x 2, length(dscIndices) x 2) "
+    end
+
+    if length(vals) == 0
+        @assert length(loBs) == length(upBs)
+        vals = Array{Float64,1}(undef,length(loBs))
+        for i in 1:length(loBs)
+            scenario = (loBs[i]>-Inf) + 2*(upBs[i]<Inf)
+            if scenario == 3
+                vals[i] = .5*(loBs[i] + upBs[i])
+            elseif scenario == 2
+                vals[i] = upBs[i]
+            elseif scenario == 1
+                vals[i] = loBs[i]
+            else
+                vals[i] = 0
+            end
+        end
+    else
+#        @assert length(vec(loBs[1])) == length(vec(upBs[1])) == length(vec(vals))
+    end
+
+    return VariableSet(loBs,upBs,vals,dscIndices,sos1Groups,pseudoCosts)
+end
+
+
 # type conversion
 function VariableSet(variableSet::VariableSet)::VariableSet
     return variableSet

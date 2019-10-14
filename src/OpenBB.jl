@@ -27,6 +27,9 @@ module OpenBB
     function withGUROBI()::Bool
         return "Gurobi" in keys(installed())
     end
+    function withJUMP_SDP()::Bool
+        return "JuMP" in keys(installed())
+    end
     function withQPALM()::Bool
         return false && "QPALM" in keys(installed())
     end
@@ -35,13 +38,14 @@ module OpenBB
         out = String[]
         if withOSQP() push!(out,"OSQP") end
         if withQPALM() push!(out,"QPALM") end
+        if withJUMP_SDP() push!(out,"JuMP") end
         if withGUROBI() push!(out,"GUROBI") end
         return out
     end
 
     # use or not the MPC addon (the folder containing the mpc toolbox should be placed beside the one containing OpenBB)
     function withMPCaddon()
-        return true
+        return false
     end
 
 
@@ -63,6 +67,9 @@ module OpenBB
     end
     if withGUROBI()
         include("./subsolvers_interfaces/GUROBI_interface.jl")
+    end
+    if withJUMP_SDP()
+        include("./subsolvers_interfaces/JUMP_interface.jl")
     end
     if withQPALM()
         include("./subsolvers_interfaces/QPALM_interface.jl")
